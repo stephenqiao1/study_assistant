@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
+interface Message {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+}
+
+interface ChatResponse {
+  message: string
+  encouragement: string
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
@@ -88,7 +98,7 @@ export async function POST(request: Request) {
           role: "system",
           content: SYSTEM_PROMPT
         },
-        ...messages.map((msg: any) => ({
+        ...messages.map((msg: Message) => ({
           role: msg.role,
           content: msg.content
         })),
@@ -103,7 +113,7 @@ export async function POST(request: Request) {
 
     console.log('Raw AI response:', completion.choices[0].message.content)
     
-    const aiResponse = JSON.parse(completion.choices[0].message.content || '{"message": "", "encouragement": ""}')
+    const aiResponse = JSON.parse(completion.choices[0].message.content || '{"message": "", "encouragement": ""}') as ChatResponse
     console.log('Parsed AI response:', aiResponse)
     
     // Process the message to ensure we only get one
@@ -121,7 +131,7 @@ export async function POST(request: Request) {
             role: "system",
             content: FOLLOW_UP_PROMPT
           },
-          ...messages.map((msg: any) => ({
+          ...messages.map((msg: Message) => ({
             role: msg.role,
             content: msg.content
           })),
@@ -134,7 +144,7 @@ export async function POST(request: Request) {
         temperature: 0.7
       })
 
-      const followUpResponse = JSON.parse(followUp.choices[0].message.content || '{"message": "", "encouragement": ""}')
+      const followUpResponse = JSON.parse(followUp.choices[0].message.content || '{"message": "", "encouragement": ""}') as ChatResponse
       console.log('Follow-up response:', followUpResponse)
 
       // Return both messages
@@ -155,12 +165,12 @@ export async function POST(request: Request) {
     
     console.log('Final response being sent:', response)
     return NextResponse.json(response)
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in chat API:', error)
     return NextResponse.json(
       { 
         error: 'Failed to generate response',
-        details: error?.message || 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )
