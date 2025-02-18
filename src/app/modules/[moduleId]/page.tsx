@@ -54,31 +54,16 @@ export default function ModulePage({ params }: PageProps) {
   useEffect(() => {
     const fetchModule = async () => {
       if (!session?.user?.id) {
-        console.log('No authenticated user found')
         return
       }
 
       const supabase = createClient()
-      
-      console.log('Current user ID:', session.user.id)
-      console.log('Fetching study sessions for module:', moduleId)
       
       // First, let's see all study sessions for this user
       const { data: allUserSessions, error: userSessionsError } = await supabase
         .from('study_sessions')
         .select('*')
         .eq('user_id', session.user.id)
-
-      console.log('All user study sessions:', {
-        count: allUserSessions?.length || 0,
-        sessions: allUserSessions?.map(s => ({
-          id: s.id,
-          module_title: s.module_title,
-          title: s.details.title,
-          started_at: s.started_at
-        })),
-        error: userSessionsError
-      })
 
       // Now get sessions for this specific module
       const { data, error } = await supabase
@@ -88,35 +73,12 @@ export default function ModulePage({ params }: PageProps) {
         .eq('user_id', session.user.id)
         .order('started_at', { ascending: false })
 
-      console.log('Module-specific sessions:', {
-        moduleId,
-        userId: session.user.id,
-        count: data?.length || 0,
-        sessions: data?.map(s => ({
-          id: s.id,
-          module_title: s.module_title,
-          title: s.details.title,
-          started_at: s.started_at
-        })),
-        error
-      })
-
       if (error) {
         console.error('Error fetching study sessions:', error)
         notFound()
       } else if (!data || data.length === 0) {
-        console.log('No study sessions found for this module')
         notFound()
       } else {
-        console.log('Setting current module and sessions:', {
-          currentModule: {
-            id: data[0].id,
-            module_title: data[0].module_title,
-            title: data[0].details.title,
-            started_at: data[0].started_at
-          },
-          totalSessions: data.length
-        })
         
         // Set the current module to the most recent session
         const currentModule = data[0]

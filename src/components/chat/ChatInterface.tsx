@@ -33,7 +33,6 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
   useEffect(() => {
     // Get initial response from virtual student
     if (!hasInitialResponseRef.current) {
-      console.log('Initiating initial response')
       hasInitialResponseRef.current = true
       handleVirtualStudentResponse()
     }
@@ -46,11 +45,9 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
 
   const handleVirtualStudentResponse = async () => {
     if (isLoading) {
-      console.log('Already loading, skipping request')
       return
     }
     
-    console.log('Starting virtual student response with messages:', messages)
     setIsLoading(true)
     
     try {
@@ -70,7 +67,6 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
       }
 
       const data = await response.json()
-      console.log('Received response from API:', data)
       
       if (data.questions?.length > 0) {
         // Add messages sequentially with a delay between them
@@ -88,12 +84,9 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
             await new Promise(resolve => setTimeout(resolve, 1000))
           }
           
-          console.log('Adding new message to chat:', newMessage)
-          
           // Update messages state
           setMessages(prev => {
             const newMessages = [...prev, newMessage]
-            console.log('New messages state:', newMessages)
             // Save conversation after state update
             onSaveConversation(newMessages)
             return newMessages

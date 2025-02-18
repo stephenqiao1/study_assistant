@@ -40,7 +40,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   useEffect(() => {
     async function fetchResults() {
       if (!moduleId || !timestamp) {
-        console.log('Missing moduleId or timestamp:', { moduleId, timestamp })
         setIsLoading(false)
         return
       }
@@ -57,7 +56,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
 
         if (sessionError) throw sessionError
 
-        console.log('Study session data:', studySession)
         setModuleContent(studySession.details.content)
 
         // Get the teach back with matching timestamp
@@ -72,8 +70,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
           console.error('Error fetching teach back:', teachBackError)
           return
         }
-
-        console.log('Found teach back:', teachBack)
 
         if (teachBack) {
           setResult({

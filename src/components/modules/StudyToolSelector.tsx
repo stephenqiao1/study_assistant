@@ -34,7 +34,6 @@ export default function StudyToolSelector({ moduleId, availableTools }: StudyToo
   const router = useRouter()
 
   const handleSelectTool = (tool: string) => {
-    console.log('Selected tool:', tool, 'for module:', moduleId)
     if (tool.toLowerCase() === 'teachback') {
       router.push(`/modules/${moduleId}/teach`)
     } else {

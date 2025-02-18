@@ -144,11 +144,9 @@ Graphs are represented as $G = (V, E)$ where:
 ]
 
 async function seedDatabase() {
-  console.log('Starting database seeding...')
 
   // Insert modules
   for (const module of modules) {
-    console.log(`Inserting module: ${module.module_id}`)
     const { error } = await supabase.from('study_sessions').insert({
       user_id: DEMO_USER_ID,
       module_id: module.module_id,
@@ -160,7 +158,6 @@ async function seedDatabase() {
     if (error) {
       console.error(`Error inserting module ${module.module_id}:`, error)
     } else {
-      console.log(`Successfully inserted module: ${module.module_id}`)
     }
   }
 

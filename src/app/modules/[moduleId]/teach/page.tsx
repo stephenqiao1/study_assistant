@@ -43,7 +43,6 @@ export default function TeachPage({ params }: PageProps) {
     const fetchModuleDetails = async () => {
       const supabase = createClient()
       try {
-        console.log('Fetching module details for:', moduleId)
         const { data: module, error } = await supabase
           .from('study_sessions')
           .select('details')
@@ -55,7 +54,6 @@ export default function TeachPage({ params }: PageProps) {
           throw error
         }
 
-        console.log('Found module:', module)
         setModuleTitle(module.details.title)
         setModuleContent(module.details.content)
       } catch (error) {

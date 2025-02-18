@@ -21,18 +21,14 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Login attempt started')
     setIsLoading(true)
     setMessage(null)
 
     try {
-      console.log('Attempting to sign in with:', { email: formData.email })
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       })
-
-      console.log('Supabase auth response:', { data, error })
 
       if (error) {
         console.error('Login error:', error)
@@ -40,8 +36,6 @@ export default function Login() {
       }
 
       if (data?.session) {
-        console.log('Session obtained:', data.session)
-        
         try {
           // Set the session in Supabase client
           const { error: sessionError } = await supabase.auth.setSession({
@@ -53,8 +47,6 @@ export default function Login() {
             console.error('Error setting session:', sessionError)
             throw sessionError
           }
-
-          console.log('Session set successfully')
           
           // Add a small delay to ensure session is properly set
           await new Promise(resolve => setTimeout(resolve, 500))
@@ -83,7 +75,6 @@ export default function Login() {
       })
     } finally {
       setIsLoading(false)
-      console.log('Login process completed')
     }
   }
 

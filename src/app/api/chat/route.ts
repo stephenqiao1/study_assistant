@@ -87,9 +87,6 @@ Your response should be in JSON format:
 export async function POST(request: Request) {
   try {
     const { messages, originalContent } = await request.json()
-    
-    console.log('Incoming messages:', messages)
-    console.log('Original content length:', originalContent?.length || 0)
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4-1106-preview",
@@ -110,19 +107,14 @@ export async function POST(request: Request) {
       response_format: { type: "json_object" },
       temperature: 0.7
     })
-
-    console.log('Raw AI response:', completion.choices[0].message.content)
     
     const aiResponse = JSON.parse(completion.choices[0].message.content || '{"message": "", "encouragement": ""}') as ChatResponse
-    console.log('Parsed AI response:', aiResponse)
     
     // Process the message to ensure we only get one
     const singleMessage = extractSingleMessage(aiResponse.message || "")
-    console.log('Extracted single message:', singleMessage)
 
     // If the message doesn't contain a question, get a follow-up question
     if (!containsQuestion(singleMessage)) {
-      console.log('Initial message contains no question, getting follow-up...')
       
       const followUp = await openai.chat.completions.create({
         model: "gpt-4-1106-preview",
@@ -145,7 +137,6 @@ export async function POST(request: Request) {
       })
 
       const followUpResponse = JSON.parse(followUp.choices[0].message.content || '{"message": "", "encouragement": ""}') as ChatResponse
-      console.log('Follow-up response:', followUpResponse)
 
       // Return both messages
       const response = {
@@ -153,7 +144,6 @@ export async function POST(request: Request) {
         encouragement: aiResponse.encouragement || ""
       }
       
-      console.log('Final response being sent:', response)
       return NextResponse.json(response)
     }
     
@@ -163,7 +153,6 @@ export async function POST(request: Request) {
       encouragement: aiResponse.encouragement || ""
     }
     
-    console.log('Final response being sent:', response)
     return NextResponse.json(response)
   } catch (error) {
     console.error('Error in chat API:', error)
