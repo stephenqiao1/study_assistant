@@ -13,8 +13,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          module_id: string
-          session_type: string
+          module_title: string
           started_at: string
           ended_at: string | null
           details: {
@@ -40,8 +39,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          module_id: string
-          session_type: string
+          module_title: string
           started_at?: string
           ended_at?: string | null
           details?: Json
@@ -49,34 +47,10 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          module_id?: string
-          session_type?: string
+          module_title?: string
           started_at?: string
           ended_at?: string | null
           details?: Json
-        }
-      }
-      users: {
-        Row: {
-          id: string
-          email: string
-          username: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          email: string
-          username?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          username?: string | null
-          created_at?: string
-          updated_at?: string
         }
       }
     }

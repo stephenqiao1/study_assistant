@@ -146,26 +146,6 @@ Graphs are represented as $G = (V, E)$ where:
 async function seedDatabase() {
   console.log('Starting database seeding...')
 
-  // First, create a demo user in the users table
-  const { error: userError } = await supabase.from('users').insert({
-    id: DEMO_USER_ID,
-    email: 'demo@example.com',
-    username: 'demo_user',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }).select().single()
-
-  if (userError) {
-    console.error('Error creating user:', userError)
-    if (userError.code === '23505') { // Unique violation error code
-      console.log('Demo user already exists, proceeding with module creation...')
-    } else {
-      return
-    }
-  } else {
-    console.log('Successfully created demo user')
-  }
-
   // Insert modules
   for (const module of modules) {
     console.log(`Inserting module: ${module.module_id}`)

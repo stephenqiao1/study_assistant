@@ -181,8 +181,16 @@ export default function Home() {
             <div>
               <h3 className="font-semibold mb-4 text-text">Legal</h3>
               <ul className="space-y-2">
-                <li><Link href="#" className="text-text-light hover:text-primary">Privacy Policy</Link></li>
-                <li><Link href="#" className="text-text-light hover:text-primary">Terms of Service</Link></li>
+                <li>
+                  <Link href="/privacy" className="text-text-light hover:text-primary transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="text-text-light hover:text-primary transition-colors">
+                    Terms of Service
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -201,7 +209,11 @@ export default function Home() {
           </div>
 
           <div className="mt-8 pt-8 border-t text-center text-sm text-text-light">
-            <p>© {new Date().getFullYear()} Academiq. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Academiq. All rights reserved. 
+              <Link href="/privacy" className="ml-2 hover:text-primary transition-colors">
+                Privacy Policy
+              </Link>
+            </p>
           </div>
         </div>
       </footer>

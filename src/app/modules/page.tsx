@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { BookOpen, LogOut, ArrowRight } from 'lucide-react'
+import { BookOpen, LogOut, ArrowRight, Plus } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
+import CreateModuleModal from '@/components/modules/CreateModuleModal'
 
 interface Module {
-  module_id: string
+  module_title: string
   details: {
     title: string
     content: string
@@ -25,45 +27,55 @@ export default function ModulesPage() {
   const { session, isLoading } = useRequireAuth()
   const [modules, setModules] = useState<Module[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const supabase = createClient()
 
-  useEffect(() => {
-    const fetchModules = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('study_sessions')
-          .select('*')
-          .eq('session_type', 'text')
-          .order('started_at', { ascending: false })
+  const fetchModules = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('study_sessions')
+        .select('module_title, details, started_at')
+        .order('started_at', { ascending: false })
 
-        if (error) throw error
-
-        // Create a map to store unique modules with their latest data
-        const moduleMap = new Map()
-        data.forEach((module) => {
-          if (!moduleMap.has(module.module_id) || 
-              new Date(module.started_at) > new Date(moduleMap.get(module.module_id).started_at)) {
-            moduleMap.set(module.module_id, module)
-          }
-        })
-
-        // Convert map values to array
-        setModules(Array.from(moduleMap.values()))
-      } catch (error) {
-        console.error('Error fetching modules:', error)
-      } finally {
-        setIsLoadingData(false)
+      if (error) {
+        console.error('Database error:', error)
+        throw error
       }
-    }
 
-    fetchModules()
-  }, [])
+      // Create a map to store unique modules with their latest data
+      const moduleMap = new Map()
+      data.forEach((module) => {
+        if (!moduleMap.has(module.module_title) || 
+            new Date(module.started_at) > new Date(moduleMap.get(module.module_title).started_at)) {
+          moduleMap.set(module.module_title, module)
+        }
+      })
+
+      // Convert map values to array
+      setModules(Array.from(moduleMap.values()))
+    } catch (error) {
+      console.error('Error fetching modules:', error)
+    } finally {
+      setIsLoadingData(false)
+    }
+  }
+
+  useEffect(() => {
+    if (session) {
+      fetchModules()
+    }
+  }, [session])
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Error signing out:', error)
     }
+  }
+
+  const handleCreateSuccess = () => {
+    // Refresh the modules list after creating a new module
+    fetchModules()
   }
 
   if (isLoading || isLoadingData) {
@@ -110,48 +122,45 @@ export default function ModulesPage() {
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-text">Study Modules</h1>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Module
+            </Button>
           </div>
 
           {/* Modules Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {modules.map((module) => {
-              // Get the highest grade from teach_backs
-              const highestGrade = module.details.teach_backs?.reduce((max: number, tb: { grade: number }) => 
-                tb.grade > max ? tb.grade : max, 0) || 0
-
-              // Get content preview (first 150 characters)
-              const contentPreview = module.details.content
-                .replace(/[#*`]/g, '') // Remove markdown characters
-                .slice(0, 150) + '...'
-
-              return (
-                <Card key={module.module_id} className="bg-white hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <CardTitle className="text-text">{module.details.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-text-light text-sm">{contentPreview}</p>
-                    <div className="flex items-center justify-between">
-                      {highestGrade > 0 && (
-                        <div className="text-sm">
-                          <span className="text-text-light">Best Grade: </span>
-                          <span className="font-medium text-accent-orange">{highestGrade}%</span>
-                        </div>
-                      )}
-                      <Link href={`/modules/${module.module_id}`}>
-                        <Button className="gap-2">
-                          View Module
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {modules.map((module) => (
+              <Card key={module.module_title} className="p-4">
+                <CardHeader>
+                  <CardTitle className="text-text">{module.details.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="text-sm text-text-light">
+                      Started: {new Date(module.started_at).toLocaleDateString()}
                     </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Link
+                    href={`/modules/${module.module_title}`}
+                    className={buttonVariants({ variant: "default" })}
+                  >
+                    View Module
+                  </Link>
+                </CardFooter>
+              </Card>
+            ))}
           </div>
         </div>
       </main>
+
+      <CreateModuleModal 
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handleCreateSuccess}
+      />
     </div>
   )
 } 

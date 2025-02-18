@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/utils/supabase/client'
 import ChatInterface from '@/components/chat/ChatInterface'
 import { use } from 'react'
+import Link from 'next/link'
+import { BookOpen, LogOut } from 'lucide-react'
+import { useRequireAuth } from '@/hooks/useRequireAuth'
 
 interface GradingResult {
   grade: number
@@ -22,8 +25,8 @@ interface PageProps {
 }
 
 export default function TeachPage({ params }: PageProps) {
-  // Unwrap the params promise using React.use()
   const { moduleId } = use(params)
+  const { session, isLoading: isLoadingAuth } = useRequireAuth()
   
   const [text, setText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -39,15 +42,19 @@ export default function TeachPage({ params }: PageProps) {
     const fetchModuleDetails = async () => {
       const supabase = createClient()
       try {
+        console.log('Fetching module details for:', moduleId)
         const { data: module, error } = await supabase
           .from('study_sessions')
           .select('details')
-          .eq('module_id', moduleId)
-          .eq('session_type', 'text')
+          .eq('module_title', moduleId)
           .single()
 
-        if (error) throw error
+        if (error) {
+          console.error('Error fetching module details:', error)
+          throw error
+        }
 
+        console.log('Found module:', module)
         setModuleTitle(module.details.title)
         setModuleContent(module.details.content)
       } catch (error) {
@@ -123,8 +130,7 @@ export default function TeachPage({ params }: PageProps) {
       const { data: module, error: fetchError } = await supabase
         .from('study_sessions')
         .select('details')
-        .eq('module_id', moduleId)
-        .eq('session_type', 'text')
+        .eq('module_title', moduleId)
         .single()
 
       if (fetchError) throw fetchError
@@ -158,7 +164,7 @@ export default function TeachPage({ params }: PageProps) {
       const { error: updateError } = await supabase
         .from('study_sessions')
         .update({ details: updatedDetails })
-        .eq('module_id', moduleId)
+        .eq('module_title', moduleId)
         .eq('session_type', 'text')
 
       if (updateError) throw updateError
@@ -194,7 +200,7 @@ export default function TeachPage({ params }: PageProps) {
       const { data: module } = await supabase
         .from('study_sessions')
         .select('details')
-        .eq('module_id', moduleId)
+        .eq('module_title', moduleId)
         .eq('session_type', 'text')
         .single()
 
@@ -221,7 +227,7 @@ export default function TeachPage({ params }: PageProps) {
       await supabase
         .from('study_sessions')
         .update({ details: updatedDetails })
-        .eq('module_id', moduleId)
+        .eq('module_title', moduleId)
         .eq('session_type', 'text')
 
     } catch (error) {
@@ -229,96 +235,162 @@ export default function TeachPage({ params }: PageProps) {
     }
   }
 
+  // Add handleSignOut function
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
+  if (isLoadingAuth) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>
+  }
+
+  if (!session) {
+    return null // Will redirect in useRequireAuth
+  }
+
   if (showChat) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-              Teaching Back
-            </h2>
-            <h1 className="text-3xl font-bold">
-              {moduleTitle}
-            </h1>
+      <div className="min-h-screen bg-secondary">
+        {/* Header */}
+        <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between h-16">
+              <Link href="/dashboard" className="flex items-center space-x-2">
+                <BookOpen className="h-8 w-8 text-primary" />
+                <span className="text-xl font-bold text-primary">Academiq</span>
+              </Link>
+              <nav className="hidden md:flex items-center space-x-8">
+                <Link href="/dashboard" className="text-text hover:text-primary">Dashboard</Link>
+                <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
+                <Button 
+                  variant="ghost" 
+                  className="text-text hover:text-primary flex items-center gap-2"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </Button>
+              </nav>
+            </div>
           </div>
-          <ChatInterface
-            initialMessage={text}
-            originalContent={moduleContent}
-            onSaveConversation={handleSaveChat}
-          />
-          <div className="mt-8 flex justify-end">
-            <Button onClick={handleViewResults}>
-              View Results
-            </Button>
+        </header>
+
+        {/* Main Content */}
+        <main className="pt-24 pb-8">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="mb-8">
+              <h2 className="text-sm font-medium text-text-light mb-2">Teaching Back</h2>
+              <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border p-8">
+              <ChatInterface
+                initialMessage={text}
+                originalContent={moduleContent}
+                onSaveConversation={handleSaveChat}
+              />
+              <div className="mt-8 flex justify-end">
+                <Button onClick={handleViewResults}>View Results</Button>
+              </div>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="mb-6">
-          <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-            Teaching Back
-          </h2>
-          <h1 className="text-3xl font-bold">
-            {moduleTitle}
-          </h1>
-        </div>
-        <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
-          <h2 className="font-semibold mb-2">🎓 Feynman Technique Tips:</h2>
-          <ul className="list-disc list-inside space-y-2 text-sm">
-            <li>Explain the concept as if teaching it to a complete beginner</li>
-            <li>Use simple language and avoid jargon</li>
-            <li>Identify gaps in your understanding and note them down</li>
-            <li>Connect ideas to things you already know</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">✍️ Your Explanation</h2>
-            <AudioRecorder onTranscriptionComplete={handleTranscription} />
+    <div className="min-h-screen bg-secondary">
+      {/* Header */}
+      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <Link href="/dashboard" className="flex items-center space-x-2">
+              <BookOpen className="h-8 w-8 text-primary" />
+              <span className="text-xl font-bold text-primary">Academiq</span>
+            </Link>
+            <nav className="hidden md:flex items-center space-x-8">
+              <Link href="/dashboard" className="text-text hover:text-primary">Dashboard</Link>
+              <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
+              <Button 
+                variant="ghost" 
+                className="text-text hover:text-primary flex items-center gap-2"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
+            </nav>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-            Type your explanation or use voice recording - both will appear in the text editor below
-          </p>
-          <TextEditor
-            value={text}
-            onChange={setText}
-          />
         </div>
-      </div>
+      </header>
 
-      {!showOptions ? (
-        <div className="mt-8 flex justify-end">
-          <Button 
-            onClick={handleSubmit} 
-            size="lg"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit Teach-Back Session'}
-          </Button>
+      {/* Main Content */}
+      <main className="pt-24 pb-8">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="mb-8">
+            <h2 className="text-sm font-medium text-text-light mb-2">Teaching Back</h2>
+            <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
+            <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-100 dark:border-blue-800 mb-8">
+              <h2 className="font-semibold mb-2">🎓 Feynman Technique Tips:</h2>
+              <ul className="list-disc list-inside space-y-2 text-sm">
+                <li>Explain the concept as if teaching it to a complete beginner</li>
+                <li>Use simple language and avoid jargon</li>
+                <li>Identify gaps in your understanding and note them down</li>
+                <li>Connect ideas to things you already know</li>
+              </ul>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-text">✍️ Your Explanation</h2>
+                  <AudioRecorder onTranscriptionComplete={handleTranscription} />
+                </div>
+                <p className="text-sm text-text-light mb-4">
+                  Type your explanation or use voice recording - both will appear in the text editor below
+                </p>
+                <TextEditor
+                  value={text}
+                  onChange={setText}
+                />
+              </div>
+            </div>
+
+            {!showOptions ? (
+              <div className="mt-8 flex justify-end">
+                <Button 
+                  onClick={handleSubmit} 
+                  size="lg"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Teach-Back Session'}
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-8 flex justify-end gap-4">
+                <Button 
+                  variant="outline"
+                  onClick={handleViewResults}
+                >
+                  View Results
+                </Button>
+                <Button
+                  onClick={() => setShowChat(true)}
+                >
+                  Start Virtual Student Chat
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      ) : (
-        <div className="mt-8 flex justify-end gap-4">
-          <Button 
-            variant="outline"
-            onClick={handleViewResults}
-          >
-            View Results
-          </Button>
-          <Button
-            onClick={() => setShowChat(true)}
-          >
-            Start Virtual Student Chat
-          </Button>
-        </div>
-      )}
+      </main>
     </div>
   )
 } 
