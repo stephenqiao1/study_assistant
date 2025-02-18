@@ -61,9 +61,9 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
-            <p className="mt-6 text-sm text-text-light">
+            {/* <p className="mt-6 text-sm text-text-light">
               Trusted by thousands of students worldwide
-            </p>
+            </p> */}
           </div>
         </div>
       </section>
