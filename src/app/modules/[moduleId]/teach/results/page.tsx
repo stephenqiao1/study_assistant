@@ -48,35 +48,43 @@ export default function ResultsPage({ params }: ResultsPageProps) {
       const supabase = createClient()
       
       try {
-        const { data: module, error } = await supabase
+        // First get the study session ID
+        const { data: studySession, error: sessionError } = await supabase
           .from('study_sessions')
-          .select('details')
-          .eq('module_id', moduleId)
-          .eq('session_type', 'text')
+          .select('id, details')
+          .eq('module_title', moduleId)
           .single()
 
-        if (error) throw error
+        if (sessionError) throw sessionError
 
-        console.log('Module data:', module)
-        console.log('Looking for timestamp:', timestamp)
-        console.log('Available teach-backs:', module.details.teach_backs)
+        console.log('Study session data:', studySession)
+        setModuleContent(studySession.details.content)
 
-        setModuleContent(module.details.content)
+        // Get the teach back with matching timestamp
+        const { data: teachBack, error: teachBackError } = await supabase
+          .from('teach_backs')
+          .select('*')
+          .eq('study_session_id', studySession.id)
+          .eq('created_at', decodeURIComponent(timestamp))
+          .single()
 
-        // Find the teach-back with a matching timestamp
-        const teachBack = module.details.teach_backs?.find(
-          (tb: TeachBackResult) => {
-            // Compare timestamps after normalizing them
-            const tbTime = new Date(tb.timestamp).getTime()
-            const searchTime = new Date(decodeURIComponent(timestamp)).getTime()
-            return tbTime === searchTime
-          }
-        )
+        if (teachBackError) {
+          console.error('Error fetching teach back:', teachBackError)
+          return
+        }
 
-        console.log('Found teach-back:', teachBack)
+        console.log('Found teach back:', teachBack)
 
         if (teachBack) {
-          setResult(teachBack)
+          setResult({
+            grade: teachBack.grade,
+            timestamp: teachBack.created_at,
+            explanation: {
+              text: teachBack.content
+            },
+            feedback: teachBack.feedback,
+            conversation: teachBack.feedback.conversation
+          })
         }
       } catch (error) {
         console.error('Error fetching results:', error)
@@ -94,39 +102,35 @@ export default function ResultsPage({ params }: ResultsPageProps) {
     const supabase = createClient()
     
     try {
-      const updatedTeachBack = {
-        ...result,
+      // Get the study session ID
+      const { data: studySession } = await supabase
+        .from('study_sessions')
+        .select('id')
+        .eq('module_title', moduleId)
+        .single()
+
+      if (!studySession) return
+
+      // Get the teach back
+      const { data: teachBack } = await supabase
+        .from('teach_backs')
+        .select('id, feedback')
+        .eq('study_session_id', studySession.id)
+        .eq('created_at', result.timestamp)
+        .single()
+
+      if (!teachBack) return
+
+      // Update the teach back with the new conversation
+      const updatedFeedback = {
+        ...teachBack.feedback,
         conversation
       }
 
-      const { data: module } = await supabase
-        .from('study_sessions')
-        .select('details')
-        .eq('module_id', moduleId)
-        .eq('session_type', 'text')
-        .single()
-
-      if (!module) return
-
-      // Update the specific teach-back in the array
-      const updatedTeachBacks = module.details.teach_backs.map((tb: TeachBackResult) => {
-        if (new Date(tb.timestamp).getTime() === new Date(result.timestamp).getTime()) {
-          return updatedTeachBack
-        }
-        return tb
-      })
-
-      // Update the module with the new teach-backs array
       await supabase
-        .from('study_sessions')
-        .update({
-          details: {
-            ...module.details,
-            teach_backs: updatedTeachBacks
-          }
-        })
-        .eq('module_id', moduleId)
-        .eq('session_type', 'text')
+        .from('teach_backs')
+        .update({ feedback: updatedFeedback })
+        .eq('id', teachBack.id)
 
     } catch (error) {
       console.error('Error saving conversation:', error)

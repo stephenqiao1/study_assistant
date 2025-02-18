@@ -3,8 +3,12 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, BookOpen, Brain, ChartLine, MessageCircle } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import Footer from '@/components/layout/Footer'
 
 export default function Home() {
+  const { session } = useAuth();
+
   return (
     <div className="min-h-screen bg-secondary">
       {/* Header & Navigation */}
@@ -24,12 +28,12 @@ export default function Home() {
               <Link href="/" className="text-text hover:text-primary">Home</Link>
               <Link href="#features" className="text-text hover:text-primary">Features</Link>
               <Link href="#how-it-works" className="text-text hover:text-primary">How It Works</Link>
-              <Link href="/dashboard" className="text-text hover:text-primary">Dashboard</Link>
+              <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
             </nav>
 
             {/* CTA Button */}
             <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
+              <Link href="/login">
                 <Button className="bg-accent-orange hover:bg-accent-orange/90">
                   Get Started <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -50,7 +54,7 @@ export default function Home() {
               Prepare for any course with personalized practice problems, interactive tools, and real-time feedback.
             </p>
             <div className="flex justify-center gap-4">
-              <Link href="/dashboard">
+              <Link href="/login">
                 <Button size="lg" className="text-lg bg-accent-orange hover:bg-accent-orange/90">
                   Start Learning Now
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -153,70 +157,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-secondary-dark border-t">
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid md:grid-cols-4 gap-8">
-            {/* Brand */}
-            <div>
-              <Link href="/" className="flex items-center space-x-2">
-                <BookOpen className="h-6 w-6 text-primary" />
-                <span className="font-bold text-text">Academiq</span>
-              </Link>
-              <p className="mt-2 text-sm text-text-light">
-                Your AI-powered learning companion
-              </p>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="font-semibold mb-4 text-text">Quick Links</h3>
-              <ul className="space-y-2">
-                <li><Link href="/" className="text-text-light hover:text-primary">Home</Link></li>
-                <li><Link href="#features" className="text-text-light hover:text-primary">Features</Link></li>
-                <li><Link href="#how-it-works" className="text-text-light hover:text-primary">How It Works</Link></li>
-              </ul>
-            </div>
-
-            {/* Legal */}
-            <div>
-              <h3 className="font-semibold mb-4 text-text">Legal</h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link href="/privacy" className="text-text-light hover:text-primary transition-colors">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="text-text-light hover:text-primary transition-colors">
-                    Terms of Service
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Newsletter */}
-            <div>
-              <h3 className="font-semibold mb-4 text-text">Stay Updated</h3>
-              <form className="space-y-2">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-text"
-                />
-                <Button className="w-full bg-accent-orange hover:bg-accent-orange/90">Subscribe</Button>
-              </form>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-8 border-t text-center text-sm text-text-light">
-            <p>© {new Date().getFullYear()} Academiq. All rights reserved. 
-              <Link href="/privacy" className="ml-2 hover:text-primary transition-colors">
-                Privacy Policy
-              </Link>
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

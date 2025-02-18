@@ -59,8 +59,8 @@ export default function Login() {
           // Add a small delay to ensure session is properly set
           await new Promise(resolve => setTimeout(resolve, 500))
           
-          // Redirect to dashboard
-          window.location.href = '/dashboard'
+          // Redirect to modules
+          window.location.href = '/modules'
         } catch (sessionError) {
           console.error('Session setup error:', sessionError)
           setMessage({

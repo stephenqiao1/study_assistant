@@ -17,7 +17,7 @@ export const useRequireAuth = (redirectTo = '/login') => {
   return { session, isLoading }
 }
 
-export const useRequireNoAuth = (redirectTo = '/dashboard') => {
+export const useRequireNoAuth = (redirectTo = '/modules') => {
   const { session, isLoading } = useAuth()
   const router = useRouter()
 

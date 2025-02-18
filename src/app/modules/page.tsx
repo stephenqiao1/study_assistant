@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { BookOpen, LogOut, ArrowRight, Plus } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import CreateModuleModal from '@/components/modules/CreateModuleModal'
+import Footer from '@/components/layout/Footer'
 
 interface Module {
   module_title: string
@@ -93,7 +94,7 @@ export default function ModulesPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo & Brand */}
-            <Link href="/dashboard" className="flex items-center space-x-2">
+            <Link href="/modules" className="flex items-center space-x-2">
               <BookOpen className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold text-primary">
                 Academiq
@@ -102,7 +103,6 @@ export default function ModulesPage() {
 
             {/* Navigation Menu */}
             <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/dashboard" className="text-text hover:text-primary">Dashboard</Link>
               <Link href="/modules" className="text-primary">Modules</Link>
               <Button 
                 variant="ghost" 
@@ -161,6 +161,7 @@ export default function ModulesPage() {
         onClose={() => setShowCreateModal(false)}
         onSuccess={handleCreateSuccess}
       />
+      <Footer />
     </div>
   )
 } 

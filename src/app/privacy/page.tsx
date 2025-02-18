@@ -145,8 +145,8 @@ export default function PrivacyPolicy() {
                 If you have any questions about this Privacy Policy, please contact us:
               </p>
               <ul className="list-disc pl-6 mt-4">
-                <li>By email: support@academiq.com</li>
-                <li>By visiting our website: www.academiq.com/contact</li>
+                <li>By email: support@academiq.live</li>
+                <li>By visiting our website: www.academiq.live/contact</li>
               </ul>
             </section>
           </div>

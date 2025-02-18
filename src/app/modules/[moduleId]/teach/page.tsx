@@ -10,6 +10,7 @@ import { use } from 'react'
 import Link from 'next/link'
 import { BookOpen, LogOut } from 'lucide-react'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
+import Footer from '@/components/layout/Footer'
 
 interface GradingResult {
   grade: number
@@ -122,52 +123,51 @@ export default function TeachPage({ params }: PageProps) {
   }
 
   const handleSubmit = async () => {
+    if (!session?.user?.id) {
+      console.error('No authenticated user')
+      return
+    }
+
     setIsSubmitting(true)
     const supabase = createClient()
     
     try {
-      // Get the current module data
-      const { data: module, error: fetchError } = await supabase
+      // Get the study session ID
+      const { data: studySession, error: fetchError } = await supabase
         .from('study_sessions')
-        .select('details')
+        .select('id')
         .eq('module_title', moduleId)
         .single()
 
       if (fetchError) throw fetchError
 
-      setModuleContent(module.details.content)
-
       // Grade the explanation using AI
-      const gradingResult = await gradeExplanation(text, module.details.content)
+      const gradingResult = await gradeExplanation(text, moduleContent)
       setGradingResult(gradingResult)
 
       // Create timestamp once and reuse it
       const timestamp = new Date().toISOString()
       setSubmissionTimestamp(timestamp)
 
-      // Update the module with the teach-back data
-      const updatedDetails = {
-        ...module.details,
-        teach_backs: [
-          ...(module.details.teach_backs || []),
-          {
-            grade: gradingResult.grade,
-            timestamp,
-            explanation: {
-              text: text
-            },
-            feedback: gradingResult.feedback
-          }
-        ]
-      }
+      // Create a new teach back entry
+      const { data: teachBack, error: createError } = await supabase
+        .from('teach_backs')
+        .insert({
+          study_session_id: studySession.id,
+          user_id: session.user.id,
+          content: text,
+          grade: gradingResult.grade,
+          feedback: {
+            clarity: gradingResult.feedback.clarity,
+            completeness: gradingResult.feedback.completeness,
+            correctness: gradingResult.feedback.correctness
+          },
+          created_at: timestamp
+        })
+        .select()
+        .single()
 
-      const { error: updateError } = await supabase
-        .from('study_sessions')
-        .update({ details: updatedDetails })
-        .eq('module_title', moduleId)
-        .eq('session_type', 'text')
-
-      if (updateError) throw updateError
+      if (createError) throw createError
       
       setShowOptions(true)
     } catch (error) {
@@ -197,38 +197,38 @@ export default function TeachPage({ params }: PageProps) {
 
     const supabase = createClient()
     try {
-      const { data: module } = await supabase
+      // Get the study session ID
+      const { data: studySession, error: sessionError } = await supabase
         .from('study_sessions')
-        .select('details')
+        .select('id')
         .eq('module_title', moduleId)
-        .eq('session_type', 'text')
         .single()
 
-      if (!module) return
+      if (sessionError) throw sessionError
 
-      const teachBack = {
-        grade: gradingResult.grade,
-        timestamp: submissionTimestamp,
-        explanation: {
-          text: text
-        },
-        feedback: gradingResult.feedback,
+      // Get the latest teach back for this session
+      const { data: teachBack, error: fetchError } = await supabase
+        .from('teach_backs')
+        .select('id, feedback')
+        .eq('study_session_id', studySession.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      // Update the teach back with the conversation
+      const updatedFeedback = {
+        ...teachBack.feedback,
         conversation
       }
 
-      const updatedDetails = {
-        ...module.details,
-        teach_backs: [
-          ...(module.details.teach_backs || []),
-          teachBack
-        ]
-      }
+      const { error: updateError } = await supabase
+        .from('teach_backs')
+        .update({ feedback: updatedFeedback })
+        .eq('id', teachBack.id)
 
-      await supabase
-        .from('study_sessions')
-        .update({ details: updatedDetails })
-        .eq('module_title', moduleId)
-        .eq('session_type', 'text')
+      if (updateError) throw updateError
 
     } catch (error) {
       console.error('Error saving chat:', error)
@@ -259,12 +259,11 @@ export default function TeachPage({ params }: PageProps) {
         <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between h-16">
-              <Link href="/dashboard" className="flex items-center space-x-2">
+              <Link href="/" className="flex items-center space-x-2">
                 <BookOpen className="h-8 w-8 text-primary" />
                 <span className="text-xl font-bold text-primary">Academiq</span>
               </Link>
               <nav className="hidden md:flex items-center space-x-8">
-                <Link href="/dashboard" className="text-text hover:text-primary">Dashboard</Link>
                 <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
                 <Button 
                   variant="ghost" 
@@ -298,6 +297,7 @@ export default function TeachPage({ params }: PageProps) {
             </div>
           </div>
         </main>
+        <Footer />
       </div>
     )
   }
@@ -308,12 +308,11 @@ export default function TeachPage({ params }: PageProps) {
       <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Link href="/dashboard" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <BookOpen className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold text-primary">Academiq</span>
             </Link>
             <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/dashboard" className="text-text hover:text-primary">Dashboard</Link>
               <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
               <Button 
                 variant="ghost" 
@@ -391,6 +390,7 @@ export default function TeachPage({ params }: PageProps) {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   )
 } 
