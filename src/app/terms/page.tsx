@@ -9,9 +9,9 @@ export default function TermsOfService() {
   const router = useRouter()
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+      <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center space-x-2">
@@ -32,7 +32,7 @@ export default function TermsOfService() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 pt-24 pb-16 max-w-4xl">
-        <div className="bg-white rounded-xl shadow-sm border p-8">
+        <div className="bg-background-card rounded-xl shadow-sm border border-border p-8">
           {/* Back button for mobile */}
           <div className="md:hidden mb-6">
             <Button
@@ -144,7 +144,7 @@ export default function TermsOfService() {
             </section>
           </div>
 
-          <div className="mt-12 pt-8 border-t text-sm text-text-light">
+          <div className="mt-12 pt-8 border-t border-border text-sm text-text-light">
             <p>Last updated: {new Date().toLocaleDateString()}</p>
           </div>
         </div>

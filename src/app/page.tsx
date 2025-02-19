@@ -10,9 +10,9 @@ export default function Home() {
   const { session } = useAuth();
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="min-h-screen bg-background">
       {/* Header & Navigation */}
-      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+      <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo & Brand */}
@@ -44,7 +44,7 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-gradient-to-b from-primary/5 to-secondary">
+      <section className="pt-32 pb-16 bg-gradient-to-b from-primary/5 to-background">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-5xl md:text-6xl font-bold mb-6 text-primary">
@@ -76,7 +76,7 @@ export default function Home() {
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             {/* Feature 1 */}
-            <div className="p-6 rounded-xl border bg-white hover:shadow-lg transition-shadow">
+            <div className="p-6 rounded-xl border border-border bg-background-card hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                 <Brain className="h-6 w-6 text-primary" />
               </div>
@@ -87,7 +87,7 @@ export default function Home() {
             </div>
 
             {/* Feature 2 */}
-            <div className="p-6 rounded-xl border bg-white hover:shadow-lg transition-shadow">
+            <div className="p-6 rounded-xl border border-border bg-background-card hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-accent-teal/10 rounded-lg flex items-center justify-center mb-4">
                 <MessageCircle className="h-6 w-6 text-accent-teal" />
               </div>
@@ -98,7 +98,7 @@ export default function Home() {
             </div>
 
             {/* Feature 3 */}
-            <div className="p-6 rounded-xl border bg-white hover:shadow-lg transition-shadow">
+            <div className="p-6 rounded-xl border border-border bg-background-card hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-accent-orange/10 rounded-lg flex items-center justify-center mb-4">
                 <ChartLine className="h-6 w-6 text-accent-orange" />
               </div>
@@ -112,7 +112,7 @@ export default function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 bg-secondary-dark">
+      <section id="how-it-works" className="py-20 bg-background-card">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12 text-text">
             How It Works
@@ -121,7 +121,7 @@ export default function Home() {
             <div className="space-y-12">
               {/* Step 1 */}
               <div className="flex items-start gap-8">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-background-card flex items-center justify-center">
                   1
                 </div>
                 <div>
@@ -132,7 +132,7 @@ export default function Home() {
 
               {/* Step 2 */}
               <div className="flex items-start gap-8">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-background-card flex items-center justify-center">
                   2
                 </div>
                 <div>
@@ -143,7 +143,7 @@ export default function Home() {
 
               {/* Step 3 */}
               <div className="flex items-start gap-8">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-background-card flex items-center justify-center">
                   3
                 </div>
                 <div>

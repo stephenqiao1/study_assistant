@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { Button } from '@/components/ui/button'
-import { Plus, BookOpen, LogOut } from 'lucide-react'
+import { Plus, BookOpen, LogOut, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { use } from 'react'
 import { Card } from '@/components/ui/card'
@@ -152,9 +152,9 @@ export default function FlashcardsPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+      <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center space-x-2">
@@ -181,6 +181,14 @@ export default function FlashcardsPage({ params }: PageProps) {
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex justify-between items-start mb-8">
             <div>
+              <div className="flex items-center gap-4 mb-4">
+                <Link href={`/modules/${moduleId}`}>
+                  <Button variant="outline" className="gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Module
+                  </Button>
+                </Link>
+              </div>
               <h2 className="text-sm font-medium text-text-light mb-2">Flashcards</h2>
               <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
             </div>
@@ -191,7 +199,7 @@ export default function FlashcardsPage({ params }: PageProps) {
           </div>
 
           {showAddCard ? (
-            <Card className="p-6 mb-8">
+            <Card className="p-6 mb-8 bg-background-card border-border">
               <h2 className="text-xl font-semibold mb-4 text-text">Add New Flashcard</h2>
               <div className="space-y-4">
                 <div>
@@ -199,7 +207,7 @@ export default function FlashcardsPage({ params }: PageProps) {
                   <Textarea
                     value={newCard.question}
                     onChange={(e) => setNewCard(prev => ({ ...prev, question: e.target.value }))}
-                    className="w-full text-text bg-white"
+                    className="w-full text-text bg-background"
                     rows={3}
                     placeholder="Enter your question"
                   />
@@ -209,7 +217,7 @@ export default function FlashcardsPage({ params }: PageProps) {
                   <Textarea
                     value={newCard.answer}
                     onChange={(e) => setNewCard(prev => ({ ...prev, answer: e.target.value }))}
-                    className="w-full text-text bg-white"
+                    className="w-full text-text bg-background"
                     rows={3}
                     placeholder="Enter your answer"
                   />
@@ -229,14 +237,14 @@ export default function FlashcardsPage({ params }: PageProps) {
           {flashcards.length > 0 ? (
             <div className="space-y-8">
               {/* Flashcard Display */}
-              <Card className="p-8 shadow-lg">
+              <Card className="p-8 shadow-lg bg-background-card border-border">
                 {/* Progress Bar */}
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-text">Progress</span>
                     <span className="text-sm font-medium text-text">{currentCardIndex + 1} of {flashcards.length}</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-background rounded-full h-2">
                     <div 
                       className="bg-primary h-2 rounded-full transition-all duration-300"
                       style={{ width: `${((currentCardIndex + 1) / flashcards.length) * 100}%` }}
@@ -246,14 +254,14 @@ export default function FlashcardsPage({ params }: PageProps) {
 
                 {/* Flashcard */}
                 <div 
-                  className="min-h-[300px] flex items-center justify-center p-8 bg-white rounded-xl shadow-md border-2 border-gray-100 cursor-pointer transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                  className="min-h-[300px] flex items-center justify-center p-8 bg-background rounded-xl shadow-md border border-border cursor-pointer transform transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                   onClick={() => setIsFlipped(!isFlipped)}
                 >
                   <div className="w-full max-w-2xl">
                     <div className="text-sm font-medium text-primary mb-4 text-center">
                       {isFlipped ? 'Answer' : 'Question'}
                     </div>
-                    <div className="text-2xl font-medium text-text text-center leading-relaxed">
+                    <div className="text-2xl font-medium text-white dark:text-white text-center leading-relaxed whitespace-pre-wrap">
                       {isFlipped ? flashcards[currentCardIndex].answer : flashcards[currentCardIndex].question}
                     </div>
                     <div className="text-sm text-text-light text-center mt-4">
@@ -268,7 +276,7 @@ export default function FlashcardsPage({ params }: PageProps) {
                     variant="outline" 
                     onClick={handlePrevious} 
                     disabled={currentCardIndex === 0}
-                    className="w-full sm:w-auto bg-white border-primary text-primary hover:bg-primary/5 disabled:opacity-50 disabled:hover:bg-white font-medium text-base"
+                    className="w-full sm:w-auto bg-background border-border text-text hover:bg-background/90 disabled:opacity-50 disabled:hover:bg-background font-medium text-base"
                   >
                     ← Previous
                   </Button>
@@ -277,14 +285,14 @@ export default function FlashcardsPage({ params }: PageProps) {
                     <Button 
                       variant="outline" 
                       onClick={() => handleUpdateStatus('learning')}
-                      className="flex-1 sm:flex-initial border-2 border-yellow-500 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-medium"
+                      className="flex-1 sm:flex-initial border-2 border-yellow-500/50 bg-yellow-50/50 hover:bg-yellow-100/50 text-yellow-700 dark:border-yellow-500/20 dark:bg-yellow-900/10 dark:hover:bg-yellow-900/20 dark:text-yellow-400 font-medium"
                     >
                       Still Learning
                     </Button>
                     <Button 
                       variant="outline"
                       onClick={() => handleUpdateStatus('known')}
-                      className="flex-1 sm:flex-initial border-2 border-green-500 bg-green-50 hover:bg-green-100 text-green-700 font-medium"
+                      className="flex-1 sm:flex-initial border-2 border-green-500/50 bg-green-50/50 hover:bg-green-100/50 text-green-700 dark:border-green-500/20 dark:bg-green-900/10 dark:hover:bg-green-900/20 dark:text-green-400 font-medium"
                     >
                       Know It
                     </Button>
@@ -294,7 +302,7 @@ export default function FlashcardsPage({ params }: PageProps) {
                     variant="outline" 
                     onClick={handleNext} 
                     disabled={currentCardIndex === flashcards.length - 1}
-                    className="w-full sm:w-auto bg-white border-primary text-primary hover:bg-primary/5 disabled:opacity-50 disabled:hover:bg-white font-medium text-base"
+                    className="w-full sm:w-auto bg-background border-border text-text hover:bg-background/90 disabled:opacity-50 disabled:hover:bg-background font-medium text-base"
                   >
                     Next →
                   </Button>
@@ -302,7 +310,7 @@ export default function FlashcardsPage({ params }: PageProps) {
               </Card>
             </div>
           ) : (
-            <Card className="p-8 text-center shadow-lg">
+            <Card className="p-8 text-center shadow-lg bg-background-card border-border">
               <h2 className="text-2xl font-semibold mb-4 text-text">No Flashcards Yet</h2>
               <p className="text-text-light mb-6 text-lg">
                 Create your first flashcard to start studying!

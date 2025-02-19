@@ -2,16 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@layer base {
+  :root {
+    --background: #F9F9F9;
+    --background-card: #FFFFFF;
+    --text: #333333;
+    --text-light: #666666;
+    --border: #E5E7EB;
+  }
+
+  .dark {
+    --background: #121212;
+    --background-card: #1E1E1E;
+    --text: #FFFFFF;
+    --text-light: #E0E0E0;
+    --border: #2C2C2C;
+  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Smooth transitions for dark mode */
+* {
+  transition-property: color, background-color, border-color;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
+}
+
+/* Typography adjustments for dark mode */
+.dark .prose {
+  --tw-prose-body: #FFFFFF;
+  --tw-prose-headings: #FFFFFF;
+  --tw-prose-lead: #E0E0E0;
+  --tw-prose-links: #4BA3CC;
+  --tw-prose-bold: #FFFFFF;
+  --tw-prose-counters: #E0E0E0;
+  --tw-prose-bullets: #E0E0E0;
+  --tw-prose-hr: #2C2C2C;
+  --tw-prose-quotes: #FFFFFF;
+  --tw-prose-quote-borders: #2C2C2C;
+  --tw-prose-captions: #E0E0E0;
+  --tw-prose-code: #FFFFFF;
+  --tw-prose-pre-code: #FFFFFF;
+  --tw-prose-pre-bg: #1E1E1E;
+  --tw-prose-th-borders: #2C2C2C;
+  --tw-prose-td-borders: #2C2C2C;
 }
 
 body {

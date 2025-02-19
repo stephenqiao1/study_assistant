@@ -8,7 +8,7 @@ import { createClient } from '@/utils/supabase/client'
 import ChatInterface from '@/components/chat/ChatInterface'
 import { use } from 'react'
 import Link from 'next/link'
-import { BookOpen, LogOut } from 'lucide-react'
+import { BookOpen, LogOut, ArrowLeft } from 'lucide-react'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import Footer from '@/components/layout/Footer'
 
@@ -252,9 +252,9 @@ export default function TeachPage({ params }: PageProps) {
 
   if (showChat) {
     return (
-      <div className="min-h-screen bg-secondary">
+      <div className="min-h-screen bg-background">
         {/* Header */}
-        <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+        <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between h-16">
               <Link href="/" className="flex items-center space-x-2">
@@ -280,10 +280,18 @@ export default function TeachPage({ params }: PageProps) {
         <main className="pt-24 pb-8">
           <div className="max-w-4xl mx-auto px-4">
             <div className="mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <Link href={`/modules/${moduleId}`}>
+                  <Button variant="outline" className="gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Module
+                  </Button>
+                </Link>
+              </div>
               <h2 className="text-sm font-medium text-text-light mb-2">Teaching Back</h2>
               <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border p-8">
+            <div className="bg-background-card rounded-xl shadow-sm border border-border p-8">
               <ChatInterface
                 initialMessage={text}
                 originalContent={moduleContent}
@@ -301,9 +309,9 @@ export default function TeachPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+      <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center space-x-2">
@@ -329,14 +337,22 @@ export default function TeachPage({ params }: PageProps) {
       <main className="pt-24 pb-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="mb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <Link href={`/modules/${moduleId}`}>
+                <Button variant="outline" className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Module
+                </Button>
+              </Link>
+            </div>
             <h2 className="text-sm font-medium text-text-light mb-2">Teaching Back</h2>
             <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
-            <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-100 dark:border-blue-800 mb-8">
-              <h2 className="font-semibold mb-2">🎓 Feynman Technique Tips:</h2>
-              <ul className="list-disc list-inside space-y-2 text-sm">
+          <div className="bg-background-card rounded-xl shadow-sm border border-border p-8 mb-8">
+            <div className="bg-background/50 dark:bg-background/10 p-4 rounded-lg border border-border mb-8">
+              <h2 className="font-semibold mb-2 text-text">🎓 Feynman Technique Tips:</h2>
+              <ul className="list-disc list-inside space-y-2 text-sm text-text-light">
                 <li>Explain the concept as if teaching it to a complete beginner</li>
                 <li>Use simple language and avoid jargon</li>
                 <li>Identify gaps in your understanding and note them down</li>

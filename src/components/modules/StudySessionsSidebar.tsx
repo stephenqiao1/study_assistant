@@ -29,8 +29,8 @@ const StudySessionsSidebar: FC<StudySessionsSidebarProps> = ({ sessions, moduleT
   }, {} as Record<string, typeof sessions>)
 
   return (
-    <aside className="w-64 h-full bg-white border-r border-gray-200 dark:border-gray-700 flex flex-col">
-      <div className="p-4 border-b">
+    <aside className="w-64 h-full bg-background-card border-r border-border flex flex-col">
+      <div className="p-4 border-b border-border">
         <h2 className="font-semibold text-text">Modules</h2>
         <p className="text-sm text-text-light mt-1">Your study modules</p>
       </div>
@@ -43,7 +43,7 @@ const StudySessionsSidebar: FC<StudySessionsSidebarProps> = ({ sessions, moduleT
               className={`block px-4 py-2 rounded-lg transition-colors ${
                 pathname === `/modules/${title}`
                   ? 'bg-primary/10 text-primary'
-                  : 'text-text hover:bg-gray-100 dark:hover:bg-gray-800'
+                  : 'text-text hover:bg-background dark:hover:bg-background/5'
               }`}
             >
               {moduleSessions[0].details.title}

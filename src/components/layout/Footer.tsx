@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 export default function Footer() {
   const [email, setEmail] = useState('')
@@ -47,7 +48,7 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-secondary-dark border-t">
+    <footer className="bg-background border-t border-border">
       <div className="container mx-auto px-4 py-12">
         <div className="grid md:grid-cols-4 gap-8">
           {/* Brand */}
@@ -70,9 +71,9 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Contact & Support */}
           <div>
-            <h3 className="font-semibold mb-4 text-text">Legal</h3>
+            <h3 className="font-semibold mb-4 text-text">Contact & Support</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/privacy" className="text-text-light hover:text-primary transition-colors">
@@ -83,6 +84,15 @@ export default function Footer() {
                 <Link href="/terms" className="text-text-light hover:text-primary transition-colors">
                   Terms of Service
                 </Link>
+              </li>
+              <li>
+                <a 
+                  href="mailto:support@academiq.live" 
+                  className="text-text-light hover:text-primary transition-colors inline-flex items-center gap-2"
+                >
+                  <Mail className="h-4 w-4" />
+                  Contact Support
+                </a>
               </li>
             </ul>
           </div>
@@ -96,7 +106,7 @@ export default function Footer() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white text-text"
+                className="w-full"
                 required
                 disabled={isLoading}
               />
@@ -127,8 +137,17 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t text-center text-sm text-text-light">
+        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-text-light">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <ThemeToggle />
+          </div>
           <p>© {new Date().getFullYear()} Academiq. All rights reserved.</p>
+          <p className="mt-2">
+            Questions or feedback? Email us at{' '}
+            <a href="mailto:support@academiq.live" className="text-primary hover:underline">
+              support@academiq.live
+            </a>
+          </p>
         </div>
       </div>
     </footer>

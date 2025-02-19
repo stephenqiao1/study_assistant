@@ -103,7 +103,7 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-secondary flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -116,7 +116,7 @@ export default function SignUp() {
         </div>
 
         {/* Sign Up Form */}
-        <div className="bg-white p-8 rounded-lg shadow-sm border">
+        <div className="bg-background-card p-8 rounded-lg shadow-sm border border-border">
           <form onSubmit={handleSignUp} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-text mb-1">
@@ -129,7 +129,7 @@ export default function SignUp() {
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="Enter your email"
                 required
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-black"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text"
               />
             </div>
 
@@ -145,12 +145,12 @@ export default function SignUp() {
                   onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                   placeholder="Create a password"
                   required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary pr-10 text-black"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-light hover:text-text"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -172,7 +172,7 @@ export default function SignUp() {
                   onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                   placeholder="Confirm your password"
                   required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary pr-10 text-black"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text pr-10"
                 />
               </div>
             </div>
@@ -180,8 +180,8 @@ export default function SignUp() {
             {message && (
               <div className={`p-3 rounded-lg text-sm ${
                 message.type === 'success' 
-                  ? 'bg-green-50 text-green-700' 
-                  : 'bg-red-50 text-red-700'
+                  ? 'bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300' 
+                  : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
               }`}>
                 {message.text}
               </div>

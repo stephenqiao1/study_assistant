@@ -171,9 +171,9 @@ export default function ModulePage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="min-h-screen bg-background">
       {/* Header & Navigation */}
-      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+      <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo & Brand */}
@@ -261,8 +261,8 @@ export default function ModulePage({ params }: PageProps) {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border p-8 mb-8">
-              <article className="prose prose-lg max-w-none">
+            <div className="bg-background-card rounded-xl shadow-sm border border-border p-8 mb-8">
+              <article className="prose prose-lg max-w-none dark:prose-invert">
                 <DraftEditor
                   initialContent={isEditing ? editedContent : module.details.content}
                   readOnly={!isEditing}

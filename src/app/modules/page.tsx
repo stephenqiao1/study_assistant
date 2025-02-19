@@ -88,9 +88,9 @@ export default function ModulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="min-h-screen bg-background">
       {/* Header & Navigation */}
-      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
+      <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo & Brand */}
@@ -131,7 +131,7 @@ export default function ModulesPage() {
           {/* Modules Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules.map((module) => (
-              <Card key={module.module_title} className="p-4">
+              <Card key={module.module_title} className="bg-background-card border-border">
                 <CardHeader>
                   <CardTitle className="text-text">{module.details.title}</CardTitle>
                 </CardHeader>

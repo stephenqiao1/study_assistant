@@ -6,9 +6,11 @@ export default {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Light mode colors
         primary: {
           DEFAULT: '#3A8FB7',
           light: '#4BA3CC',
@@ -26,8 +28,30 @@ export default {
           DEFAULT: '#333333',
           light: '#666666'
         },
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        // Dark mode specific colors
+        dark: {
+          bg: {
+            DEFAULT: '#121212',
+            secondary: '#1F1F1F',
+            card: '#1E1E1E'
+          },
+          text: {
+            DEFAULT: '#FFFFFF',
+            light: '#E0E0E0'
+          },
+          border: '#2C2C2C'
+        }
+      },
+      backgroundColor: {
+        DEFAULT: 'var(--background)',
+        card: 'var(--background-card)'
+      },
+      textColor: {
+        DEFAULT: 'var(--text)',
+        light: 'var(--text-light)'
+      },
+      borderColor: {
+        DEFAULT: 'var(--border)'
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
