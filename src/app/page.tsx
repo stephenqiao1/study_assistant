@@ -2,46 +2,17 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, BookOpen, Brain, ChartLine, MessageCircle } from 'lucide-react';
+import { ArrowRight, Brain, ChartLine, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Footer from '@/components/layout/Footer'
+import Navbar from '@/components/layout/Navbar'
 
 export default function Home() {
   const { session } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header & Navigation */}
-      <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo & Brand */}
-            <Link href="/" className="flex items-center space-x-2">
-              <BookOpen className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-primary">
-                Academiq
-              </span>
-            </Link>
-
-            {/* Navigation Menu */}
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/" className="text-text hover:text-primary">Home</Link>
-              <Link href="#features" className="text-text hover:text-primary">Features</Link>
-              <Link href="#how-it-works" className="text-text hover:text-primary">How It Works</Link>
-              <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
-            </nav>
-
-            {/* CTA Button */}
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button className="bg-accent-orange hover:bg-accent-orange/90">
-                  Get Started <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar showSignOut={false} />
 
       {/* Hero Section */}
       <section className="pt-32 pb-16 bg-gradient-to-b from-primary/5 to-background">
@@ -61,9 +32,6 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
-            {/* <p className="mt-6 text-sm text-text-light">
-              Trusted by thousands of students worldwide
-            </p> */}
           </div>
         </div>
       </section>
@@ -156,7 +124,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <Footer />
     </div>
   );

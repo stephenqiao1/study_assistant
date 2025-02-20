@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -23,8 +23,19 @@ export default function Flashcard({
 }: FlashcardProps) {
   const [isFlipped, setIsFlipped] = useState(false)
 
+  // Reset to question side when card changes
+  useEffect(() => {
+    setIsFlipped(false)
+  }, [currentIndex])
+
   const handleFlip = () => {
     setIsFlipped(!isFlipped)
+  }
+
+  const handleStatusUpdate = (status: 'new' | 'learning' | 'known') => {
+    if (onUpdateStatus) {
+      onUpdateStatus(status)
+    }
   }
 
   return (
@@ -36,15 +47,15 @@ export default function Flashcard({
 
       {/* Flashcard */}
       <div
-        className="relative perspective-1000 w-full aspect-[4/3] cursor-pointer"
+        className="relative perspective-1000 w-full aspect-[4/3] cursor-pointer mb-6"
         onClick={handleFlip}
       >
         <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={isFlipped ? 'back' : 'front'}
-            initial={{ rotateY: isFlipped ? -180 : 0, opacity: 0 }}
-            animate={{ rotateY: isFlipped ? 0 : 180, opacity: 1 }}
-            exit={{ rotateY: isFlipped ? 180 : -180, opacity: 0 }}
+            initial={{ rotateY: isFlipped ? 180 : 0, opacity: 0 }}
+            animate={{ rotateY: isFlipped ? 0 : 0, opacity: 1 }}
+            exit={{ rotateY: isFlipped ? -180 : 180, opacity: 0 }}
             transition={{ duration: 0.4 }}
             className="absolute inset-0"
           >
@@ -63,36 +74,34 @@ export default function Flashcard({
       </div>
 
       {/* Controls */}
-      <div className="mt-8 flex justify-center gap-4">
-        {isFlipped && onUpdateStatus && (
-          <>
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => onUpdateStatus('new')}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Review Again
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 border-yellow-500 hover:bg-yellow-50"
-              onClick={() => onUpdateStatus('learning')}
-            >
-              <X className="h-4 w-4 text-yellow-500" />
-              Still Learning
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2 border-green-500 hover:bg-green-50"
-              onClick={() => onUpdateStatus('known')}
-            >
-              <Check className="h-4 w-4 text-green-500" />
-              Got It
-            </Button>
-          </>
-        )}
-      </div>
+      {isFlipped && onUpdateStatus && (
+        <div className="flex justify-center gap-4 mt-8">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => handleStatusUpdate('new')}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Review Again
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2 border-yellow-500 hover:bg-yellow-50"
+            onClick={() => handleStatusUpdate('learning')}
+          >
+            <X className="h-4 w-4 text-yellow-500" />
+            Still Learning
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2 border-green-500 hover:bg-green-50"
+            onClick={() => handleStatusUpdate('known')}
+          >
+            <Check className="h-4 w-4 text-green-500" />
+            Got It
+          </Button>
+        </div>
+      )}
     </div>
   )
 } 

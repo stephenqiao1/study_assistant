@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import StudySessionsSidebar from '@/components/modules/StudySessionsSidebar'
 import Footer from '@/components/layout/Footer'
+import Navbar from '@/components/layout/Navbar'
 
 interface PageProps {
   params: Promise<{ moduleId: string }>
@@ -172,33 +173,7 @@ export default function ModulePage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header & Navigation */}
-      <header className="fixed top-0 w-full bg-background-card/80 backdrop-blur-sm border-b border-border z-50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo & Brand */}
-            <Link href="/modules" className="flex items-center space-x-2">
-              <BookOpen className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-primary">
-                Academiq
-              </span>
-            </Link>
-
-            {/* Navigation Menu */}
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
-              <Button 
-                variant="ghost" 
-                className="text-text hover:text-primary flex items-center gap-2"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </Button>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="flex min-h-screen pt-16">
         {/* Study Sessions Sidebar */}
