@@ -12,6 +12,8 @@ import { ArrowLeft, Plus, Wand2, X } from 'lucide-react'
 import Flashcard from '@/components/flashcards/Flashcard'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
+import { calculateNextReview, getNextReviewDate, initializeSpacedRepetition } from '@/utils/spaced-repetition'
+import SessionSummary from '@/components/flashcards/SessionSummary'
 
 interface PageProps {
   params: Promise<{ moduleId: string }>
@@ -23,6 +25,12 @@ interface FlashcardType {
   question: string
   answer: string
   status: 'new' | 'learning' | 'known'
+  ease_factor?: number
+  review_interval?: number
+  repetitions?: number
+  last_recall_rating?: 'easy' | 'good' | 'hard' | 'forgot'
+  last_reviewed_at?: string
+  next_review_at?: string
 }
 
 export default function FlashcardsPage({ params }: PageProps) {
@@ -37,6 +45,13 @@ export default function FlashcardsPage({ params }: PageProps) {
   const [studySessionId, setStudySessionId] = useState<string | null>(null)
   const [showAddCard, setShowAddCard] = useState(false)
   const [newCard, setNewCard] = useState({ question: '', answer: '' })
+  const [showSummary, setShowSummary] = useState(false)
+  const [sessionStats, setSessionStats] = useState({
+    totalCards: 0,
+    knownCards: 0,
+    learningCards: 0,
+    newCards: 0
+  })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,10 +79,11 @@ export default function FlashcardsPage({ params }: PageProps) {
           .from('flashcards')
           .select('*')
           .eq('study_session_id', studySession.id)
+          .order('next_review_at', { ascending: true, nullsFirst: true })
 
         if (cardsError) throw cardsError
 
-        if (existingCards && existingCards.length > 0) {
+        if (existingCards) {
           setFlashcards(existingCards)
         }
       } catch (error) {
@@ -136,13 +152,17 @@ export default function FlashcardsPage({ params }: PageProps) {
 
     const supabase = createClient()
     try {
+      // Initialize spaced repetition parameters for new card
+      const spacedRepParams = initializeSpacedRepetition()
+
       const { data, error } = await supabase
         .from('flashcards')
         .insert({
           study_session_id: studySessionId,
           question: newCard.question,
           answer: newCard.answer,
-          status: 'new'
+          status: 'new',
+          ...spacedRepParams
         })
         .select()
         .single()
@@ -157,19 +177,35 @@ export default function FlashcardsPage({ params }: PageProps) {
     }
   }
 
-  const handleUpdateStatus = async (status: 'new' | 'learning' | 'known') => {
+  const handleRecallRating = async (rating: 'easy' | 'good' | 'hard' | 'forgot') => {
     if (!flashcards[currentIndex]) return
 
     const supabase = createClient()
     const flashcard = flashcards[currentIndex]
 
     try {
+      // Calculate next review parameters using SM-2 algorithm
+      const nextReview = calculateNextReview({
+        ease_factor: flashcard.ease_factor || 2.5,
+        review_interval: flashcard.review_interval || 0,
+        repetitions: flashcard.repetitions || 0,
+        last_recall_rating: rating
+      })
+
+      const nextReviewDate = getNextReviewDate(nextReview.review_interval)
+
+      // Update flashcard with new spaced repetition parameters
       const { error } = await supabase
         .from('flashcards')
         .update({ 
-          status,
+          ease_factor: nextReview.ease_factor,
+          review_interval: nextReview.review_interval,
+          repetitions: nextReview.repetitions,
           last_reviewed_at: new Date().toISOString(),
-          next_review_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Next day
+          next_review_at: nextReviewDate,
+          last_recall_rating: rating,
+          // Update status based on recall rating
+          status: rating === 'easy' ? 'known' : rating === 'forgot' ? 'new' : 'learning'
         })
         .eq('id', flashcard.id)
 
@@ -177,16 +213,66 @@ export default function FlashcardsPage({ params }: PageProps) {
 
       // Update local state
       setFlashcards(prev => prev.map(card => 
-        card.id === flashcard.id ? { ...card, status } : card
+        card.id === flashcard.id 
+          ? { 
+              ...card, 
+              ease_factor: nextReview.ease_factor,
+              review_interval: nextReview.review_interval,
+              repetitions: nextReview.repetitions,
+              last_reviewed_at: new Date().toISOString(),
+              next_review_at: nextReviewDate,
+              last_recall_rating: rating,
+              status: rating === 'easy' ? 'known' : rating === 'forgot' ? 'new' : 'learning'
+            } 
+          : card
       ))
 
       // Move to next card
       if (currentIndex < flashcards.length - 1) {
         setCurrentIndex(currentIndex + 1)
+      } else {
+        // Show session summary
+        const stats = {
+          totalCards: flashcards.length,
+          knownCards: flashcards.filter(card => card.status === 'known').length,
+          learningCards: flashcards.filter(card => card.status === 'learning').length,
+          newCards: flashcards.filter(card => card.status === 'new').length
+        }
+        setSessionStats(stats)
+        setShowSummary(true)
       }
     } catch (error) {
-      console.error('Error updating flashcard status:', error)
+      console.error('Error updating flashcard:', error)
     }
+  }
+
+  const handleReviewCategory = (category: 'new' | 'learning' | 'all') => {
+    // Filter cards based on category
+    let cardsToReview = flashcards
+    if (category === 'new') {
+      cardsToReview = flashcards.filter(card => card.status === 'new')
+    } else if (category === 'learning') {
+      cardsToReview = flashcards.filter(card => card.status === 'learning')
+    } else if (category === 'all') {
+      cardsToReview = flashcards.filter(card => card.status !== 'known')
+    }
+
+    // Shuffle the cards for variety
+    const shuffledCards = [...cardsToReview].sort(() => Math.random() - 0.5)
+    
+    // Update flashcards array and reset index
+    setFlashcards(shuffledCards)
+    setCurrentIndex(0)
+    setShowSummary(false)
+  }
+
+  // Filter flashcards that are due for review
+  const getDueFlashcards = () => {
+    const now = new Date()
+    return flashcards.filter(card => {
+      if (!card.next_review_at) return true // New cards are always due
+      return new Date(card.next_review_at) <= now
+    })
   }
 
   if (isLoadingAuth || isLoading) {
@@ -311,9 +397,10 @@ export default function FlashcardsPage({ params }: PageProps) {
                 <Flashcard
                   question={flashcards[currentIndex].question}
                   answer={flashcards[currentIndex].answer}
-                  onUpdateStatus={handleUpdateStatus}
+                  onRecallRating={handleRecallRating}
                   currentIndex={currentIndex}
                   totalCards={flashcards.length}
+                  dueDate={flashcards[currentIndex].next_review_at}
                 />
               </div>
             )}
@@ -321,6 +408,12 @@ export default function FlashcardsPage({ params }: PageProps) {
         </div>
       </main>
       <Footer />
+      <SessionSummary
+        isOpen={showSummary}
+        onClose={() => setShowSummary(false)}
+        stats={sessionStats}
+        onReviewCategory={handleReviewCategory}
+      />
     </div>
   )
 } 

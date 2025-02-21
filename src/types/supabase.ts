@@ -9,50 +9,82 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      study_sessions: {
+      flashcards: {
         Row: {
           id: string
-          user_id: string
-          module_title: string
-          started_at: string
-          ended_at: string | null
-          details: {
-            title: string
-            content: string
-            feedback?: Array<{
-              question: string
-              timestamp: string
-            }>
-            quiz?: {
-              question: string
-              correct_answer: string
-              user_answer: string
-              score: number
-            }
-            peer_reviews?: Array<{
-              reviewer_id: string
-              rating: number
-              comment: string
-            }>
-          }
+          created_at: string
+          study_session_id: string
+          question: string
+          answer: string
+          status: 'new' | 'learning' | 'known'
+          ease_factor: number // SM-2 algorithm parameter
+          review_interval: number // Current interval in days
+          repetitions: number // Number of times reviewed
+          last_reviewed_at: string | null
+          next_review_at: string | null
+          last_recall_rating: 'easy' | 'good' | 'hard' | 'forgot' | null
         }
         Insert: {
           id?: string
-          user_id: string
-          module_title: string
-          started_at?: string
-          ended_at?: string | null
-          details?: Json
+          created_at?: string
+          study_session_id: string
+          question: string
+          answer: string
+          status?: 'new' | 'learning' | 'known'
+          ease_factor?: number
+          review_interval?: number
+          repetitions?: number
+          last_reviewed_at?: string | null
+          next_review_at?: string | null
+          last_recall_rating?: 'easy' | 'good' | 'hard' | 'forgot' | null
         }
         Update: {
           id?: string
+          created_at?: string
+          study_session_id?: string
+          question?: string
+          answer?: string
+          status?: 'new' | 'learning' | 'known'
+          ease_factor?: number
+          review_interval?: number
+          repetitions?: number
+          last_reviewed_at?: string | null
+          next_review_at?: string | null
+          last_recall_rating?: 'easy' | 'good' | 'hard' | 'forgot' | null
+        }
+      }
+      study_sessions: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string
+          module_title: string
+          details: Json
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id: string
+          module_title: string
+          details: Json
+        }
+        Update: {
+          id?: string
+          created_at?: string
           user_id?: string
           module_title?: string
-          started_at?: string
-          ended_at?: string | null
           details?: Json
         }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
     }
   }
 } 

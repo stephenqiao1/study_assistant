@@ -4,22 +4,24 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, X, RotateCcw } from 'lucide-react'
+import { Check, X, RotateCcw, ThumbsUp, Brain, Zap } from 'lucide-react'
 
 interface FlashcardProps {
   question: string
   answer: string
-  onUpdateStatus?: (status: 'new' | 'learning' | 'known') => void
+  onRecallRating?: (rating: 'easy' | 'good' | 'hard' | 'forgot') => void
   currentIndex: number
   totalCards: number
+  dueDate?: string | null
 }
 
 export default function Flashcard({
   question,
   answer,
-  onUpdateStatus,
+  onRecallRating,
   currentIndex,
-  totalCards
+  totalCards,
+  dueDate
 }: FlashcardProps) {
   const [isFlipped, setIsFlipped] = useState(false)
 
@@ -32,9 +34,9 @@ export default function Flashcard({
     setIsFlipped(!isFlipped)
   }
 
-  const handleStatusUpdate = (status: 'new' | 'learning' | 'known') => {
-    if (onUpdateStatus) {
-      onUpdateStatus(status)
+  const handleRecallRating = (rating: 'easy' | 'good' | 'hard' | 'forgot') => {
+    if (onRecallRating) {
+      onRecallRating(rating)
     }
   }
 
@@ -42,7 +44,12 @@ export default function Flashcard({
     <div className="w-full max-w-2xl mx-auto">
       {/* Progress indicator */}
       <div className="text-center mb-4 text-text-light">
-        Card {currentIndex + 1} of {totalCards}
+        <div>Card {currentIndex + 1} of {totalCards}</div>
+        {dueDate && (
+          <div className="text-sm mt-1">
+            Next review: {new Date(dueDate).toLocaleDateString()}
+          </div>
+        )}
       </div>
 
       {/* Flashcard */}
@@ -74,32 +81,45 @@ export default function Flashcard({
       </div>
 
       {/* Controls */}
-      {isFlipped && onUpdateStatus && (
-        <div className="flex justify-center gap-4 mt-8">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => handleStatusUpdate('new')}
-          >
-            <RotateCcw className="h-4 w-4" />
-            Review Again
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2 border-yellow-500 hover:bg-yellow-50"
-            onClick={() => handleStatusUpdate('learning')}
-          >
-            <X className="h-4 w-4 text-yellow-500" />
-            Still Learning
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2 border-green-500 hover:bg-green-50"
-            onClick={() => handleStatusUpdate('known')}
-          >
-            <Check className="h-4 w-4 text-green-500" />
-            Got It
-          </Button>
+      {isFlipped && onRecallRating && (
+        <div className="flex flex-col items-center gap-4 mt-8">
+          <div className="text-sm text-text-light mb-2">
+            How well did you remember this?
+          </div>
+          <div className="flex justify-center gap-4">
+            <Button
+              variant="outline"
+              className="gap-2 border-red-500 hover:bg-red-50"
+              onClick={() => handleRecallRating('forgot')}
+            >
+              <X className="h-4 w-4 text-red-500" />
+              Forgot
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 border-yellow-500 hover:bg-yellow-50"
+              onClick={() => handleRecallRating('hard')}
+            >
+              <Brain className="h-4 w-4 text-yellow-500" />
+              Hard
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 border-blue-500 hover:bg-blue-50"
+              onClick={() => handleRecallRating('good')}
+            >
+              <ThumbsUp className="h-4 w-4 text-blue-500" />
+              Good
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 border-green-500 hover:bg-green-50"
+              onClick={() => handleRecallRating('easy')}
+            >
+              <Zap className="h-4 w-4 text-green-500" />
+              Easy
+            </Button>
+          </div>
         </div>
       )}
     </div>
