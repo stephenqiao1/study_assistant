@@ -28,6 +28,7 @@ export default function RootLayout({
         >
           <Providers>{children}</Providers>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
