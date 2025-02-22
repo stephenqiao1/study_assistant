@@ -14,13 +14,15 @@ interface Message {
 interface ChatInterfaceProps {
   initialMessage: string
   originalContent: string
-  onSaveConversation: (messages: Message[]) => void
+  onSaveConversation: (conversation: any) => void
+  savedConversation?: any[]
 }
 
 const ChatInterface: FC<ChatInterfaceProps> = ({
   initialMessage,
   originalContent,
-  onSaveConversation
+  onSaveConversation,
+  savedConversation = []
 }) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'user', content: initialMessage }
@@ -51,6 +53,13 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
     setIsLoading(true)
     
     try {
+      // Debug logging
+      console.log('Sending request to chat API:', {
+        hasOriginalContent: !!originalContent,
+        contentLength: originalContent?.length || 0,
+        messagesCount: messages.length
+      })
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {

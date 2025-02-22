@@ -17,26 +17,36 @@ const openai = new OpenAI({
 
 const SYSTEM_PROMPT = `You are a curious and engaged virtual student having a text conversation to learn more about the topic. Your role is to:
 
-1. Carefully analyze the explanation for:
-   - Concepts you'd like to understand better
-   - Points that interest you
-   - Areas where you'd like more examples
-   - Parts that make you curious
-   - Details you find fascinating
+1. First, carefully read and understand the original content being explained.
 
-2. Respond with ONE natural conversational message that could be:
-   - A thoughtful question about something specific
-   - A request for an example or clarification
-   - A prompt to explore a particular aspect deeper
-   - An observation that invites further discussion
-   - A "what if" scenario to understand better
+2. Based on the content, analyze for:
+   - Key concepts that need clarification
+   - Important relationships between ideas
+   - Real-world applications of the concepts
+   - Potential misconceptions to address
+   - Areas where examples would help understanding
 
-3. Keep your tone friendly and curious, like a student texting to learn more
+3. Ask questions that:
+   - Directly relate to specific points in the content
+   - Help explore the deeper implications of the concepts
+   - Connect different parts of the material
+   - Challenge common misconceptions
+   - Request practical examples or applications
 
-IMPORTANT: Send only ONE message at a time, as if you're texting back and forth.
-Your response should feel like a natural chat message that encourages further discussion.
+4. Keep your questions:
+   - Focused on the actual content (don't introduce unrelated topics)
+   - Specific rather than general
+   - Natural and conversational in tone
+   - Aimed at deepening understanding
 
-Keep your response conversational and focused on learning. Don't try to teach or correct.
+IMPORTANT: 
+- Send only ONE message at a time, as if you're texting back and forth
+- Always reference specific concepts from the original content
+- Stay within the scope of what's being taught
+- Don't introduce concepts that aren't related to the material
+
+Your response should feel like a natural chat message that encourages further discussion of the specific content being studied.
+
 Always respond in this JSON format:
 {
   "message": "your single conversational message here",
@@ -77,7 +87,12 @@ function containsQuestion(text: string): boolean {
   return questionWords.some(word => lowerText.includes(word));
 }
 
-const FOLLOW_UP_PROMPT = `Based on the previous conversation, ask ONE specific question to learn more about the topic.
+const FOLLOW_UP_PROMPT = `Based on the previous conversation and the original content being explained, ask ONE specific follow-up question that:
+- Directly relates to the concepts in the original content
+- Builds on the previous discussion
+- Helps explore the topic in more depth
+- Stays focused on the material being studied
+
 Your response should be in JSON format:
 {
   "message": "your question here",
@@ -87,6 +102,20 @@ Your response should be in JSON format:
 export async function POST(request: Request) {
   try {
     const { messages, originalContent } = await request.json()
+    
+    // Debug logging
+    console.log('Received content:', {
+      contentLength: originalContent?.length || 0,
+      content: originalContent?.substring(0, 100) + '...',
+      messagesCount: messages?.length || 0
+    })
+
+    if (!originalContent || originalContent.trim() === '') {
+      return NextResponse.json({
+        questions: ['I need the study material to provide relevant questions. Could you please make sure the content is being loaded correctly?'],
+        encouragement: 'Once I have the content, I can help you study more effectively!'
+      })
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4-1106-preview",
@@ -95,14 +124,14 @@ export async function POST(request: Request) {
           role: "system",
           content: SYSTEM_PROMPT
         },
+        {
+          role: "system",
+          content: `Here is the study material you need to focus on:\n\n${originalContent}\n\nMake sure your questions are specifically about this content.`
+        },
         ...messages.map((msg: Message) => ({
           role: msg.role,
           content: msg.content
-        })),
-        {
-          role: "system",
-          content: `Original content being explained: ${originalContent}`
-        }
+        }))
       ],
       response_format: { type: "json_object" },
       temperature: 0.7
@@ -122,6 +151,10 @@ export async function POST(request: Request) {
           {
             role: "system",
             content: FOLLOW_UP_PROMPT
+          },
+          {
+            role: "system",
+            content: `Here is the study material you need to focus on:\n\n${originalContent}\n\nMake sure your questions are specifically about this content.`
           },
           ...messages.map((msg: Message) => ({
             role: msg.role,

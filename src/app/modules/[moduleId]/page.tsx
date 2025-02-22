@@ -249,10 +249,7 @@ export default function ModulePage({ params }: PageProps) {
             <div className="space-y-8">
               <div>
                 <h2 className="text-2xl font-semibold text-text mb-4">Study Tools</h2>
-                <StudyToolSelector 
-                  moduleId={moduleId} 
-                  availableTools={['teachBack', 'flashcards']} 
-                />
+                <StudyToolSelector moduleId={moduleId} />
               </div>
             </div>
           </div>

@@ -35,7 +35,6 @@ export default function TeachPage({ params }: PageProps) {
   const [showOptions, setShowOptions] = useState(false)
   const [moduleContent, setModuleContent] = useState('')
   const [moduleTitle, setModuleTitle] = useState('')
-  const [showChat, setShowChat] = useState(false)
   const [gradingResult, setGradingResult] = useState<GradingResult | null>(null)
   const [submissionTimestamp, setSubmissionTimestamp] = useState<string | null>(null)
 
@@ -155,7 +154,7 @@ export default function TeachPage({ params }: PageProps) {
           study_session_id: studySession.id,
           user_id: session.user.id,
           content: text,
-          grade: gradingResult.grade,
+          grade: Math.round(gradingResult.grade),
           feedback: {
             clarity: gradingResult.feedback.clarity,
             completeness: gradingResult.feedback.completeness,
@@ -191,49 +190,6 @@ export default function TeachPage({ params }: PageProps) {
     window.location.href = `/modules/${moduleId}/teach/results?timestamp=${encodeURIComponent(submissionTimestamp)}`
   }
 
-  const handleSaveChat = async (conversation: any) => {
-    if (!gradingResult || !submissionTimestamp) return
-
-    const supabase = createClient()
-    try {
-      // Get the study session ID
-      const { data: studySession, error: sessionError } = await supabase
-        .from('study_sessions')
-        .select('id')
-        .eq('module_title', moduleId)
-        .single()
-
-      if (sessionError) throw sessionError
-
-      // Get the latest teach back for this session
-      const { data: teachBack, error: fetchError } = await supabase
-        .from('teach_backs')
-        .select('id, feedback')
-        .eq('study_session_id', studySession.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (fetchError) throw fetchError
-
-      // Update the teach back with the conversation
-      const updatedFeedback = {
-        ...teachBack.feedback,
-        conversation
-      }
-
-      const { error: updateError } = await supabase
-        .from('teach_backs')
-        .update({ feedback: updatedFeedback })
-        .eq('id', teachBack.id)
-
-      if (updateError) throw updateError
-
-    } catch (error) {
-      console.error('Error saving chat:', error)
-    }
-  }
-
   // Add handleSignOut function
   const handleSignOut = async () => {
     const supabase = createClient()
@@ -249,43 +205,6 @@ export default function TeachPage({ params }: PageProps) {
 
   if (!session) {
     return null // Will redirect in useRequireAuth
-  }
-
-  if (showChat) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-
-        {/* Main Content */}
-        <main className="pt-24 pb-8">
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="mb-8">
-              <div className="flex items-center gap-4 mb-4">
-                <Link href={`/modules/${moduleId}`}>
-                  <Button variant="outline" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to Module
-                  </Button>
-                </Link>
-              </div>
-              <h2 className="text-sm font-medium text-text-light mb-2">Teaching Back</h2>
-              <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
-            </div>
-            <div className="bg-background-card rounded-xl shadow-sm border border-border p-8">
-              <ChatInterface
-                initialMessage={text}
-                originalContent={moduleContent}
-                onSaveConversation={handleSaveChat}
-              />
-              <div className="mt-8 flex justify-end">
-                <Button onClick={handleViewResults}>View Results</Button>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    )
   }
 
   return (
@@ -346,17 +265,9 @@ export default function TeachPage({ params }: PageProps) {
                 </Button>
               </div>
             ) : (
-              <div className="mt-8 flex justify-end gap-4">
-                <Button 
-                  variant="outline"
-                  onClick={handleViewResults}
-                >
+              <div className="mt-8 flex justify-end">
+                <Button onClick={handleViewResults}>
                   View Results
-                </Button>
-                <Button
-                  onClick={() => setShowChat(true)}
-                >
-                  Start Virtual Student Chat
                 </Button>
               </div>
             )}
