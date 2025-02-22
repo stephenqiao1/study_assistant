@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Wand2, X } from 'lucide-react'
+import { ArrowLeft, Plus, Wand2, X, PenLine, FlipHorizontal } from 'lucide-react'
 import Flashcard from '@/components/flashcards/Flashcard'
+import WriteMode from '@/components/flashcards/WriteMode'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { calculateNextReview, getNextReviewDate, initializeSpacedRepetition } from '@/utils/spaced-repetition'
@@ -52,6 +53,7 @@ export default function FlashcardsPage({ params }: PageProps) {
     learningCards: 0,
     newCards: 0
   })
+  const [isWriteMode, setIsWriteMode] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -299,13 +301,20 @@ export default function FlashcardsPage({ params }: PageProps) {
               </Link>
               <div className="flex gap-2">
                 <Button
-                  variant="outline"
-                  onClick={() => setShowAddCard(true)}
+                  variant={isWriteMode ? "outline" : "default"}
+                  size="sm"
                   className="gap-2"
-                  disabled={showAddCard}
+                  onClick={() => setIsWriteMode(false)}
                 >
-                  <Plus className="h-4 w-4" />
-                  Add Card
+                  <FlipHorizontal className="h-4 w-4" /> Flip Mode
+                </Button>
+                <Button
+                  variant={isWriteMode ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setIsWriteMode(true)}
+                >
+                  <PenLine className="h-4 w-4" /> Write Mode
                 </Button>
                 <Button
                   onClick={generateFlashcards}
@@ -364,7 +373,7 @@ export default function FlashcardsPage({ params }: PageProps) {
             </Card>
           )}
 
-          <div className="bg-background-card rounded-xl shadow-sm border border-border p-8">
+          <div className="mt-8">
             {flashcards.length === 0 ? (
               <div className="text-center py-8">
                 <h2 className="text-xl font-semibold mb-4">No flashcards yet</h2>
@@ -394,14 +403,25 @@ export default function FlashcardsPage({ params }: PageProps) {
               </div>
             ) : (
               <div>
-                <Flashcard
-                  question={flashcards[currentIndex].question}
-                  answer={flashcards[currentIndex].answer}
-                  onRecallRating={handleRecallRating}
-                  currentIndex={currentIndex}
-                  totalCards={flashcards.length}
-                  dueDate={flashcards[currentIndex].next_review_at}
-                />
+                {isWriteMode ? (
+                  <WriteMode
+                    question={flashcards[currentIndex].question}
+                    answer={flashcards[currentIndex].answer}
+                    onResult={handleRecallRating}
+                    currentIndex={currentIndex}
+                    totalCards={flashcards.length}
+                    dueDate={flashcards[currentIndex].next_review_at}
+                  />
+                ) : (
+                  <Flashcard
+                    question={flashcards[currentIndex].question}
+                    answer={flashcards[currentIndex].answer}
+                    onRecallRating={handleRecallRating}
+                    currentIndex={currentIndex}
+                    totalCards={flashcards.length}
+                    dueDate={flashcards[currentIndex].next_review_at}
+                  />
+                )}
               </div>
             )}
           </div>
