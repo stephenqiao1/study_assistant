@@ -6,6 +6,7 @@ import { ArrowRight, Brain, ChartLine, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Footer from '@/components/layout/Footer'
 import Navbar from '@/components/layout/Navbar'
+import PricingTable from '@/components/subscription/PricingTable'
 
 export default function Home() {
   const { session } = useAuth();
@@ -121,6 +122,19 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-4 text-text">
+            Simple, Transparent Pricing
+          </h2>
+          <p className="text-text-light text-center mb-12 max-w-2xl mx-auto">
+            Choose the plan that best fits your needs. All plans include access to our core features.
+          </p>
+          <PricingTable />
         </div>
       </section>
 

@@ -44,8 +44,6 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('Authenticated user:', user.id)
-
     // Get the study session ID - using moduleTitle directly as it's the module_title
     const { data: studySession, error: sessionError } = await supabase
       .from('study_sessions')

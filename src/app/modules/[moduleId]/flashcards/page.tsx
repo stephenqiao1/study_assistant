@@ -15,6 +15,9 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { calculateNextReview, getNextReviewDate, initializeSpacedRepetition } from '@/utils/spaced-repetition'
 import SessionSummary from '@/components/flashcards/SessionSummary'
+import { useUsageLimits } from '@/hooks/useUsageLimits'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertCircle } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ moduleId: string }>
@@ -37,6 +40,8 @@ interface FlashcardType {
 export default function FlashcardsPage({ params }: PageProps) {
   const { moduleId } = use(params)
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
+  const { auto_flashcards_enabled, isLoading: isLoadingUsage } = useUsageLimits()
+  
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const [flashcards, setFlashcards] = useState<FlashcardType[]>([])
@@ -99,21 +104,20 @@ export default function FlashcardsPage({ params }: PageProps) {
   }, [moduleId, session])
 
   const generateFlashcards = async () => {
-    if (!session?.user?.id || !moduleContent || !studySessionId) return
+    if (!session?.user?.id || !moduleContent || !studySessionId || !auto_flashcards_enabled) return
 
     setIsGenerating(true)
 
     try {
       // Generate flashcards using OpenAI
-      const response = await fetch('/api/openai/generate', {
+      const response = await fetch('/api/flashcards/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          content: moduleContent,
-          prompt: `You are an expert teacher creating flashcards for students. Create 5-10 high-quality flashcards based on the provided content. 
-          Each flashcard should test understanding of key concepts, not just memorization of facts.`
+          moduleTitle,
+          content: moduleContent
         })
       })
 
@@ -121,26 +125,18 @@ export default function FlashcardsPage({ params }: PageProps) {
         throw new Error('Failed to generate flashcards')
       }
 
-      const flashcardsData = await response.json()
-
-      // Insert flashcards directly using Supabase client
+      // Fetch the newly generated cards
       const supabase = createClient()
-      const { data: newCards, error: insertError } = await supabase
+      const { data: newCards, error: fetchError } = await supabase
         .from('flashcards')
-        .insert(
-          flashcardsData.flashcards.map((card: { question: string; answer: string }) => ({
-            study_session_id: studySessionId,
-            question: card.question,
-            answer: card.answer,
-            status: 'new'
-          }))
-        )
-        .select()
+        .select('*')
+        .eq('study_session_id', studySessionId)
+        .order('next_review_at', { ascending: true, nullsFirst: true })
 
-      if (insertError) throw insertError
+      if (fetchError) throw fetchError
 
       if (newCards) {
-        setFlashcards(prev => [...prev, ...newCards])
+        setFlashcards(newCards)
       }
     } catch (error) {
       console.error('Error generating flashcards:', error)
@@ -277,7 +273,7 @@ export default function FlashcardsPage({ params }: PageProps) {
     })
   }
 
-  if (isLoadingAuth || isLoading) {
+  if (isLoadingAuth || isLoadingUsage || isLoading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>
   }
 
@@ -319,7 +315,7 @@ export default function FlashcardsPage({ params }: PageProps) {
                 <Button
                   onClick={generateFlashcards}
                   className="gap-2"
-                  disabled={isGenerating}
+                  disabled={isGenerating || !auto_flashcards_enabled}
                 >
                   <Wand2 className="h-4 w-4" />
                   {isGenerating ? 'Generating...' : 'Auto-Generate'}
@@ -329,6 +325,18 @@ export default function FlashcardsPage({ params }: PageProps) {
             <h2 className="text-sm font-medium text-text-light mb-2">Flashcards</h2>
             <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
           </div>
+
+          {!auto_flashcards_enabled && (
+            <Alert className="mb-8">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Auto-generation of flashcards is a premium feature. 
+                <Link href="/pricing" className="ml-2 underline">
+                  Upgrade your plan
+                </Link> to unlock this feature.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {showAddCard && (
             <Card className="p-6 mb-8">
@@ -392,7 +400,7 @@ export default function FlashcardsPage({ params }: PageProps) {
                   </Button>
                   <Button
                     onClick={generateFlashcards}
-                    disabled={isGenerating}
+                    disabled={isGenerating || !auto_flashcards_enabled}
                     size="lg"
                     className="gap-2"
                   >

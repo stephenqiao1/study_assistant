@@ -5,13 +5,18 @@ import TextEditor from '@/components/teach/TextEditor'
 import AudioRecorder from '@/components/teach/AudioRecorder'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/utils/supabase/client'
-import ChatInterface from '@/components/chat/ChatInterface'
 import { use } from 'react'
 import Link from 'next/link'
-import { BookOpen, LogOut, ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import Footer from '@/components/layout/Footer'
 import Navbar from '@/components/layout/Navbar'
+import { useUsageLimits } from '@/hooks/useUsageLimits'
+import { UsageIndicator } from '@/components/subscription/UsageIndicator'
+import { checkAndIncrementUsage } from '@/utils/usage-limits'
+import { UpgradeModal } from '@/components/subscription/UpgradeModal'
+import { UpgradeBanner } from '@/components/subscription/UpgradeBanner'
 
 interface GradingResult {
   grade: number
@@ -27,16 +32,18 @@ interface PageProps {
 }
 
 export default function TeachPage({ params }: PageProps) {
+  const router = useRouter()
   const { moduleId } = use(params)
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
+  const { teach_back: teachBackUsage, isLoading: isLoadingUsage, error: usageError } = useUsageLimits()
   
   const [text, setText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
   const [moduleContent, setModuleContent] = useState('')
   const [moduleTitle, setModuleTitle] = useState('')
-  const [gradingResult, setGradingResult] = useState<GradingResult | null>(null)
   const [submissionTimestamp, setSubmissionTimestamp] = useState<string | null>(null)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   useEffect(() => {
     // Fetch module details when component mounts
@@ -121,55 +128,91 @@ export default function TeachPage({ params }: PageProps) {
   }
 
   const handleSubmit = async () => {
-    if (!session?.user?.id) {
+    if (isLoadingAuth || !session?.user?.id) {
       console.error('No authenticated user')
       return
     }
 
+    if (teachBackUsage.isLimited) {
+      return
+    }
+
     setIsSubmitting(true)
-    const supabase = createClient()
     
     try {
+      const supabase = createClient()
+
+      // Check and increment usage
+      const { allowed, error: usageError } = await checkAndIncrementUsage(session.user.id, 'teach_back')
+      
+      if (!allowed) {
+        throw new Error(usageError)
+      }
+
       // Get the study session ID
-      const { data: studySession, error: fetchError } = await supabase
+      const { data: studySession, error: sessionError } = await supabase
         .from('study_sessions')
         .select('id')
         .eq('module_title', moduleId)
         .single()
 
-      if (fetchError) throw fetchError
+      let studySessionId = studySession?.id
 
-      // Grade the explanation using AI
+      // If no study session exists, create one
+      if (!studySession && sessionError?.code === 'PGRST116') {
+        const { data: newSession, error: createSessionError } = await supabase
+          .from('study_sessions')
+          .insert({
+            user_id: session.user.id,
+            module_title: moduleId,
+            details: {
+              title: moduleTitle,
+              content: moduleContent
+            }
+          })
+          .select()
+          .single()
+
+        if (createSessionError) {
+          throw new Error('Failed to create study session')
+        }
+
+        studySessionId = newSession.id
+      } else if (sessionError) {
+        throw new Error('Error fetching study session')
+      }
+
+      // Grade the explanation first
       const gradingResult = await gradeExplanation(text, moduleContent)
-      setGradingResult(gradingResult)
 
-      // Create timestamp once and reuse it
-      const timestamp = new Date().toISOString()
-      setSubmissionTimestamp(timestamp)
-
-      // Create a new teach back entry
-      const { data: teachBack, error: createError } = await supabase
+      // Create a new teach back entry with the grading results
+      const { data: newTeachBack, error: createError } = await supabase
         .from('teach_backs')
         .insert({
-          study_session_id: studySession.id,
+          study_session_id: studySessionId,
           user_id: session.user.id,
           content: text,
-          grade: Math.round(gradingResult.grade),
+          grade: gradingResult.grade,
           feedback: {
             clarity: gradingResult.feedback.clarity,
             completeness: gradingResult.feedback.completeness,
             correctness: gradingResult.feedback.correctness
-          },
-          created_at: timestamp
+          }
         })
         .select()
         .single()
 
-      if (createError) throw createError
-      
+      if (createError) {
+        throw createError
+      }
+
+      // Use the server-generated timestamp
+      setSubmissionTimestamp(newTeachBack.created_at)
       setShowOptions(true)
+      
     } catch (error) {
       console.error('Error saving teach-back:', error)
+      setShowOptions(false)
     } finally {
       setIsSubmitting(false)
     }
@@ -187,24 +230,19 @@ export default function TeachPage({ params }: PageProps) {
       console.error('No submission timestamp found')
       return
     }
-    window.location.href = `/modules/${moduleId}/teach/results?timestamp=${encodeURIComponent(submissionTimestamp)}`
+    router.push(`/modules/${moduleId}/teach/results?timestamp=${encodeURIComponent(submissionTimestamp)}`)
   }
 
-  // Add handleSignOut function
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.error('Error signing out:', error)
-    }
-  }
-
-  if (isLoadingAuth) {
+  if (isLoadingAuth || isLoadingUsage) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>
   }
 
   if (!session) {
     return null // Will redirect in useRequireAuth
+  }
+
+  if (usageError) {
+    return <div className="flex justify-center items-center min-h-screen">Error: {usageError}</div>
   }
 
   return (
@@ -214,6 +252,11 @@ export default function TeachPage({ params }: PageProps) {
       {/* Main Content */}
       <main className="pt-24 pb-8">
         <div className="max-w-4xl mx-auto px-4">
+          {/* Show banner if user is on free plan */}
+          {teachBackUsage.limit === 10 && !teachBackUsage.isLimited && (
+            <UpgradeBanner type="study" />
+          )}
+
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-4">
               <Link href={`/modules/${moduleId}`}>
@@ -225,6 +268,16 @@ export default function TeachPage({ params }: PageProps) {
             </div>
             <h2 className="text-sm font-medium text-text-light mb-2">Teaching Back</h2>
             <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
+          </div>
+
+          {/* Usage Indicator */}
+          <div className="mb-8">
+            <UsageIndicator
+              current={teachBackUsage.current}
+              limit={teachBackUsage.limit}
+              isLimited={teachBackUsage.isLimited}
+              type="teach_back"
+            />
           </div>
 
           <div className="bg-background-card rounded-xl shadow-sm border border-border p-8 mb-8">
@@ -242,7 +295,10 @@ export default function TeachPage({ params }: PageProps) {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold text-text">✍️ Your Explanation</h2>
-                  <AudioRecorder onTranscriptionComplete={handleTranscription} />
+                  <AudioRecorder 
+                    onTranscriptionComplete={handleTranscription}
+                    disabled={teachBackUsage.isLimited}
+                  />
                 </div>
                 <p className="text-sm text-text-light mb-4">
                   Type your explanation or use voice recording - both will appear in the text editor below
@@ -250,6 +306,7 @@ export default function TeachPage({ params }: PageProps) {
                 <TextEditor
                   value={text}
                   onChange={setText}
+                  disabled={teachBackUsage.isLimited}
                 />
               </div>
             </div>
@@ -259,9 +316,9 @@ export default function TeachPage({ params }: PageProps) {
                 <Button 
                   onClick={handleSubmit} 
                   size="lg"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || teachBackUsage.isLimited || !text.trim()}
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Teach-Back Session'}
+                  {isSubmitting ? 'Grading your explanation...' : 'Submit Teach-Back Session'}
                 </Button>
               </div>
             ) : (
@@ -274,6 +331,16 @@ export default function TeachPage({ params }: PageProps) {
           </div>
         </div>
       </main>
+
+      {/* Add the upgrade modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        feature="teach_back"
+        currentUsage={teachBackUsage.current}
+        limit={teachBackUsage.limit}
+      />
+
       <Footer />
     </div>
   )

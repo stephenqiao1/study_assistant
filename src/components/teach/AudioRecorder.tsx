@@ -2,7 +2,7 @@
 
 import { FC, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Mic, Square, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface AudioRecorderProps {
@@ -10,13 +10,15 @@ interface AudioRecorderProps {
   prompt?: string // Optional prompt to improve transcription accuracy
   language?: string // Optional language code
   enableTimestamps?: boolean // Optional flag to enable word-level timestamps
+  disabled?: boolean
 }
 
 const AudioRecorder: FC<AudioRecorderProps> = ({ 
   onTranscriptionComplete,
   prompt = '',
   language = 'en',
-  enableTimestamps = false
+  enableTimestamps = false,
+  disabled = false
 }) => {
   const [isRecording, setIsRecording] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
@@ -27,6 +29,8 @@ const AudioRecorder: FC<AudioRecorderProps> = ({
   const chunksRef = useRef<Blob[]>([])
 
   const startRecording = async () => {
+    if (disabled) return
+
     try {
       setError(null)
       setIsPreparing(true)
@@ -125,9 +129,10 @@ const AudioRecorder: FC<AudioRecorderProps> = ({
         {!isRecording && !isPreparing ? (
           <Button 
             onClick={startRecording}
-            disabled={isTranscribing}
+            disabled={isTranscribing || disabled}
           >
-            🎤 Start Recording
+            <Mic className="h-4 w-4" />
+            Record Audio
           </Button>
         ) : isPreparing ? (
           <div className="flex items-center gap-4">
@@ -144,13 +149,15 @@ const AudioRecorder: FC<AudioRecorderProps> = ({
             onClick={stopRecording}
             disabled={isTranscribing}
           >
-            ⏹️ Stop Recording
+            <Square className="h-4 w-4" />
+            Stop Recording
           </Button>
         )}
         {isTranscribing && (
-          <span className="text-sm text-gray-500 animate-pulse">
+          <Button disabled variant="outline" size="sm">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
             Transcribing...
-          </span>
+          </Button>
         )}
       </div>
 

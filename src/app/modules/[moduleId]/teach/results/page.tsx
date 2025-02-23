@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
-import ChatInterface from '@/components/chat/ChatInterface'
+import { useRequireAuth } from '@/hooks/useRequireAuth'
 
 interface TeachBackResult {
   grade: number
@@ -18,11 +18,6 @@ interface TeachBackResult {
     completeness: { score: number, feedback: string }
     correctness: { score: number, feedback: string }
   }
-  conversation?: Array<{
-    role: 'user' | 'assistant'
-    content: string
-    encouragement?: string
-  }>
 }
 
 interface ResultsPageProps {
@@ -36,10 +31,11 @@ export default function ResultsPage({ params }: ResultsPageProps) {
   const searchParams = useSearchParams()
   const timestamp = searchParams.get('timestamp')
   const { moduleId } = use(params)
+  const { session } = useRequireAuth()
 
   useEffect(() => {
     async function fetchResults() {
-      if (!moduleId || !timestamp) {
+      if (!moduleId || !timestamp || !session?.user?.id) {
         setIsLoading(false)
         return
       }
@@ -47,23 +43,19 @@ export default function ResultsPage({ params }: ResultsPageProps) {
       const supabase = createClient()
       
       try {
-        // First get the study session ID
-        const { data: studySession, error: sessionError } = await supabase
-          .from('study_sessions')
-          .select('id, details')
-          .eq('module_title', moduleId)
-          .single()
+        // Get the teach back within a small time window of the target timestamp
+        const targetTime = new Date(decodeURIComponent(timestamp))
+        const startTime = new Date(targetTime.getTime() - 1000) // 1 second before
+        const endTime = new Date(targetTime.getTime() + 1000)   // 1 second after
 
-        if (sessionError) throw sessionError
-
-        setModuleContent(studySession.details.content)
-
-        // Get the teach back with matching timestamp
         const { data: teachBack, error: teachBackError } = await supabase
           .from('teach_backs')
           .select('*')
-          .eq('study_session_id', studySession.id)
-          .eq('created_at', decodeURIComponent(timestamp))
+          .eq('user_id', session.user.id)
+          .gte('created_at', startTime.toISOString())
+          .lte('created_at', endTime.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
           .single()
 
         if (teachBackError) {
@@ -72,15 +64,38 @@ export default function ResultsPage({ params }: ResultsPageProps) {
         }
 
         if (teachBack) {
+          const defaultFeedback = {
+            clarity: { score: 0, feedback: "Pending evaluation" },
+            completeness: { score: 0, feedback: "Pending evaluation" },
+            correctness: { score: 0, feedback: "Pending evaluation" }
+          }
+
           setResult({
-            grade: teachBack.grade,
+            grade: teachBack.grade || 0,
             timestamp: teachBack.created_at,
             explanation: {
               text: teachBack.content
             },
-            feedback: teachBack.feedback,
-            conversation: teachBack.feedback.conversation
+            feedback: {
+              ...defaultFeedback,
+              ...(teachBack.feedback || {})
+            }
           })
+        } else {
+          console.log('No teach back found')
+        }
+
+        // Get study session content after we confirm we have a teach back
+        const { data: studySession, error: sessionError } = await supabase
+          .from('study_sessions')
+          .select('details')
+          .eq('module_title', moduleId)
+          .single()
+
+        if (sessionError) {
+          console.error('Error fetching study session:', sessionError)
+        } else {
+          setModuleContent(studySession.details.content)
         }
       } catch (error) {
         console.error('Error fetching results:', error)
@@ -90,48 +105,7 @@ export default function ResultsPage({ params }: ResultsPageProps) {
     }
 
     fetchResults()
-  }, [moduleId, timestamp])
-
-  const handleSaveConversation = async (conversation: TeachBackResult['conversation']) => {
-    if (!result || !moduleId) return
-
-    const supabase = createClient()
-    
-    try {
-      // Get the study session ID
-      const { data: studySession } = await supabase
-        .from('study_sessions')
-        .select('id')
-        .eq('module_title', moduleId)
-        .single()
-
-      if (!studySession) return
-
-      // Get the teach back
-      const { data: teachBack } = await supabase
-        .from('teach_backs')
-        .select('id, feedback')
-        .eq('study_session_id', studySession.id)
-        .eq('created_at', result.timestamp)
-        .single()
-
-      if (!teachBack) return
-
-      // Update the teach back with the new conversation
-      const updatedFeedback = {
-        ...teachBack.feedback,
-        conversation
-      }
-
-      await supabase
-        .from('teach_backs')
-        .update({ feedback: updatedFeedback })
-        .eq('id', teachBack.id)
-
-    } catch (error) {
-      console.error('Error saving conversation:', error)
-    }
-  }
+  }, [moduleId, timestamp, session?.user?.id])
 
   if (isLoading) {
     return (
@@ -215,16 +189,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                  dangerouslySetInnerHTML={{ __html: result.explanation.text }} 
             />
           </div>
-        </div>
-
-        {/* Virtual Student Chat */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Virtual Student Discussion</h2>
-          <ChatInterface
-            initialMessage={result.explanation.text}
-            originalContent={moduleContent}
-            onSaveConversation={handleSaveConversation}
-          />
         </div>
 
         <div className="mt-8 flex justify-between">

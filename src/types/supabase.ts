@@ -6,9 +6,101 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export type SubscriptionTier = 'free' | 'basic' | 'pro'
+export type SubscriptionInterval = 'month' | 'year'
+
+interface UsageLimits {
+  teach_back_sessions: number
+  auto_flashcards_enabled: boolean
+}
+
+interface UsageTracking {
+  user_id: string
+  month_year: string
+  teach_back_count: number
+  created_at: string
+  updated_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
+      subscriptions: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string
+          tier: SubscriptionTier
+          interval: SubscriptionInterval
+          stripe_subscription_id: string
+          stripe_customer_id: string
+          current_period_end: string
+          cancel_at_period_end: boolean
+          status: 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid'
+          usage_limits: {
+            teach_back_sessions: number
+            auto_flashcards_enabled: boolean
+          }
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id: string
+          tier: SubscriptionTier
+          interval: SubscriptionInterval
+          stripe_subscription_id: string
+          stripe_customer_id: string
+          current_period_end: string
+          cancel_at_period_end?: boolean
+          status?: 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid'
+          usage_limits?: {
+            teach_back_sessions: number
+            auto_flashcards_enabled: boolean
+          }
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          user_id?: string
+          tier?: SubscriptionTier
+          interval?: SubscriptionInterval
+          stripe_subscription_id?: string
+          stripe_customer_id?: string
+          current_period_end?: string
+          cancel_at_period_end?: boolean
+          status?: 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid'
+          usage_limits?: {
+            teach_back_sessions: number
+            auto_flashcards_enabled: boolean
+          }
+        }
+      }
+      usage_tracking: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string
+          month_year: string
+          teach_back_count: number
+          chat_message_count: number
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id: string
+          month_year: string
+          teach_back_count?: number
+          chat_message_count?: number
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          user_id?: string
+          month_year?: string
+          teach_back_count?: number
+          chat_message_count?: number
+        }
+      }
       flashcards: {
         Row: {
           id: string

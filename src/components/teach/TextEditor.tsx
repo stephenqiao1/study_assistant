@@ -9,13 +9,15 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import 'draft-js/dist/Draft.css'
+import { Textarea } from '@/components/ui/textarea'
 
 interface TextEditorProps {
   value: string
   onChange: (value: string) => void
+  disabled?: boolean
 }
 
-const TextEditor: FC<TextEditorProps> = ({ value, onChange }) => {
+const TextEditor: FC<TextEditorProps> = ({ value, onChange, disabled }) => {
   const [isPreview, setIsPreview] = useState(false)
   const [editorState, setEditorState] = useState(() => {
     const contentState = ContentState.createFromText(value)

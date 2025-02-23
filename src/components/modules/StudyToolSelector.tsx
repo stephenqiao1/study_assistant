@@ -20,12 +20,6 @@ const toolConfig = {
     icon: ScrollText,
     description: 'Review key concepts with flashcards',
     color: 'text-green-500'
-  },
-  virtualChat: {
-    label: 'Virtual Student',
-    icon: MessageSquare,
-    description: 'Practice teaching with an AI student',
-    color: 'text-purple-500'
   }
 }
 
