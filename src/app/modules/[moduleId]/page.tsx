@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { notFound, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import { use } from 'react'
-import { BookOpen, LogOut, Trash2, Edit2, Save, X } from 'lucide-react'
+import { Trash2, Edit2, Save, X } from 'lucide-react'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import StudyToolSelector from '@/components/modules/StudyToolSelector'
 import DraftEditor from '@/components/teach/DraftEditor'
@@ -23,6 +22,7 @@ import {
 import StudySessionsSidebar from '@/components/modules/StudySessionsSidebar'
 import Footer from '@/components/layout/Footer'
 import Navbar from '@/components/layout/Navbar'
+import { useStudyDuration } from '@/hooks/useStudyDuration'
 
 interface PageProps {
   params: Promise<{ moduleId: string }>
@@ -43,7 +43,7 @@ export default function ModulePage({ params }: PageProps) {
   const router = useRouter()
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
   const { moduleId } = use(params)
-  const [module, setModule] = useState<any>(null)
+  const [module, setModule] = useState<Module | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -51,6 +51,9 @@ export default function ModulePage({ params }: PageProps) {
   const [editedContent, setEditedContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [sessions, setSessions] = useState<Module[]>([])
+
+  // Track study duration
+  useStudyDuration(module?.id || '', 'module')
 
   useEffect(() => {
     const fetchModule = async () => {
@@ -61,7 +64,7 @@ export default function ModulePage({ params }: PageProps) {
       const supabase = createClient()
       
       // First, let's see all study sessions for this user
-      const { data: allUserSessions, error: userSessionsError } = await supabase
+      const { data: allUserSessions } = await supabase
         .from('study_sessions')
         .select('*')
         .eq('user_id', session.user.id)
@@ -80,7 +83,6 @@ export default function ModulePage({ params }: PageProps) {
       } else if (!data || data.length === 0) {
         notFound()
       } else {
-        
         // Set the current module to the most recent session
         const currentModule = data[0]
         setModule(currentModule)
@@ -92,14 +94,6 @@ export default function ModulePage({ params }: PageProps) {
 
     fetchModule()
   }, [moduleId, session])
-
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.error('Error signing out:', error)
-    }
-  }
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -123,8 +117,8 @@ export default function ModulePage({ params }: PageProps) {
   }
 
   const handleSave = async () => {
-    if (!session?.user?.id) {
-      console.error('No authenticated user')
+    if (!session?.user?.id || !module) {
+      console.error('No authenticated user or module')
       return
     }
 
@@ -171,6 +165,10 @@ export default function ModulePage({ params }: PageProps) {
     return null // Will redirect in useRequireAuth
   }
 
+  if (!module) {
+    return <div className="flex justify-center items-center min-h-screen">Module not found</div>
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -179,7 +177,6 @@ export default function ModulePage({ params }: PageProps) {
         {/* Study Sessions Sidebar */}
         <StudySessionsSidebar 
           sessions={sessions} 
-          moduleTitle={moduleId}
         />
 
         {/* Main Content */}
@@ -247,37 +244,33 @@ export default function ModulePage({ params }: PageProps) {
             </div>
 
             <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-semibold text-text mb-4">Study Tools</h2>
-                <StudyToolSelector moduleId={moduleId} />
-              </div>
+              <StudyToolSelector moduleId={moduleId} />
             </div>
           </div>
         </main>
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this module?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the module
-              and all associated study sessions.
+              This action cannot be undone. All study sessions and flashcards associated with this module will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={isDeleting}
               className="bg-destructive hover:bg-destructive/90"
+              disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting...' : 'Delete Module'}
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       <Footer />
     </div>
   )

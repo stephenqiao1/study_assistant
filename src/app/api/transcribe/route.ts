@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { APIError } from 'openai'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -81,21 +82,22 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ text: transcription.text })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in transcription API:', error)
     
     // Handle specific OpenAI API errors
-    if (error?.status === 429) {
+    if (error instanceof APIError && error.status === 429) {
       return NextResponse.json(
         { error: 'Rate limit exceeded. Please try again later.' },
         { status: 429 }
       )
     }
 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
       { 
         error: 'Failed to transcribe audio',
-        details: error?.message || 'Unknown error'
+        details: errorMessage
       },
       { status: 500 }
     )

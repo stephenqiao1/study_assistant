@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { useUsageLimits } from '@/hooks/useUsageLimits'
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner'
@@ -8,8 +7,8 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 
 export default function DashboardPage() {
-  const { session } = useRequireAuth()
-  const { teach_back: teachBackUsage, auto_flashcards_enabled } = useUsageLimits()
+  useRequireAuth()
+  const { teach_back: teachBackUsage } = useUsageLimits()
 
   return (
     <div className="min-h-screen bg-background">

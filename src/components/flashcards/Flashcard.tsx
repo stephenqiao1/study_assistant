@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, X, RotateCcw, ThumbsUp, Brain, Zap } from 'lucide-react'
+import { X, ThumbsUp, Brain, Zap } from 'lucide-react'
 
 interface FlashcardProps {
   question: string

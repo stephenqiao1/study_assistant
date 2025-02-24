@@ -5,12 +5,10 @@ import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { BookOpen, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useRequireNoAuth } from '@/hooks/useRequireAuth'
 
 export default function Login() {
   const { session, isLoading: isLoadingAuth } = useRequireNoAuth()
-  const router = useRouter()
   const [formData, setFormData] = useState({
     email: '',
     password: ''

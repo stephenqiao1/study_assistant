@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic'
 import { useState, useEffect, useRef } from 'react'
-import { EditorState, convertToRaw, convertFromRaw, ContentState } from 'draft-js'
+import { EditorState, ContentState } from 'draft-js'
 import 'draft-js/dist/Draft.css'
 
 // Dynamically import the Editor to disable SSR
@@ -36,7 +36,7 @@ export default function DraftEditor({
       const contentState = ContentState.createFromText(initialContent)
       setEditorState(EditorState.createWithContent(contentState))
     }
-  }, [initialContent, readOnly])
+  }, [initialContent, readOnly, editorState])
 
   const handleChange = (state: EditorState) => {
     setEditorState(state)

@@ -36,7 +36,7 @@ export default function CreateModuleModal({ isOpen, onClose, onSuccess }: Create
         throw new Error('No authenticated user')
       }
 
-      const { data: sessionData, error: sessionError } = await supabase
+      const { error: sessionError } = await supabase
         .from('study_sessions')
         .insert({
           user_id: user.id,

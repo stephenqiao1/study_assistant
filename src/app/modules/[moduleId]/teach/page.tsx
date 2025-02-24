@@ -17,6 +17,7 @@ import { UsageIndicator } from '@/components/subscription/UsageIndicator'
 import { checkAndIncrementUsage } from '@/utils/usage-limits'
 import { UpgradeModal } from '@/components/subscription/UpgradeModal'
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner'
+import { useStudyDuration } from '@/hooks/useStudyDuration'
 
 interface GradingResult {
   grade: number
@@ -44,15 +45,19 @@ export default function TeachPage({ params }: PageProps) {
   const [moduleTitle, setModuleTitle] = useState('')
   const [submissionTimestamp, setSubmissionTimestamp] = useState<string | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [studySessionId, setStudySessionId] = useState<string | null>(null)
+  
+  // Track study duration
+  useStudyDuration(studySessionId || '', 'teach_back')
 
   useEffect(() => {
     // Fetch module details when component mounts
     const fetchModuleDetails = async () => {
       const supabase = createClient()
       try {
-        const { data: module, error } = await supabase
+        const { data: studySession, error } = await supabase
           .from('study_sessions')
-          .select('details')
+          .select('id, details')
           .eq('module_title', moduleId)
           .single()
 
@@ -61,8 +66,9 @@ export default function TeachPage({ params }: PageProps) {
           throw error
         }
 
-        setModuleTitle(module.details.title)
-        setModuleContent(module.details.content)
+        setStudySessionId(studySession.id)
+        setModuleTitle(studySession.details.title)
+        setModuleContent(studySession.details.content)
       } catch (error) {
         console.error('Error fetching module details:', error)
       }

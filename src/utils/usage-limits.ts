@@ -1,10 +1,9 @@
 import { createClient } from '@/utils/supabase/client'
-import { TIER_LIMITS } from './stripe'
 
 type UsageType = 'teach_back'
 type UsageField = 'teach_back_count'
 
-interface UsageRecord {
+export interface UsageRecord {
   user_id: string
   month_year: string
   teach_back_count: number

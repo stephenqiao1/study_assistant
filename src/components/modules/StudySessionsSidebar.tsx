@@ -13,10 +13,9 @@ interface StudySession {
 
 interface StudySessionsSidebarProps {
   sessions: StudySession[]
-  moduleTitle: string
 }
 
-const StudySessionsSidebar: FC<StudySessionsSidebarProps> = ({ sessions, moduleTitle }) => {
+const StudySessionsSidebar: FC<StudySessionsSidebarProps> = ({ sessions }) => {
   const pathname = usePathname()
 
   // Group sessions by module_title

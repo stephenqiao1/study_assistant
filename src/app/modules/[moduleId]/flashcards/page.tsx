@@ -18,6 +18,7 @@ import SessionSummary from '@/components/flashcards/SessionSummary'
 import { useUsageLimits } from '@/hooks/useUsageLimits'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
+import { useStudyDuration } from '@/hooks/useStudyDuration'
 
 interface PageProps {
   params: Promise<{ moduleId: string }>
@@ -59,6 +60,9 @@ export default function FlashcardsPage({ params }: PageProps) {
     newCards: 0
   })
   const [isWriteMode, setIsWriteMode] = useState(false)
+
+  // Track study duration
+  useStudyDuration(studySessionId || '', 'flashcards')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -244,7 +248,7 @@ export default function FlashcardsPage({ params }: PageProps) {
     }
   }
 
-  const handleReviewCategory = (category: 'new' | 'learning' | 'all') => {
+  const handleReviewCategory = (category: 'new' | 'learning' | 'all' | 'due') => {
     // Filter cards based on category
     let cardsToReview = flashcards
     if (category === 'new') {
@@ -253,6 +257,8 @@ export default function FlashcardsPage({ params }: PageProps) {
       cardsToReview = flashcards.filter(card => card.status === 'learning')
     } else if (category === 'all') {
       cardsToReview = flashcards.filter(card => card.status !== 'known')
+    } else if (category === 'due') {
+      cardsToReview = getDueFlashcards()
     }
 
     // Shuffle the cards for variety

@@ -9,12 +9,12 @@ export type Json =
 export type SubscriptionTier = 'free' | 'basic' | 'pro'
 export type SubscriptionInterval = 'month' | 'year'
 
-interface UsageLimits {
+export interface UsageLimits {
   teach_back_sessions: number
   auto_flashcards_enabled: boolean
 }
 
-interface UsageTracking {
+export interface UsageTracking {
   user_id: string
   month_year: string
   teach_back_count: number

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Brain, ScrollText, PenTool, Presentation, MessageSquare } from 'lucide-react'
+import { Brain, ScrollText } from 'lucide-react'
 
 interface StudyToolSelectorProps {
   moduleId: string

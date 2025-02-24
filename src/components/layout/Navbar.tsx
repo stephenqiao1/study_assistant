@@ -1,16 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, LogOut } from 'lucide-react'
+import { BookOpen, LogOut, LineChart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { createClient } from '@/utils/supabase/client'
+import { useAuth } from '@/context/AuthContext'
 
 interface NavbarProps {
   showSignOut?: boolean;
 }
 
 export default function Navbar({ showSignOut = true }: NavbarProps) {
+  const { session } = useAuth()
+
   const handleSignOut = async () => {
     const supabase = createClient()
     const { error } = await supabase.auth.signOut()
@@ -33,17 +36,36 @@ export default function Navbar({ showSignOut = true }: NavbarProps) {
 
           {/* Navigation Menu */}
           <nav className="hidden md:flex items-center space-x-4">
-            <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
-            <ThemeToggle />
-            {showSignOut && (
-              <Button 
-                variant="ghost" 
-                className="text-text hover:text-primary flex items-center gap-2"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </Button>
+            {session ? (
+              // Authenticated navigation items
+              <>
+                <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
+                <Link href="/insights" className="text-text hover:text-primary flex items-center gap-1">
+                  <LineChart className="h-4 w-4" />
+                  Insights
+                </Link>
+                <ThemeToggle />
+                {showSignOut && (
+                  <Button 
+                    variant="ghost" 
+                    className="text-text hover:text-primary flex items-center gap-2"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                )}
+              </>
+            ) : (
+              // Unauthenticated navigation items
+              <>
+                <ThemeToggle />
+                <Link href="/login">
+                  <Button variant="default" className="gap-2">
+                    Sign In
+                  </Button>
+                </Link>
+              </>
             )}
           </nav>
         </div>

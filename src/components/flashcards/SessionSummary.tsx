@@ -20,7 +20,7 @@ interface SessionSummaryProps {
     learningCards: number
     newCards: number
   }
-  onReviewCategory: (category: 'new' | 'learning' | 'all') => void
+  onReviewCategory: (category: 'new' | 'learning' | 'all' | 'due') => void
 }
 
 export default function SessionSummary({ isOpen, onClose, stats, onReviewCategory }: SessionSummaryProps) {
@@ -70,6 +70,13 @@ export default function SessionSummary({ isOpen, onClose, stats, onReviewCategor
               <div className="text-sm text-text-light text-center mb-2">
                 Would you like to continue reviewing?
               </div>
+              <Button 
+                variant="outline"
+                className="w-full border-purple-500 hover:bg-purple-50"
+                onClick={() => onReviewCategory('due')}
+              >
+                Review Due Cards
+              </Button>
               {stats.newCards > 0 && (
                 <Button 
                   variant="outline" 

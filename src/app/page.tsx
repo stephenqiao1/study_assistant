@@ -9,7 +9,7 @@ import Navbar from '@/components/layout/Navbar'
 import PricingTable from '@/components/subscription/PricingTable'
 
 export default function Home() {
-  const { session } = useAuth();
+  useAuth();
 
   return (
     <div className="min-h-screen bg-background">

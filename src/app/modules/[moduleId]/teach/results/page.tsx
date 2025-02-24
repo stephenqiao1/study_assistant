@@ -27,7 +27,6 @@ interface ResultsPageProps {
 export default function ResultsPage({ params }: ResultsPageProps) {
   const [result, setResult] = useState<TeachBackResult | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [moduleContent, setModuleContent] = useState<string>('')
   const searchParams = useSearchParams()
   const timestamp = searchParams.get('timestamp')
   const { moduleId } = use(params)
@@ -83,19 +82,6 @@ export default function ResultsPage({ params }: ResultsPageProps) {
           })
         } else {
           console.log('No teach back found')
-        }
-
-        // Get study session content after we confirm we have a teach back
-        const { data: studySession, error: sessionError } = await supabase
-          .from('study_sessions')
-          .select('details')
-          .eq('module_title', moduleId)
-          .single()
-
-        if (sessionError) {
-          console.error('Error fetching study session:', sessionError)
-        } else {
-          setModuleContent(studySession.details.content)
         }
       } catch (error) {
         console.error('Error fetching results:', error)

@@ -1,8 +1,4 @@
 import { Metadata } from 'next'
-import { Check } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { TIER_LIMITS } from '@/utils/stripe'
 import PricingTable from '@/components/subscription/PricingTable'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'

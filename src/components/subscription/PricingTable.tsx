@@ -4,9 +4,7 @@ import { useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { TIER_LIMITS } from '@/utils/stripe'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/context/AuthContext'
 
 interface PricingFeature {

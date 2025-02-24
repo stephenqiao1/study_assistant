@@ -108,7 +108,7 @@ export function useUsageLimits(): UsageLimits {
           table: 'usage_tracking',
           filter: `user_id=eq.${session.user.id}`,
         },
-        (payload) => {
+        (_payload) => {
           fetchUsage()
         }
       )

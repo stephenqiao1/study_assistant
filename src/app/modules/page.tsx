@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
@@ -32,7 +32,7 @@ export default function ModulesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const supabase = createClient()
 
-  const fetchModules = async () => {
+  const fetchModules = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('study_sessions')
@@ -60,13 +60,13 @@ export default function ModulesPage() {
     } finally {
       setIsLoadingData(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     if (session) {
       fetchModules()
     }
-  }, [session])
+  }, [session, fetchModules])
 
   const handleCreateSuccess = () => {
     // Refresh the modules list after creating a new module
