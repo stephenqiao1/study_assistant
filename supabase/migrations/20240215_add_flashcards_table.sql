@@ -8,7 +8,8 @@ CREATE TABLE flashcards (
     status TEXT DEFAULT 'new' CHECK (status IN ('new', 'learning', 'known')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     last_reviewed_at TIMESTAMPTZ,
-    next_review_at TIMESTAMPTZ
+    next_review_at TIMESTAMPTZ,
+    source_note_id UUID REFERENCES notes(id) ON DELETE SET NULL
 );
 
 -- Enable RLS
@@ -38,4 +39,5 @@ USING (auth.uid() = user_id);
 -- Create index for faster queries
 CREATE INDEX flashcards_module_title_idx ON flashcards(module_title);
 CREATE INDEX flashcards_user_id_idx ON flashcards(user_id);
-CREATE INDEX flashcards_status_idx ON flashcards(status); 
+CREATE INDEX flashcards_status_idx ON flashcards(status);
+CREATE INDEX flashcards_source_note_id_idx ON flashcards(source_note_id); 

@@ -35,10 +35,31 @@ export interface TeachBackMetrics {
   sessionFrequency: number // sessions per day/week/month
 }
 
+export interface FlashcardMetrics {
+  totalReviewed: number // total number of flashcard reviews
+  accuracyRate: number // percentage of correct responses (easy + good)
+  reviewFrequency: number // reviews per day/week/month
+  sessionsCount: number // number of flashcard sessions
+  cardsPerSession: number // average cards per session
+  statusBreakdown: {
+    known: number
+    learning: number
+    new: number
+  }
+  improvement: number // percentage improvement in accuracy from last period
+  responseBreakdown: {
+    easy: number
+    good: number
+    hard: number 
+    forgot: number
+  }
+}
+
 export interface SummaryMetrics {
   totalStudyTime: number
   sessionCount: number
   avgSessionDuration: number
   improvement?: number // percentage improvement from last period
   teachBack?: TeachBackMetrics
+  flashcards?: FlashcardMetrics
 } 

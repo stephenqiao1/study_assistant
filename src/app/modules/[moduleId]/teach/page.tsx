@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/utils/supabase/client'
 import { use } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft, BookOpen } from 'lucide-react'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import Footer from '@/components/layout/Footer'
 import Navbar from '@/components/layout/Navbar'
@@ -28,6 +28,15 @@ interface GradingResult {
   }
 }
 
+interface NoteType {
+  id: string
+  title: string
+  content: string
+  created_at: string
+  updated_at: string
+  tags?: string[]
+}
+
 interface PageProps {
   params: Promise<{ moduleId: string }>
 }
@@ -37,6 +46,8 @@ export default function TeachPage({ params }: PageProps) {
   const { moduleId } = use(params)
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
   const { teach_back: teachBackUsage, isLoading: isLoadingUsage, error: usageError } = useUsageLimits()
+  const searchParams = useSearchParams()
+  const noteId = searchParams.get('noteId')
   
   const [text, setText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -46,9 +57,29 @@ export default function TeachPage({ params }: PageProps) {
   const [submissionTimestamp, setSubmissionTimestamp] = useState<string | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [studySessionId, setStudySessionId] = useState<string | null>(null)
+  const [sourceInfo, setSourceInfo] = useState<string | null>(null)
+  const [noteTitle, setNoteTitle] = useState<string | null>(null)
   
   // Track study duration
   useStudyDuration(studySessionId || '', 'teach_back')
+
+  // Check for content from notes
+  useEffect(() => {
+    // Check if there's content stored from notes
+    if (typeof window !== 'undefined') {
+      const savedContent = localStorage.getItem('teachBackContent')
+      const sourceNote = localStorage.getItem('teachBackSource')
+      
+      if (savedContent) {
+        setText(savedContent)
+        setSourceInfo(sourceNote)
+        
+        // Clear the localStorage after using it
+        localStorage.removeItem('teachBackContent')
+        localStorage.removeItem('teachBackSource')
+      }
+    }
+  }, [])
 
   useEffect(() => {
     // Fetch module details when component mounts
@@ -69,13 +100,31 @@ export default function TeachPage({ params }: PageProps) {
         setStudySessionId(studySession.id)
         setModuleTitle(studySession.details.title)
         setModuleContent(studySession.details.content)
+        
+        // If a noteId is provided, fetch the note content
+        if (noteId) {
+          const { data: note, error: noteError } = await supabase
+            .from('notes')
+            .select('*')
+            .eq('id', noteId)
+            .single()
+            
+          if (noteError) {
+            console.error('Error fetching note:', noteError)
+          } else if (note) {
+            // Pre-populate the form with content from the note
+            setText(note.content)
+            setNoteTitle(note.title)
+            setSourceInfo(`Note: ${note.title}`)
+          }
+        }
       } catch (error) {
         console.error('Error fetching module details:', error)
       }
     }
 
     fetchModuleDetails()
-  }, [moduleId])
+  }, [moduleId, noteId])
 
   const gradeExplanation = async (explanation: string, moduleContent: string): Promise<GradingResult> => {
     const prompt = `
@@ -198,6 +247,7 @@ export default function TeachPage({ params }: PageProps) {
           study_session_id: studySessionId,
           user_id: session.user.id,
           content: text,
+          source_note_id: noteId || null,
           grade: gradingResult.grade,
           feedback: {
             clarity: gradingResult.feedback.clarity,
@@ -274,7 +324,30 @@ export default function TeachPage({ params }: PageProps) {
             </div>
             <h2 className="text-sm font-medium text-text-light mb-2">Teaching Back</h2>
             <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
+            {sourceInfo && (
+              <div className="mt-2 text-sm text-primary">
+                Content from {sourceInfo}
+              </div>
+            )}
           </div>
+
+          {/* Display note reference banner if coming from a note */}
+          {noteId && noteTitle && (
+            <div className="mb-6 bg-primary/10 rounded-md p-4 border border-primary/20">
+              <div className="flex items-start gap-3">
+                <div className="text-primary mt-0.5">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-lg mb-1">Teaching from Note: <span className="text-primary">{noteTitle}</span></h3>
+                  <p className="text-muted-foreground">
+                    You're teaching based on your note. The content has been pre-filled for you,
+                    but feel free to modify it to improve your explanation.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Usage Indicator */}
           <div className="mb-8">
@@ -294,6 +367,11 @@ export default function TeachPage({ params }: PageProps) {
                 <li>Use simple language and avoid jargon</li>
                 <li>Identify gaps in your understanding and note them down</li>
                 <li>Connect ideas to things you already know</li>
+                {noteId && noteTitle ? (
+                  <li className="text-primary">Use your <span className="font-medium">{noteTitle}</span> note as a foundation for your explanation</li>
+                ) : sourceInfo && (
+                  <li className="text-primary">We've pre-filled content from your notes to help you start</li>
+                )}
               </ul>
             </div>
 

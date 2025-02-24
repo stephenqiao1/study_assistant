@@ -8,11 +8,12 @@ import { StudySession, TimePeriod, TeachBackSession } from '@/types/insights'
 import { aggregateSessions, calculateSummaryMetrics } from '@/utils/aggregateSessions'
 import StudyTimeChart from '@/components/insights/StudyTimeChart'
 import TeachBackChart from '@/components/insights/TeachBackChart'
+import FlashcardChart from '@/components/insights/FlashcardChart'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ArrowUp, ArrowDown, Clock, BookOpen, TrendingUp, Brain, Target, Lock } from 'lucide-react'
+import { ArrowUp, ArrowDown, Clock, BookOpen, TrendingUp, Brain, Target, Lock, Layers, CheckCircle2, BarChart } from 'lucide-react'
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner'
 
 interface StudyDuration {
@@ -37,6 +38,7 @@ export default function LearningInsights() {
   const [period, setPeriod] = useState<TimePeriod>('week')
   const [sessions, setSessions] = useState<SessionWithDurations[]>([])
   const [teachBacks, setTeachBacks] = useState<TeachBackSession[]>([])
+  const [flashcards, setFlashcards] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'basic' | 'pro'>('free')
 
@@ -87,6 +89,15 @@ export default function LearningInsights() {
           .order('created_at', { ascending: false })
 
         if (teachBackError) throw teachBackError
+        
+        // Fetch flashcards
+        const { data: flashcardsData, error: flashcardsError } = await supabase
+          .from('flashcards')
+          .select('*')
+          .in('module_title', sessionsData.map(s => s.module_title))
+          .order('last_reviewed_at', { ascending: false })
+
+        if (flashcardsError) throw flashcardsError
 
         // Calculate total duration and activity breakdown for each session
         const sessionsWithDurations = sessionsData.map(session => {
@@ -115,6 +126,7 @@ export default function LearningInsights() {
 
         setSessions(sessionsWithDurations || [])
         setTeachBacks(teachBackData || [])
+        setFlashcards(flashcardsData || [])
         setIsLoading(false)
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -126,7 +138,7 @@ export default function LearningInsights() {
   }, [session?.user?.id])
 
   const aggregatedData = aggregateSessions(sessions, period)
-  const metrics = calculateSummaryMetrics(sessions, aggregatedData, teachBacks)
+  const metrics = calculateSummaryMetrics(sessions, aggregatedData, teachBacks, flashcards)
 
   // Calculate activity breakdown totals (in minutes)
   const activityTotals = sessions.reduce((totals, session) => ({
@@ -136,6 +148,7 @@ export default function LearningInsights() {
   }), { module: 0, teach_back: 0, flashcards: 0 })
 
   const hasTeachBackAnalytics = subscriptionTier === 'basic' || subscriptionTier === 'pro'
+  const hasFlashcardAnalytics = subscriptionTier === 'basic' || subscriptionTier === 'pro'
 
   // Show loading state while checking auth
   if (isLoadingAuth) {
@@ -242,6 +255,91 @@ export default function LearningInsights() {
             </div>
           </Card>
         </div>
+
+        {/* Flashcard Metrics */}
+        {metrics.flashcards && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4">Flashcard Performance</h2>
+            {hasFlashcardAnalytics ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  <Card className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm text-text-light">Total Reviewed</p>
+                        <p className="text-2xl font-bold text-text mt-1">
+                          {metrics.flashcards.totalReviewed}
+                        </p>
+                        <p className="text-sm text-text-light mt-2">
+                          Over {metrics.flashcards.sessionsCount} sessions
+                        </p>
+                      </div>
+                      <Layers className="h-5 w-5 text-primary" />
+                    </div>
+                  </Card>
+
+                  <Card className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm text-text-light">Accuracy Rate</p>
+                        <p className="text-2xl font-bold text-text mt-1">
+                          {Math.round(metrics.flashcards.accuracyRate)}%
+                        </p>
+                        {metrics.flashcards.improvement && (
+                          <div className="flex items-center mt-2 text-sm">
+                            {metrics.flashcards.improvement > 0 ? (
+                              <>
+                                <ArrowUp className="h-4 w-4 text-green-500 mr-1" />
+                                <span className="text-green-500">{Math.round(metrics.flashcards.improvement)}% improvement</span>
+                              </>
+                            ) : (
+                              <>
+                                <ArrowDown className="h-4 w-4 text-red-500 mr-1" />
+                                <span className="text-red-500">{Math.round(Math.abs(metrics.flashcards.improvement))}% decrease</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                    </div>
+                  </Card>
+
+                  <Card className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm text-text-light">Review Frequency</p>
+                        <p className="text-2xl font-bold text-text mt-1">
+                          {metrics.flashcards.reviewFrequency} / {period}
+                        </p>
+                        <p className="text-sm text-text-light mt-2">
+                          ~{Math.round(metrics.flashcards.cardsPerSession)} cards per session
+                        </p>
+                      </div>
+                      <BarChart className="h-5 w-5 text-primary" />
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Flashcard Charts */}
+                <FlashcardChart flashcardMetrics={metrics.flashcards} />
+              </>
+            ) : (
+              <div className="bg-background-card rounded-xl p-8 border border-border">
+                <div className="flex items-center gap-4">
+                  <Lock className="h-8 w-8 text-primary" />
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Premium Feature</h3>
+                    <p className="text-text-light mb-4">
+                      Upgrade to Basic or Pro to unlock detailed flashcard analytics and track your learning progress.
+                    </p>
+                    <UpgradeBanner type="study" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Teach-Back Metrics */}
         {metrics.teachBack && (

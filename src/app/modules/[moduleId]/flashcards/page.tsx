@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Wand2, X, PenLine, FlipHorizontal } from 'lucide-react'
+import { ArrowLeft, Plus, Wand2, X, PenLine, FlipHorizontal, BookOpen } from 'lucide-react'
 import Flashcard from '@/components/flashcards/Flashcard'
 import WriteMode from '@/components/flashcards/WriteMode'
 import Navbar from '@/components/layout/Navbar'
@@ -19,6 +19,8 @@ import { useUsageLimits } from '@/hooks/useUsageLimits'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 import { useStudyDuration } from '@/hooks/useStudyDuration'
+import { useSearchParams } from 'next/navigation'
+import { _NoteType as NoteType } from '@/types'
 
 interface PageProps {
   params: Promise<{ moduleId: string }>
@@ -36,12 +38,19 @@ interface FlashcardType {
   last_recall_rating?: 'easy' | 'good' | 'hard' | 'forgot'
   last_reviewed_at?: string
   next_review_at?: string
+  source_note_id?: string
+  source_note?: {
+    id: string
+    title: string
+  } | null
 }
 
 export default function FlashcardsPage({ params }: PageProps) {
   const { moduleId } = use(params)
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
   const { auto_flashcards_enabled, isLoading: isLoadingUsage } = useUsageLimits()
+  const searchParams = useSearchParams()
+  const noteId = searchParams.get('noteId')
   
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -51,7 +60,7 @@ export default function FlashcardsPage({ params }: PageProps) {
   const [moduleContent, setModuleContent] = useState('')
   const [studySessionId, setStudySessionId] = useState<string | null>(null)
   const [showAddCard, setShowAddCard] = useState(false)
-  const [newCard, setNewCard] = useState({ question: '', answer: '' })
+  const [newCard, setNewCard] = useState({ question: '', answer: '', source_note_id: '' })
   const [showSummary, setShowSummary] = useState(false)
   const [sessionStats, setSessionStats] = useState({
     totalCards: 0,
@@ -60,6 +69,7 @@ export default function FlashcardsPage({ params }: PageProps) {
     newCards: 0
   })
   const [isWriteMode, setIsWriteMode] = useState(false)
+  const [sourceNoteTitle, setSourceNoteTitle] = useState('')
 
   // Track study duration
   useStudyDuration(studySessionId || '', 'flashcards')
@@ -88,14 +98,64 @@ export default function FlashcardsPage({ params }: PageProps) {
         // Fetch existing flashcards
         const { data: existingCards, error: cardsError } = await supabase
           .from('flashcards')
-          .select('*')
-          .eq('study_session_id', studySession.id)
+          .select(`
+            *,
+            source_note:source_note_id (
+              id,
+              title
+            )
+          `)
+          .eq('module_title', moduleId)
           .order('next_review_at', { ascending: true, nullsFirst: true })
 
         if (cardsError) throw cardsError
 
         if (existingCards) {
           setFlashcards(existingCards)
+        }
+
+        // If a noteId is provided in the URL, fetch that note
+        if (noteId) {
+          const { data: note, error: noteError } = await supabase
+            .from('notes')
+            .select('*')
+            .eq('id', noteId)
+            .single()
+
+          if (noteError) {
+            console.error('Error fetching note:', noteError)
+          } else if (note) {
+            // Pre-populate the flashcard form with content from the note
+            // Create a more natural question from the note title
+            let question = note.title;
+            
+            // If the title is not a question already, transform it into one
+            if (!question.endsWith('?')) {
+              // Check if the title is very short (likely a concept or term)
+              if (question.split(' ').length <= 3) {
+                question = `What is ${question}?`;
+              } else {
+                // For longer titles, try to make it into a complete question
+                question = `${question}?`;
+              }
+            }
+            
+            // If the content is very long, truncate it to a reasonable size
+            let answer = note.content;
+            if (answer.length > 500) {
+              answer = answer.substring(0, 497) + '...';
+            }
+            
+            setNewCard({
+              question,
+              answer,
+              source_note_id: note.id
+            });
+            
+            // Automatically show the add card form
+            setShowAddCard(true);
+            setSourceNoteTitle(note.title);
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -105,7 +165,7 @@ export default function FlashcardsPage({ params }: PageProps) {
     }
 
     fetchData()
-  }, [moduleId, session])
+  }, [moduleId, session, noteId])
 
   const generateFlashcards = async () => {
     if (!session?.user?.id || !moduleContent || !studySessionId || !auto_flashcards_enabled) return
@@ -134,7 +194,7 @@ export default function FlashcardsPage({ params }: PageProps) {
       const { data: newCards, error: fetchError } = await supabase
         .from('flashcards')
         .select('*')
-        .eq('study_session_id', studySessionId)
+        .eq('module_title', moduleId)
         .order('next_review_at', { ascending: true, nullsFirst: true })
 
       if (fetchError) throw fetchError
@@ -150,20 +210,23 @@ export default function FlashcardsPage({ params }: PageProps) {
   }
 
   const handleAddCard = async () => {
-    if (!studySessionId || !newCard.question || !newCard.answer) return
+    if (!studySessionId || !newCard.question || !newCard.answer || !session?.user?.id) return
 
     const supabase = createClient()
     try {
       // Initialize spaced repetition parameters for new card
       const spacedRepParams = initializeSpacedRepetition()
 
+      // Insert new flashcard
       const { data, error } = await supabase
         .from('flashcards')
         .insert({
-          study_session_id: studySessionId,
+          module_title: moduleId,
+          user_id: session.user.id,
           question: newCard.question,
           answer: newCard.answer,
           status: 'new',
+          source_note_id: newCard.source_note_id || null, // Include the source note ID if available
           ...spacedRepParams
         })
         .select()
@@ -172,7 +235,7 @@ export default function FlashcardsPage({ params }: PageProps) {
       if (error) throw error
 
       setFlashcards(prev => [...prev, data])
-      setNewCard({ question: '', answer: '' })
+      setNewCard({ question: '', answer: '', source_note_id: '' })
       setShowAddCard(false)
     } catch (error) {
       console.error('Error adding flashcard:', error)
@@ -332,6 +395,23 @@ export default function FlashcardsPage({ params }: PageProps) {
             <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
           </div>
 
+          {noteId && showAddCard && sourceNoteTitle && (
+            <div className="mb-6 bg-primary/10 rounded-md p-4 border border-primary/20">
+              <div className="flex items-start gap-3">
+                <div className="text-primary mt-0.5">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-lg mb-1">Creating Flashcard from Note: <span className="text-primary">{sourceNoteTitle}</span></h3>
+                  <p className="text-muted-foreground">
+                    You're creating a flashcard based on your note. The content has been pre-filled for you,
+                    but feel free to edit it to make the perfect flashcard.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {!auto_flashcards_enabled && (
             <Alert className="mb-8">
               <AlertCircle className="h-4 w-4" />
@@ -356,6 +436,17 @@ export default function FlashcardsPage({ params }: PageProps) {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
+              {noteId && (
+                <div className="mb-4 p-3 bg-primary/10 rounded-md border border-primary/20 flex items-center gap-2">
+                  <div className="text-primary">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Creating flashcard from note: <span className="text-primary">{sourceNoteTitle}</span></p>
+                    <p className="text-xs text-muted-foreground">The content has been pre-filled from your selected note.</p>
+                  </div>
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Question</label>
@@ -417,6 +508,13 @@ export default function FlashcardsPage({ params }: PageProps) {
               </div>
             ) : (
               <div>
+                {/* Display source note if available */}
+                {flashcards[currentIndex]?.source_note && (
+                  <div className="text-center mb-2 text-sm text-primary">
+                    Created from note: <span className="font-medium">{flashcards[currentIndex].source_note.title}</span>
+                  </div>
+                )}
+                
                 {isWriteMode ? (
                   <WriteMode
                     question={flashcards[currentIndex].question}

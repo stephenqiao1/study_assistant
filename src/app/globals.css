@@ -9,6 +9,15 @@
     --text: #333333;
     --text-light: #666666;
     --border: #E5E7EB;
+    
+    --primary: #4F46E5;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F3F4F6;
+    --secondary-foreground: #111827;
+    
+    /* Text editor colors */
+    --editor-text: #333333;
+    --editor-text-highlight: #4F46E5;
   }
 
   .dark {
@@ -17,6 +26,15 @@
     --text: #FFFFFF;
     --text-light: #E0E0E0;
     --border: #2C2C2C;
+    
+    --primary: #6366F1;
+    --primary-foreground: #FFFFFF;
+    --secondary: #2A2A2A;
+    --secondary-foreground: #FFFFFF;
+    
+    /* Text editor colors */
+    --editor-text: #E0E0E0;
+    --editor-text-highlight: #6366F1;
   }
 }
 
@@ -45,6 +63,102 @@
   --tw-prose-pre-bg: #1E1E1E;
   --tw-prose-th-borders: #2C2C2C;
   --tw-prose-td-borders: #2C2C2C;
+}
+
+/* Markdown editor styling */
+.wmde-markdown {
+  background-color: var(--background-card) !important;
+  color: var(--text) !important;
+}
+
+.w-md-editor-show-edit {
+  background-color: var(--background-card) !important;
+}
+
+.w-md-editor-toolbar {
+  background-color: var(--background) !important;
+  border-color: var(--border) !important;
+}
+
+.w-md-editor-text {
+  color: var(--editor-text) !important;
+}
+
+/* Editor text input styles */
+.w-md-editor-text-input {
+  color: var(--editor-text) !important;
+  caret-color: var(--editor-text-highlight) !important;
+}
+
+.w-md-editor-text textarea {
+  color: var(--editor-text) !important;
+}
+
+/* Visible text in editor */
+.w-md-editor-text-pre {
+  color: var(--editor-text) !important;
+}
+
+.w-md-editor-text-pre > code {
+  color: var(--editor-text) !important;
+}
+
+.w-md-editor-text-pre > code span {
+  color: var(--editor-text) !important;
+}
+
+.w-md-editor-preview {
+  background-color: var(--background-card) !important;
+}
+
+/* Code blocks within markdown */
+.markdown-body pre {
+  background-color: var(--background) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Remove unnecessary border in preview mode */
+.markdown-preview-wrapper .wmde-markdown {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+/* Additional styling for editor in module page */
+.editor-container .w-md-editor {
+  color: var(--editor-text) !important;
+}
+
+.editor-container .w-md-editor-text-input {
+  color: var(--editor-text) !important;
+  caret-color: var(--editor-text-highlight) !important;
+}
+
+.editor-container .w-md-editor-text-pre > code {
+  color: var(--editor-text) !important;
+}
+
+/* Ensure proper contrast on text selection */
+.editor-container ::selection {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+/* High contrast styles for the editor */
+.high-contrast-editor .w-md-editor-text-pre,
+.high-contrast-editor .w-md-editor-text-input,
+.high-contrast-editor .w-md-editor-text-pre > code,
+.high-contrast-editor .w-md-editor-text-pre > code span {
+  color: var(--editor-text) !important;
+}
+
+.high-contrast-editor .w-md-editor-text-input::selection {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.high-contrast-editor textarea {
+  color: var(--text) !important;
+  opacity: 1 !important;
 }
 
 body {
