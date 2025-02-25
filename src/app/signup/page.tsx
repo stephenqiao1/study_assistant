@@ -18,6 +18,9 @@ export default function SignUp() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isResendingEmail, setIsResendingEmail] = useState(false)
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false)
+  const [signupEmail, setSignupEmail] = useState('')
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   const validatePassword = (password: string) => {
@@ -34,6 +37,45 @@ export default function SignUp() {
       return 'Password must contain at least one number'
     }
     return null
+  }
+
+  const handleResendVerificationEmail = async () => {
+    if (!signupEmail) {
+      setMessage({
+        type: 'error',
+        text: 'Please enter an email address'
+      })
+      return
+    }
+
+    setIsResendingEmail(true)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: signupEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/modules`,
+        }
+      })
+
+      if (error) {
+        throw error
+      }
+
+      setMessage({
+        type: 'success',
+        text: 'Verification email resent. Please check your inbox.'
+      })
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'An error occurred'
+      })
+    } finally {
+      setIsResendingEmail(false)
+    }
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -75,15 +117,14 @@ export default function SignUp() {
         throw error
       }
 
+      setSignupEmail(formData.email)
+      setShowVerificationMessage(true)
       setMessage({
         type: 'success',
         text: 'Account created successfully! Please check your email to verify your account.',
       })
 
-      // Optional: Redirect to login page after successful signup
-      setTimeout(() => {
-        router.push('/login')
-      }, 2000)
+      // Don't redirect - allow user to see the verification options
     } catch (error) {
       setMessage({
         type: 'error',
@@ -92,6 +133,10 @@ export default function SignUp() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleContinueWithoutVerification = () => {
+    router.push('/modules')
   }
 
   if (isLoadingAuth) {
@@ -115,70 +160,15 @@ export default function SignUp() {
           <p className="mt-2 text-text-light">Join Academiq to start your learning journey</p>
         </div>
 
-        {/* Sign Up Form */}
-        <div className="bg-background-card p-8 rounded-lg shadow-sm border border-border">
-          <form onSubmit={handleSignUp} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-text mb-1">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="Enter your email"
-                required
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-text mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="Create a password"
-                  required
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-light hover:text-text"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-text-light">
-                Password must be at least 8 characters long and contain uppercase, lowercase, and numbers
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-text mb-1">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <input
-                  id="confirmPassword"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  placeholder="Confirm your password"
-                  required
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text pr-10"
-                />
-              </div>
-            </div>
+        {showVerificationMessage ? (
+          <div className="bg-background-card p-8 rounded-lg shadow-sm border border-border">
+            <h3 className="text-xl font-bold text-text mb-4">Email Verification</h3>
+            <p className="text-text mb-6">
+              We've sent a verification email to <strong>{signupEmail}</strong>. Please check your inbox and click the verification link.
+            </p>
 
             {message && (
-              <div className={`p-3 rounded-lg text-sm ${
+              <div className={`p-3 mb-4 rounded-lg text-sm ${
                 message.type === 'success' 
                   ? 'bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300' 
                   : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
@@ -187,26 +177,119 @@ export default function SignUp() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary-dark"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Creating account...' : 'Create Account'}
-            </Button>
+            <div className="space-y-3">
+              <Button
+                type="button"
+                onClick={handleResendVerificationEmail}
+                className="w-full bg-primary hover:bg-primary-dark"
+                disabled={isResendingEmail}
+              >
+                {isResendingEmail ? 'Sending...' : 'Resend Verification Email'}
+              </Button>
+              
+              <Button
+                type="button"
+                onClick={handleContinueWithoutVerification}
+                className="w-full bg-secondary hover:bg-secondary-dark text-text"
+              >
+                Continue Without Verification
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* Sign Up Form */
+          <div className="bg-background-card p-8 rounded-lg shadow-sm border border-border">
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-text mb-1">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter your email"
+                  required
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text"
+                />
+              </div>
 
-            <p className="text-xs text-center text-text-light">
-              By signing up, you agree to our{' '}
-              <Link href="#" className="text-primary hover:text-primary-dark">
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link href="#" className="text-primary hover:text-primary-dark">
-                Privacy Policy
-              </Link>
-            </p>
-          </form>
-        </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-text mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Create a password"
+                    required
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-light hover:text-text"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-text-light">
+                  Password must be at least 8 characters long and contain uppercase, lowercase, and numbers
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-text mb-1">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="Confirm your password"
+                    required
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-text pr-10"
+                  />
+                </div>
+              </div>
+
+              {message && (
+                <div className={`p-3 rounded-lg text-sm ${
+                  message.type === 'success' 
+                    ? 'bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300' 
+                    : 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                }`}>
+                  {message.text}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary-dark"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Creating account...' : 'Create Account'}
+              </Button>
+
+              <p className="text-xs text-center text-text-light">
+                By signing up, you agree to our{' '}
+                <Link href="#" className="text-primary hover:text-primary-dark">
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link href="#" className="text-primary hover:text-primary-dark">
+                  Privacy Policy
+                </Link>
+              </p>
+            </form>
+          </div>
+        )}
 
         {/* Footer */}
         <p className="mt-4 text-center text-sm text-text-light">

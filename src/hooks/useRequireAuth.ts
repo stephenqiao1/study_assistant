@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 
 export const useRequireAuth = (redirectTo = '/login') => {
-  const { session, isLoading } = useAuth()
+  const { session, user, isLoading, isEmailVerified } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -14,11 +14,11 @@ export const useRequireAuth = (redirectTo = '/login') => {
     }
   }, [session, isLoading, router, redirectTo])
 
-  return { session, isLoading }
+  return { session, user, isLoading, isEmailVerified }
 }
 
 export const useRequireNoAuth = (redirectTo = '/modules') => {
-  const { session, isLoading } = useAuth()
+  const { session, user, isLoading, isEmailVerified } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -27,5 +27,5 @@ export const useRequireNoAuth = (redirectTo = '/modules') => {
     }
   }, [session, isLoading, router, redirectTo])
 
-  return { session, isLoading }
+  return { session, user, isLoading, isEmailVerified }
 } 
