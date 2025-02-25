@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { notFound, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { use } from 'react'
-import { Trash2, Edit2, Save, X, Plus, Book, ScrollText, Brain, FileText, ArrowRight, Info } from 'lucide-react'
+import { Trash2, Edit2, Save, X, Plus, ScrollText, Brain, FileText, ArrowRight, Info } from 'lucide-react'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import DraftEditor from '@/components/teach/DraftEditor'
 import {
@@ -18,7 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import StudySessionsSidebar from '@/components/modules/StudySessionsSidebar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -71,7 +70,7 @@ export default function ModulePage({ params }: PageProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [sessions, setSessions] = useState<Module[]>([])
   const [notes, setNotes] = useState<NoteType[]>([])
-  const [currentTab, setCurrentTab] = useState('overview')
+  const [_currentTab, _setCurrentTab] = useState('notes')
   const [recentNotes, setRecentNotes] = useState<NoteType[]>([])
   const [selectedNote, setSelectedNote] = useState<NoteType | null>(null)
   const [editedNoteContent, setEditedNoteContent] = useState('')
@@ -187,7 +186,7 @@ export default function ModulePage({ params }: PageProps) {
     }
   }
 
-  const handleSave = async () => {
+  const _handleSave = async () => {
     setIsSaving(true)
     const supabase = createClient()
 
@@ -330,7 +329,11 @@ export default function ModulePage({ params }: PageProps) {
     
     if (tool === 'teach') {
       router.push(`/modules/${moduleId}/teach${selectedNote ? `?noteId=${selectedNote.id}` : ''}`);
+    } else if (tool === 'flashcards') {
+      // For flashcards, only include the noteId parameter, not showForm
+      router.push(`/modules/${moduleId}/flashcards${selectedNote ? `?noteId=${selectedNote.id}` : ''}`);
     } else {
+      // For other tools
       router.push(`/modules/${moduleId}/${tool}${selectedNote && tool !== 'notes' ? `?noteId=${selectedNote.id}` : ''}`);
     }
   }

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ArrowUp, ArrowDown, Clock, BookOpen, TrendingUp, Brain, Target, Lock, Layers, CheckCircle2, BarChart } from 'lucide-react'
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner'
+import type { Flashcard } from '@/utils/aggregateSessions'
 
 interface StudyDuration {
   activity_type: 'module' | 'teach_back' | 'flashcards'
@@ -38,7 +39,7 @@ export default function LearningInsights() {
   const [period, setPeriod] = useState<TimePeriod>('week')
   const [sessions, setSessions] = useState<SessionWithDurations[]>([])
   const [teachBacks, setTeachBacks] = useState<TeachBackSession[]>([])
-  const [flashcards, setFlashcards] = useState<any[]>([])
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'basic' | 'pro'>('free')
 

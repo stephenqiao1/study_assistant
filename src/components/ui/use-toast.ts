@@ -2,9 +2,9 @@
 import { useEffect, useState } from "react"
 
 const TOAST_LIMIT = 5
-const TOAST_REMOVE_DELAY = 1000000
+const _TOAST_REMOVE_DELAY = 1000000
 
-type ToastActionElement = HTMLButtonElement
+type _ToastActionElement = HTMLButtonElement
 
 export type Toast = {
   id: string
@@ -26,6 +26,9 @@ type ToasterToast = Toast & {
   title?: string
   description?: string
   action?: React.ReactNode
+  onDismiss?: () => void
+  update?: (props: Toast) => void
+  dismissed?: boolean
 }
 
 const actionTypes = {
@@ -35,7 +38,14 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
-type ActionType = typeof actionTypes
+type _ActionType = typeof actionTypes
+
+// Improve typing for action's type field
+interface ToastAction {
+  type: keyof typeof actionTypes;
+  toast?: ToasterToast;
+  toastId?: string;
+}
 
 let memoryState: {
   toasts: ToasterToast[]
@@ -43,23 +53,23 @@ let memoryState: {
   toasts: [],
 }
 
-function dispatch(action: any) {
+function dispatch(action: ToastAction) {
   memoryState = reducer(memoryState, action)
 }
 
-function reducer(state: typeof memoryState, action: any): typeof memoryState {
+function reducer(state: typeof memoryState, action: ToastAction): typeof memoryState {
   switch (action.type) {
     case actionTypes.ADD_TOAST:
       return {
         ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+        toasts: [action.toast!, ...state.toasts].slice(0, TOAST_LIMIT),
       }
 
     case actionTypes.UPDATE_TOAST:
       return {
         ...state,
         toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
+          t.id === action.toast!.id ? { ...t, ...action.toast } : t
         ),
       }
 

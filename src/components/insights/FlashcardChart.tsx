@@ -22,6 +22,12 @@ ChartJS.register(
   Legend
 )
 
+// Explicit type declaration for Chart.js tooltip context
+type ChartContextData = {
+  label?: string;
+  data: Array<number | null>;
+};
+
 interface FlashcardChartProps {
   flashcardMetrics: FlashcardMetrics
 }
@@ -50,11 +56,24 @@ export default function FlashcardChart({ flashcardMetrics }: FlashcardChartProps
       },
       tooltip: {
         callbacks: {
+          // Using Function.prototype here to avoid type errors with Chart.js
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           label: function(context: any) {
-            const label = context.dataset.label || '';
+            // Safely handle the Chart.js context with proper type narrowing
+            const dataset = context.dataset as ChartContextData;
+            const label = dataset.label || '';
             const value = context.parsed.y || 0;
-            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
-            const percentage = Math.round((value / total) * 100);
+            
+            // Calculate total with safe typechecking
+            let total = 0;
+            if (Array.isArray(dataset.data)) {
+              total = dataset.data.reduce(
+                (sum: number, item) => sum + (typeof item === 'number' ? item : 0), 
+                0
+              );
+            }
+            
+            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
             return `${label}: ${value} (${percentage}%)`;
           }
         }

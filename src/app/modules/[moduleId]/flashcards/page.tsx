@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { use } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Wand2, X, PenLine, FlipHorizontal, BookOpen } from 'lucide-react'
+import { ArrowLeft, Plus, Wand2, X, PenLine, FlipHorizontal, BookOpen, CheckCircle } from 'lucide-react'
 import Flashcard from '@/components/flashcards/Flashcard'
 import WriteMode from '@/components/flashcards/WriteMode'
 import Navbar from '@/components/layout/Navbar'
@@ -19,8 +19,17 @@ import { useUsageLimits } from '@/hooks/useUsageLimits'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 import { useStudyDuration } from '@/hooks/useStudyDuration'
-import { useSearchParams } from 'next/navigation'
-import { _NoteType as NoteType } from '@/types'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { _NoteType as _NoteType } from '@/types'
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/use-toast"
 
 interface PageProps {
   params: Promise<{ moduleId: string }>
@@ -49,8 +58,14 @@ export default function FlashcardsPage({ params }: PageProps) {
   const { moduleId } = use(params)
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
   const { auto_flashcards_enabled, isLoading: isLoadingUsage } = useUsageLimits()
+  const router = useRouter();
   const searchParams = useSearchParams()
   const noteId = searchParams.get('noteId')
+  
+  // Set showForm directly from the URL
+  const showForm = searchParams.get('showForm') === 'true'
+  
+  console.log("Component render - showForm from URL:", showForm)
   
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -59,7 +74,6 @@ export default function FlashcardsPage({ params }: PageProps) {
   const [moduleTitle, setModuleTitle] = useState('')
   const [moduleContent, setModuleContent] = useState('')
   const [studySessionId, setStudySessionId] = useState<string | null>(null)
-  const [showAddCard, setShowAddCard] = useState(false)
   const [newCard, setNewCard] = useState({ question: '', answer: '', source_note_id: '' })
   const [showSummary, setShowSummary] = useState(false)
   const [sessionStats, setSessionStats] = useState({
@@ -70,13 +84,36 @@ export default function FlashcardsPage({ params }: PageProps) {
   })
   const [isWriteMode, setIsWriteMode] = useState(false)
   const [sourceNoteTitle, setSourceNoteTitle] = useState('')
+  const [isAddSuccess, setIsAddSuccess] = useState(false)
+  const [lastAddedCard, setLastAddedCard] = useState<{question: string, answer: string}>({question: '', answer: ''})
+  const { toast } = useToast()
+
+  // Function to explicitly show the form by updating the URL
+  const showCardCreationForm = useCallback(() => {
+    console.log("showCardCreationForm called")
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('showForm', 'true')
+    router.replace(`/modules/${moduleId}/flashcards?${params.toString()}`, { scroll: false })
+  }, [moduleId, router, searchParams])
+
+  // Function to explicitly hide the form by updating the URL
+  const hideCardCreationForm = useCallback(() => {
+    console.log("hideCardCreationForm called")
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('showForm')
+    router.replace(`/modules/${moduleId}/flashcards?${params.toString()}`, { scroll: false })
+    setNewCard({ question: '', answer: '', source_note_id: '' })
+  }, [moduleId, router, searchParams])
 
   // Track study duration
   useStudyDuration(studySessionId || '', 'flashcards')
 
   useEffect(() => {
+    console.log("DATA: Data fetching effect running")
+    
     const fetchData = async () => {
       if (!session?.user?.id) return
+      console.log("Fetching data started")
 
       const supabase = createClient()
 
@@ -125,6 +162,8 @@ export default function FlashcardsPage({ params }: PageProps) {
           if (noteError) {
             console.error('Error fetching note:', noteError)
           } else if (note) {
+            console.log("Note fetched successfully:", note.id, note.title)
+            
             // Pre-populate the flashcard form with content from the note
             // Create a more natural question from the note title
             let question = note.title;
@@ -146,14 +185,14 @@ export default function FlashcardsPage({ params }: PageProps) {
               answer = answer.substring(0, 497) + '...';
             }
             
+            // Update the card content
             setNewCard({
               question,
               answer,
               source_note_id: note.id
             });
             
-            // Automatically show the add card form
-            setShowAddCard(true);
+            // Store note title
             setSourceNoteTitle(note.title);
           }
         }
@@ -166,6 +205,45 @@ export default function FlashcardsPage({ params }: PageProps) {
 
     fetchData()
   }, [moduleId, session, noteId])
+
+  const handleAddCard = async () => {
+    if (!studySessionId || !newCard.question || !newCard.answer || !session?.user?.id) return
+
+    const supabase = createClient()
+    try {
+      // Initialize spaced repetition parameters for new card
+      const spacedRepParams = initializeSpacedRepetition()
+
+      // Insert new flashcard
+      const { data, error } = await supabase
+        .from('flashcards')
+        .insert({
+          module_title: moduleId,
+          user_id: session.user.id,
+          question: newCard.question,
+          answer: newCard.answer,
+          status: 'new',
+          source_note_id: newCard.source_note_id || null, // Include the source note ID if available
+          ...spacedRepParams
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setFlashcards(prev => [...prev, data])
+      setNewCard({ question: '', answer: '', source_note_id: '' })
+      hideCardCreationForm()
+      setIsAddSuccess(true)
+      setLastAddedCard({question: newCard.question, answer: newCard.answer})
+      toast({
+        title: "Flashcard Added",
+        description: "The flashcard has been successfully added to your study session."
+      })
+    } catch (error) {
+      console.error('Error adding flashcard:', error)
+    }
+  }
 
   const generateFlashcards = async () => {
     if (!session?.user?.id || !moduleContent || !studySessionId || !auto_flashcards_enabled) return
@@ -206,39 +284,6 @@ export default function FlashcardsPage({ params }: PageProps) {
       console.error('Error generating flashcards:', error)
     } finally {
       setIsGenerating(false)
-    }
-  }
-
-  const handleAddCard = async () => {
-    if (!studySessionId || !newCard.question || !newCard.answer || !session?.user?.id) return
-
-    const supabase = createClient()
-    try {
-      // Initialize spaced repetition parameters for new card
-      const spacedRepParams = initializeSpacedRepetition()
-
-      // Insert new flashcard
-      const { data, error } = await supabase
-        .from('flashcards')
-        .insert({
-          module_title: moduleId,
-          user_id: session.user.id,
-          question: newCard.question,
-          answer: newCard.answer,
-          status: 'new',
-          source_note_id: newCard.source_note_id || null, // Include the source note ID if available
-          ...spacedRepParams
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setFlashcards(prev => [...prev, data])
-      setNewCard({ question: '', answer: '', source_note_id: '' })
-      setShowAddCard(false)
-    } catch (error) {
-      console.error('Error adding flashcard:', error)
     }
   }
 
@@ -318,11 +363,11 @@ export default function FlashcardsPage({ params }: PageProps) {
       cardsToReview = flashcards.filter(card => card.status === 'new')
     } else if (category === 'learning') {
       cardsToReview = flashcards.filter(card => card.status === 'learning')
-    } else if (category === 'all') {
-      cardsToReview = flashcards.filter(card => card.status !== 'known')
     } else if (category === 'due') {
       cardsToReview = getDueFlashcards()
     }
+    // For 'all' category, no filtering is needed - we show all cards
+    // Note: Previous implementation was filtering out 'known' cards
 
     // Shuffle the cards for variety
     const shuffledCards = [...cardsToReview].sort(() => Math.random() - 0.5)
@@ -395,7 +440,33 @@ export default function FlashcardsPage({ params }: PageProps) {
             <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
           </div>
 
-          {noteId && showAddCard && sourceNoteTitle && (
+          {/* Add button to create from note when note content is loaded but form is hidden */}
+          {noteId && !showForm && sourceNoteTitle && (
+            <div className="mb-6 bg-primary/10 rounded-md p-4 border border-primary/20">
+              <div className="flex items-start gap-3">
+                <div className="text-primary mt-0.5">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-lg mb-1">Content from Note: <span className="text-primary">{sourceNoteTitle}</span></h3>
+                  <p className="text-muted-foreground mb-3">
+                    Note content is ready to be converted into a flashcard. Click below to create a flashcard based on this note.
+                  </p>
+                  <Button 
+                    onClick={showCardCreationForm}
+                    size="lg"
+                    className="bg-primary hover:bg-primary/90 shadow-md"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Flashcard from Note
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Show information when creating a flashcard from a note */}
+          {noteId && showForm && sourceNoteTitle && (
             <div className="mb-6 bg-primary/10 rounded-md p-4 border border-primary/20">
               <div className="flex items-start gap-3">
                 <div className="text-primary mt-0.5">
@@ -424,20 +495,24 @@ export default function FlashcardsPage({ params }: PageProps) {
             </Alert>
           )}
 
-          {showAddCard && (
-            <Card className="p-6 mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Add New Flashcard</h2>
+          {showForm && (
+            <Card className="p-6 mb-8 border-primary/20 shadow-lg">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Create New Flashcard
+                </h2>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowAddCard(false)}
+                  onClick={hideCardCreationForm}
+                  className="hover:bg-destructive/10"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
               {noteId && (
-                <div className="mb-4 p-3 bg-primary/10 rounded-md border border-primary/20 flex items-center gap-2">
+                <div className="mb-5 p-3 bg-primary/10 rounded-md border border-primary/20 flex items-center gap-2">
                   <div className="text-primary">
                     <BookOpen className="h-5 w-5" />
                   </div>
@@ -447,31 +522,32 @@ export default function FlashcardsPage({ params }: PageProps) {
                   </div>
                 </div>
               )}
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Question</label>
+                  <label className="block text-sm font-medium mb-2 text-text">Question</label>
                   <Textarea
                     value={newCard.question}
                     onChange={(e) => setNewCard(prev => ({ ...prev, question: e.target.value }))}
                     placeholder="Enter your question"
-                    className="w-full"
+                    className="w-full min-h-[100px] focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Answer</label>
+                  <label className="block text-sm font-medium mb-2 text-text">Answer</label>
                   <Textarea
                     value={newCard.answer}
                     onChange={(e) => setNewCard(prev => ({ ...prev, answer: e.target.value }))}
                     placeholder="Enter your answer"
-                    className="w-full"
+                    className="w-full min-h-[150px] focus:border-primary"
                   />
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-2">
                   <Button
                     onClick={handleAddCard}
                     disabled={!newCard.question || !newCard.answer}
+                    className="bg-primary hover:bg-primary/90 text-white px-6"
                   >
-                    Add Card
+                    Create Flashcard
                   </Button>
                 </div>
               </div>
@@ -487,7 +563,7 @@ export default function FlashcardsPage({ params }: PageProps) {
                 </p>
                 <div className="flex justify-center gap-4">
                   <Button
-                    onClick={() => setShowAddCard(true)}
+                    onClick={showCardCreationForm}
                     variant="outline"
                     size="lg"
                     className="gap-2"
@@ -545,7 +621,62 @@ export default function FlashcardsPage({ params }: PageProps) {
         onClose={() => setShowSummary(false)}
         stats={sessionStats}
         onReviewCategory={handleReviewCategory}
+        onAddMoreFlashcards={() => {
+          setShowSummary(false);
+          showCardCreationForm();
+        }}
       />
+      
+      {/* Flashcard Created Success Dialog */}
+      <Dialog open={isAddSuccess} onOpenChange={setIsAddSuccess}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-primary">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              Flashcard Created Successfully
+            </DialogTitle>
+            <DialogDescription>
+              Your flashcard has been added to your deck and is ready for review.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="bg-background/50 p-4 rounded-lg border border-border mb-4">
+              <h3 className="font-medium text-sm text-text-light mb-1">Question:</h3>
+              <p className="text-text">{lastAddedCard.question}</p>
+            </div>
+            <div className="bg-background/50 p-4 rounded-lg border border-border">
+              <h3 className="font-medium text-sm text-text-light mb-1">Answer:</h3>
+              <p className="text-text">{lastAddedCard.answer}</p>
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddSuccess(false);
+                showCardCreationForm();
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Another
+            </Button>
+            <Button
+              onClick={() => {
+                setIsAddSuccess(false);
+                // If there are cards, set current index to 0 to start reviewing
+                if (flashcards.length > 0) {
+                  setCurrentIndex(0);
+                }
+              }}
+              className="bg-primary"
+            >
+              Start Reviewing
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

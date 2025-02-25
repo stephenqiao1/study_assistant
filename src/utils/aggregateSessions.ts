@@ -2,7 +2,7 @@ import { StudySession, TimePeriod, AggregatedData, SummaryMetrics, TeachBackSess
 import { format, startOfWeek, startOfMonth, startOfDay, endOfDay, endOfWeek, endOfMonth, isSameDay, isSameWeek, isSameMonth } from 'date-fns'
 
 // Define a proper type for Flashcard
-interface Flashcard {
+export interface Flashcard {
   id: string
   created_at: string
   study_session_id: string

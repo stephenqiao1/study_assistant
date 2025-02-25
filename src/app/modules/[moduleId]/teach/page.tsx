@@ -28,7 +28,7 @@ interface GradingResult {
   }
 }
 
-interface NoteType {
+interface _NoteType {
   id: string
   title: string
   content: string

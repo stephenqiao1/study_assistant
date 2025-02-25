@@ -161,6 +161,18 @@
   opacity: 1 !important;
 }
 
+/* Improve textarea contrast in dark mode */
+.dark textarea {
+  color: var(--text) !important;
+  background-color: var(--background-card) !important;
+  border-color: var(--border) !important;
+}
+
+.dark textarea::placeholder {
+  color: var(--text-light) !important;
+  opacity: 0.7 !important;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

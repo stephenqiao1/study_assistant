@@ -59,10 +59,10 @@ export default function ModulesPage() {
       }
 
       // Create a map to store unique modules with their latest data
-      const moduleMap = new Map()
-      data.forEach((module: any) => {
+      const moduleMap = new Map<string, Module>()
+      data.forEach((module: Module) => {
         if (!moduleMap.has(module.module_title) || 
-            new Date(module.started_at) > new Date(moduleMap.get(module.module_title).started_at)) {
+            new Date(module.started_at) > new Date(moduleMap.get(module.module_title)!.started_at)) {
           moduleMap.set(module.module_title, module)
         }
       })
