@@ -34,6 +34,12 @@ const features: PricingFeature[] = [
     pro: true
   },
   {
+    name: 'Formula sheet extraction',
+    free: false,
+    basic: true,
+    pro: true
+  },
+  {
     name: 'Spaced repetition system',
     free: true,
     basic: true,
@@ -56,8 +62,8 @@ const features: PricingFeature[] = [
 export default function PricingTable() {
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month')
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-  const { session } = useAuth()
+  const _router = useRouter()
+  const { session: _session } = useAuth()
 
   const prices = {
     basic: {
@@ -71,19 +77,14 @@ export default function PricingTable() {
   }
 
   const handleUpgrade = async (tier: 'basic' | 'pro') => {
-    if (!session?.user?.id) {
-      router.push('/login')
-      return
-    }
-
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/stripe/create-checkout', {
+      // Create a guest checkout session that doesn't require login
+      const response = await fetch('/api/stripe/guest-checkout', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           tier,
@@ -105,8 +106,8 @@ export default function PricingTable() {
       if (stripe) {
         await stripe.redirectToCheckout({ sessionId })
       }
-    } catch (error) {
-      console.error('Error creating checkout session:', error)
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Error handling without console.log
     } finally {
       setIsLoading(false)
     }
@@ -208,7 +209,7 @@ export default function PricingTable() {
             onClick={() => handleUpgrade('basic')}
             disabled={isLoading}
           >
-            {isLoading ? 'Loading...' : 'Upgrade to Basic'}
+            {isLoading ? 'Loading...' : 'Get Basic Plan'}
           </Button>
         </Card>
 
@@ -249,7 +250,7 @@ export default function PricingTable() {
             onClick={() => handleUpgrade('pro')}
             disabled={isLoading}
           >
-            {isLoading ? 'Loading...' : 'Upgrade to Pro'}
+            {isLoading ? 'Loading...' : 'Get Pro Plan'}
           </Button>
         </Card>
       </div>

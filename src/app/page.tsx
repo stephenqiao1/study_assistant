@@ -31,15 +31,10 @@ export default function Home() {
                 Transform your study sessions with our AI-powered assistant that uses proven learning techniques like Feynman Technique and spaced repetition to help you deeply understand and remember any subject.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/signup">
+                <Link href="/login">
                   <Button size="lg" className="w-full sm:w-auto text-lg bg-primary hover:bg-primary/90">
-                    Get Started Free
+                    Get Started
                     <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-                <Link href="/pricing">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg">
-                    View Pricing
                   </Button>
                 </Link>
               </div>    
@@ -96,7 +91,7 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-semibold mb-2 text-text">Note-Centric Learning</h3>
               <p className="text-text-light">
-                Create comprehensive notes that automatically connect to flashcards and teach-back sessions.
+                Create and manage comprehensive notes with seamless integration to all learning tools.
               </p>
               <ul className="mt-4 space-y-2">
                 <li className="flex items-start">
@@ -106,6 +101,10 @@ export default function Home() {
                 <li className="flex items-start">
                   <CheckCircle2 className="h-5 w-5 text-accent-teal mr-2 flex-shrink-0 mt-0.5" />
                   <span className="text-sm text-text-light">Markdown support with syntax highlighting</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle2 className="h-5 w-5 text-accent-teal mr-2 flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-text-light">AI-powered module descriptions</span>
                 </li>
               </ul>
             </div>
@@ -128,6 +127,10 @@ export default function Home() {
                   <CheckCircle2 className="h-5 w-5 text-accent-teal mr-2 flex-shrink-0 mt-0.5" />
                   <span className="text-sm text-text-light">Structured learning framework</span>
                 </li>
+                <li className="flex items-start">
+                  <CheckCircle2 className="h-5 w-5 text-accent-teal mr-2 flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-text-light">Customizable learning sessions</span>
+                </li>
               </ul>
             </div>
 
@@ -136,18 +139,22 @@ export default function Home() {
               <div className="w-12 h-12 bg-accent-orange/10 rounded-lg flex items-center justify-center mb-4">
                 <ChartLine className="h-6 w-6 text-accent-orange" />
               </div>
-              <h3 className="text-xl font-semibold mb-2 text-text">Smart Flashcards</h3>
+              <h3 className="text-xl font-semibold mb-2 text-text">Smart Learning Tools</h3>
               <p className="text-text-light">
-                Spaced repetition system that optimizes your review schedule for maximum retention.
+                Advanced tools to enhance your learning and improve retention.
               </p>
               <ul className="mt-4 space-y-2">
                 <li className="flex items-start">
                   <CheckCircle2 className="h-5 w-5 text-accent-teal mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-text-light">AI-generated flashcards from your notes</span>
+                  <span className="text-sm text-text-light">AI-generated flashcards</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle2 className="h-5 w-5 text-accent-teal mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-text-light">Adaptive difficulty based on performance</span>
+                  <span className="text-sm text-text-light">Formula extraction & organization</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle2 className="h-5 w-5 text-accent-teal mr-2 flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-text-light">Spaced repetition system</span>
                 </li>
               </ul>
             </div>
@@ -206,12 +213,7 @@ export default function Home() {
             </div>
             
             <div className="mt-12 text-center">
-              <Link href="/signup">
-                <Button size="lg" className="bg-primary hover:bg-primary/90">
-                  Start Your Learning Journey
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+              {/* "Start Your Learning Journey" button removed */}
             </div>
           </div>
         </div>
@@ -225,20 +227,15 @@ export default function Home() {
               Simple, Transparent Pricing
             </h2>
             <p className="text-text-light max-w-2xl mx-auto">
-              Choose the plan that best fits your needs. All plans include access to our core learning features.
+              Choose the plan that best fits your learning needs and budget.
             </p>
           </div>
           <PricingTable />
           
           <div className="mt-12 text-center">
             <p className="text-sm text-text-light mb-4">
-              Not sure which plan is right for you? Start with our free tier and upgrade anytime.
+              Compare plans to find the perfect fit for your learning journey.
             </p>
-            <Link href="/signup">
-              <Button variant="outline" className="mx-auto">
-                Start Free Trial
-              </Button>
-            </Link>
           </div>
         </div>
       </section>
@@ -253,9 +250,9 @@ export default function Home() {
             <p className="text-lg text-text-light mb-8">
               Join thousands of students who are already studying smarter, not harder.
             </p>
-            <Link href="/signup">
+            <Link href="/login">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-lg">
-                Get Started Today
+                Get Started
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
