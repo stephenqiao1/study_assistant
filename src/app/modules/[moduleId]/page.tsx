@@ -10,7 +10,7 @@ import {
   Layers,
   ScrollText,
   Brain,
-  Calculator,
+  // Calculator,  // Commented out to fix linter warning
   ArrowRight,
   FileText,
   Plus,
@@ -19,10 +19,10 @@ import {
   X,
   Info,
   Trash2,
-  Lightbulb,
+  // Lightbulb,  // Commented out to fix linter warning
   Tag,
   Search,
-  Crown
+  // Crown  // Commented out to fix linter warning
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,7 +114,7 @@ export default function ModulePage({ params }: PageProps) {
   // Track study duration
   useStudyDuration(module?.id || '', 'module')
 
-  const [isPremium, setIsPremium] = useState(false)
+  const [_isPremium, setIsPremium] = useState(false)
   const [isPremiumDialogOpen, setIsPremiumDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -588,7 +588,7 @@ export default function ModulePage({ params }: PageProps) {
   }, [session])
   
   // Show premium modal
-  const showPremiumModal = () => {
+  const _showPremiumModal = () => {
     setIsPremiumDialogOpen(true)
   }
 
@@ -1159,6 +1159,23 @@ export default function ModulePage({ params }: PageProps) {
                       <h3 className="text-lg font-medium">Teach Back</h3>
                       <p className="text-sm text-text-light mt-1">
                         Practice teaching concepts to reinforce learning
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+
+              {/* YouTube Videos Card */}
+              <Link href={`/modules/${moduleId}/videos`}>
+                <Card className="bg-background-card h-full p-6 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <svg className="h-12 w-12 text-red-600" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                    </svg>
+                    <div>
+                      <h3 className="text-lg font-medium">YouTube Videos</h3>
+                      <p className="text-sm text-text-light mt-1">
+                        Find relevant educational videos related to your notes
                       </p>
                     </div>
                   </div>

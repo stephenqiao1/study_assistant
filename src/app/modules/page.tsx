@@ -39,7 +39,7 @@ interface Module {
 // Client component that safely uses search params
 function SearchParamsHandler() {
   const searchParams = useSearchParams();
-  const { session, isLoading: isLoadingAuth } = useRequireAuth();
+  const { session, isLoading: _isLoadingAuth } = useRequireAuth();
   const supabase = createClient();
   const { toast } = useToast();
   const [bypassLoginProcessing, setBypassLoginProcessing] = useState(false);

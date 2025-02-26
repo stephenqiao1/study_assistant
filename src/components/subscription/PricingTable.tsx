@@ -28,6 +28,12 @@ const features: PricingFeature[] = [
     pro: 'Unlimited'
   },
   {
+    name: 'YouTube video search',
+    free: 'Basic',
+    basic: 'Enhanced',
+    pro: 'AI-powered'
+  },
+  {
     name: 'Auto-generate flashcards',
     free: false,
     basic: true,
@@ -156,7 +162,7 @@ export default function PricingTable() {
                     <X className="h-4 w-4 text-gray-300" />
                   )
                 ) : (
-                  <span className="flex h-4 w-4 items-center justify-center font-medium text-green-600">
+                  <span className="text-sm font-medium text-green-600">
                     {feature.free}
                   </span>
                 )}
@@ -196,7 +202,7 @@ export default function PricingTable() {
                     <X className="h-4 w-4 text-gray-300" />
                   )
                 ) : (
-                  <span className="flex h-4 w-4 items-center justify-center font-medium text-green-600">
+                  <span className="text-sm font-medium text-green-600">
                     {feature.basic}
                   </span>
                 )}
@@ -228,7 +234,7 @@ export default function PricingTable() {
           <ul className="mb-8 space-y-4 flex-1">
             {features.map((feature) => (
               <li key={feature.name} className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-1 w-16">
+                <div className="flex-shrink-0 mt-1">
                   {typeof feature.pro === 'boolean' ? (
                     feature.pro ? (
                       <Check className="h-4 w-4 text-green-500" />
