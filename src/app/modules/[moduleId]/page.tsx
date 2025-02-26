@@ -741,6 +741,111 @@ export default function ModulePage({ params }: PageProps) {
               </div>
             </div>
             
+            {/* Selected Note or Create New Note Section */}
+            {isCreatingNote && (
+              <div className="mt-8 mb-6 bg-background-card rounded-xl shadow-sm border border-border">
+                <div className="border-b border-border p-4 flex justify-between items-center">
+                  <div className="flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-primary" />
+                    <h2 className="text-xl font-semibold">Create New Note</h2>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSaveNote}
+                      variant="default"
+                      size="sm"
+                      className="gap-2"
+                      disabled={isSaving}
+                    >
+                      <Save className="h-4 w-4" />
+                      {isSaving ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsCreatingNote(false);
+                        setSelectedNote(null);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Title input */}
+                <div className="border-b border-border p-4">
+                  <div className="flex flex-col space-y-3">
+                    <label className="text-sm font-medium">Title</label>
+                    <Input
+                      value={editedNoteTitle}
+                      onChange={(e) => setEditedNoteTitle(e.target.value)}
+                      placeholder="Note title"
+                      className="text-text dark:text-white dark:placeholder:text-gray-400"
+                    />
+                  </div>
+                </div>
+                
+                {/* Tags section */}
+                <div className="border-b border-border p-4">
+                  <div className="flex flex-col space-y-3">
+                    <label className="text-sm font-medium flex items-center">
+                      <Tag className="h-4 w-4 mr-1" />
+                      Tags
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {editedNoteTags.map(tag => (
+                        <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                          {tag}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveTag(tag);
+                            }}
+                            className="hover:text-destructive ml-1"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newTagInput}
+                        onChange={(e) => setNewTagInput(e.target.value)}
+                        placeholder="Add a tag..."
+                        className="text-text dark:text-white dark:placeholder:text-gray-400"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddTag();
+                          }
+                        }}
+                      />
+                      <Button
+                        onClick={handleAddTag}
+                        type="button"
+                        variant="outline"
+                        disabled={!newTagInput.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Note content editor */}
+                <div className="p-4">
+                  <DraftEditor
+                    initialContent={editedNoteContent}
+                    onChange={setEditedNoteContent}
+                  />
+                </div>
+              </div>
+            )}
+            
             {/* Notes Section - Enhanced with full functionality */}
             <div className="mt-8">
               <div className="bg-background-card rounded-xl shadow-sm border border-border overflow-hidden">
@@ -868,18 +973,18 @@ export default function ModulePage({ params }: PageProps) {
               </div>
             </div>
             
-            {/* Selected Note or Create New Note Section */}
-            {(selectedNote || isCreatingNote) && (
+            {/* Selected Note Section (when editing or viewing an existing note) */}
+            {selectedNote && !isCreatingNote && (
               <div className="mt-6 bg-background-card rounded-xl shadow-sm border border-border">
                 <div className="border-b border-border p-4 flex justify-between items-center">
                   <div className="flex items-center">
                     <FileText className="h-5 w-5 mr-2 text-primary" />
                     <h2 className="text-xl font-semibold">
-                      {isCreatingNote ? "Create New Note" : isEditing ? "Edit Note" : `Note: ${selectedNote?.title}`}
+                      {isEditing ? "Edit Note" : `Note: ${selectedNote?.title}`}
                     </h2>
                   </div>
                   <div className="flex gap-2">
-                    {isEditing || isCreatingNote ? (
+                    {isEditing ? (
                       <>
                         <Button
                           onClick={handleSaveNote}
@@ -893,16 +998,11 @@ export default function ModulePage({ params }: PageProps) {
                         </Button>
                         <Button
                           onClick={() => {
-                            if (isCreatingNote) {
-                              setIsCreatingNote(false);
-                              setSelectedNote(null);
-                            } else {
-                              setIsEditing(false);
-                              if (selectedNote) {
-                                setEditedNoteContent(selectedNote.content);
-                                setEditedNoteTitle(selectedNote.title);
-                                setEditedNoteTags([...selectedNote.tags]);
-                              }
+                            setIsEditing(false);
+                            if (selectedNote) {
+                              setEditedNoteContent(selectedNote.content);
+                              setEditedNoteTitle(selectedNote.title);
+                              setEditedNoteTags([...selectedNote.tags]);
                             }
                           }}
                           variant="outline"
@@ -939,7 +1039,7 @@ export default function ModulePage({ params }: PageProps) {
                 </div>
                 
                 {/* Title input when editing */}
-                {(isEditing || isCreatingNote) && (
+                {isEditing && (
                   <div className="border-b border-border p-4">
                     <div className="flex flex-col space-y-3">
                       <label className="text-sm font-medium">Title</label>
@@ -954,7 +1054,7 @@ export default function ModulePage({ params }: PageProps) {
                 )}
                 
                 {/* Tags section when editing */}
-                {(isEditing || isCreatingNote) && (
+                {isEditing && (
                   <div className="border-b border-border p-4">
                     <div className="flex flex-col space-y-3">
                       <label className="text-sm font-medium flex items-center">
@@ -1003,89 +1103,33 @@ export default function ModulePage({ params }: PageProps) {
                   </div>
                 )}
                 
-                {/* Note content */}
-                <div className="p-6">
-                  <article className="prose prose-lg max-w-none dark:prose-invert editor-container max-h-[400px] overflow-y-auto">
+                {/* Note content - either editor or display */}
+                <div className="p-4">
+                  {isEditing ? (
                     <DraftEditor
-                      initialContent={isCreatingNote ? '' : (isEditing ? editedNoteContent : selectedNote?.content || '')}
-                      readOnly={!isEditing && !isCreatingNote}
-                      onChange={content => setEditedNoteContent(content)}
+                      initialContent={editedNoteContent}
+                      onChange={setEditedNoteContent}
                     />
-                  </article>
+                  ) : (
+                    <div>
+                      {/* Display tags */}
+                      {selectedNote.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-4">
+                          {selectedNote.tags.map(tag => (
+                            <Badge key={tag} variant="secondary">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Display content */}
+                      <div className="prose dark:prose-dark max-w-none text-text">
+                        <div dangerouslySetInnerHTML={{ __html: selectedNote.content }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
-                {/* Formula extraction section */}
-                {!isCreatingNote && selectedNote && (
-                  <div className="border-t border-border p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Calculator className="h-5 w-5 mr-2 text-primary" />
-                        <h3 className="font-medium">Formula Extraction</h3>
-                      </div>
-                      <Link href={`/modules/${moduleId}/formulas`}>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <span>View Formula Sheet</span>
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </div>
-                    <p className="text-sm text-text-light mt-2 mb-3">
-                      Extract mathematical formulas from your notes to create a comprehensive formula sheet.
-                      {!isPremium && <span className="text-primary font-medium"> Premium feature</span>}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              onClick={isPremium ? () => router.push(`/modules/${moduleId}/formulas`) : showPremiumModal}
-                              className="gap-2"
-                            >
-                              <Calculator className="h-4 w-4" />
-                              Extract Formulas
-                              {!isPremium && <Crown className="h-3 w-3 ml-1" />}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {isPremium 
-                              ? <p>Generate a formula sheet from all your notes</p>
-                              : <p>Upgrade to premium to extract formulas</p>
-                            }
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    
-                    <div className="bg-primary/5 rounded-md p-3 text-sm mt-2">
-                      <h4 className="font-medium flex items-center gap-1 mb-1">
-                        <Lightbulb className="h-4 w-4 text-primary" />
-                        How to write mathematical formulas
-                      </h4>
-                      <p className="mb-2 text-xs">
-                        Use LaTeX syntax in your notes to include mathematical formulas that will be extracted automatically.
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                        <div className="bg-background-card p-2 rounded-md">
-                          <span className="font-medium">Inline formulas:</span>
-                          <div className="mt-1 p-1 bg-background rounded-md">
-                            Use single dollar signs: $...$
-                          </div>
-                        </div>
-                        <div className="bg-background-card p-2 rounded-md">
-                          <span className="font-medium">Block formulas:</span>
-                          <div className="mt-1 p-1 bg-background rounded-md">
-                            Use double dollar signs: $$...$$
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mt-2 text-xs text-primary">
-                        After saving your notes with LaTeX formulas, click "Extract Formulas" to generate your formula sheet.
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
             
