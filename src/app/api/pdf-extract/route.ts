@@ -8,7 +8,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
-export const maxDuration = 180; // 3 minutes
+export const maxDuration = 60; // Maximum allowed for hobby plan (60 seconds)
 
 // Prevent Next.js from executing this route at build time
 export function GET() {
