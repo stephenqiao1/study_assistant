@@ -9,6 +9,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import 'draft-js/dist/Draft.css'
+import { Pluggable } from 'unified'
 
 interface TextEditorProps {
   value: string
@@ -59,7 +60,7 @@ const TextEditor: FC<TextEditorProps> = ({ value, onChange, disabled }) => {
       {isPreview ? (
         <div className="p-4 min-h-[400px] prose prose-lg max-w-none dark:prose-invert">
           <ReactMarkdown
-            remarkPlugins={[remarkMath]}
+            remarkPlugins={[remarkMath as Pluggable]}
             rehypePlugins={[rehypeKatex]}
             className="leading-relaxed"
           >

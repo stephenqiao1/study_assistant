@@ -28,9 +28,6 @@ export interface AggregatedData {
 export interface TeachBackMetrics {
   totalSessions: number
   averageGrade: number
-  averageClarity: number
-  averageCompleteness: number
-  averageCorrectness: number
   improvement: number // percentage improvement from last period
   sessionFrequency: number // sessions per day/week/month
 }

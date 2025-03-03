@@ -139,7 +139,7 @@ const AudioRecorder: FC<AudioRecorderProps> = ({
             <div className="text-2xl font-bold text-blue-500 animate-pulse">
               {countdown}
             </div>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-500 dark:text-gray-300">
               Get ready to speak...
             </span>
           </div>

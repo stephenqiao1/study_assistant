@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { useState, useEffect, Suspense } from 'react'
+import { createClient } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import { BookOpen, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { useRequireNoAuth } from '@/hooks/useRequireAuth'
+import { useSearchParams } from 'next/navigation'
+import { useToast } from '@/components/ui/use-toast'
 
-export default function Login() {
-  const { session, isLoading: isLoadingAuth } = useRequireNoAuth()
+// Separate component that uses useSearchParams
+function LoginForm() {
+  const { session, isLoading: isLoadingAuth } = useRequireNoAuth('/')
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -19,8 +22,36 @@ export default function Login() {
   const [showVerificationScreen, setShowVerificationScreen] = useState(false)
   const [unverifiedEmail, setUnverifiedEmail] = useState('')
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  
+  // Get Supabase client
+  const [supabase, setSupabase] = useState<any>(null)
+  
+  useEffect(() => {
+    const initSupabase = async () => {
+      const client = await createClient()
+      setSupabase(client)
+    }
+    
+    initSupabase()
+  }, [])
+  
+  // Check URL for error params
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam === 'session') {
+      setMessage({
+        type: 'error',
+        text: 'Authentication session expired. Please sign in again.'
+      })
+    }
+    
+  }, [searchParams])
 
   const handleResendVerificationEmail = async () => {
+    if (!supabase) return
+    
     setIsResendingEmail(true)
     setMessage(null)
 
@@ -52,6 +83,8 @@ export default function Login() {
   }
   
   const handleContinueWithoutVerification = async () => {
+    if (!supabase) return
+    
     setIsLoading(true);
     try {
       // Store the unverified email in sessionStorage
@@ -77,6 +110,8 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!supabase) return
+    
     setIsLoading(true)
     setMessage(null)
 
@@ -101,30 +136,12 @@ export default function Login() {
       }
 
       if (data?.session) {
-        try {
-          // Set the session in Supabase client
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          })
-
-          if (sessionError) {
-            console.error('Error setting session:', sessionError)
-            throw sessionError
-          }
-          
-          // Add a small delay to ensure session is properly set
-          await new Promise(resolve => setTimeout(resolve, 500))
-          
-          // Redirect to modules
+        
+        // Add a small delay to ensure the cookie is set before redirecting
+        setTimeout(() => {
+          // Hard redirect to modules page to ensure fresh server component load
           window.location.href = '/modules'
-        } catch (sessionError) {
-          console.error('Session setup error:', sessionError)
-          setMessage({
-            type: 'error',
-            text: 'Error setting up session. Please try again.'
-          })
-        }
+        }, 500)
       } else {
         console.warn('No session data received after successful login')
         setMessage({
@@ -144,14 +161,8 @@ export default function Login() {
   }
 
   const handleResetPassword = async () => {
-    if (!formData.email) {
-      setMessage({
-        type: 'error',
-        text: 'Please enter your email address'
-      })
-      return
-    }
-
+    if (!formData.email || !supabase) return
+    
     setIsLoading(true)
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
@@ -324,5 +335,19 @@ export default function Login() {
         </p>
       </div>
     </div>
+  )
+}
+
+// Main component with Suspense boundary
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="container flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h2 className="text-2xl font-semibold">Loading...</h2>
+        <p className="text-muted-foreground">Please wait while we prepare the login page</p>
+      </div>
+    </div>}>
+      <LoginForm />
+    </Suspense>
   )
 }

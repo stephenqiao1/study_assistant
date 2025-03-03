@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return new NextResponse('Invalid signature', { status: 400 })
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     switch (event.type) {

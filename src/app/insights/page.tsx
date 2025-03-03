@@ -8,13 +8,11 @@ import { StudySession, TimePeriod, TeachBackSession } from '@/types/insights'
 import { aggregateSessions, calculateSummaryMetrics } from '@/utils/aggregateSessions'
 import StudyTimeChart from '@/components/insights/StudyTimeChart'
 import TeachBackChart from '@/components/insights/TeachBackChart'
-import FlashcardChart from '@/components/insights/FlashcardChart'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ArrowUp, ArrowDown, Clock, BookOpen, TrendingUp, Brain, Target, Lock, Layers, CheckCircle2, BarChart } from 'lucide-react'
-import { UpgradeBanner } from '@/components/subscription/UpgradeBanner'
+import { ArrowUp, ArrowDown, Clock, BookOpen, TrendingUp, Brain, Target, BarChart, Calendar, History } from 'lucide-react'
 import type { Flashcard } from '@/utils/aggregateSessions'
 
 interface StudyDuration {
@@ -31,6 +29,16 @@ interface ActivityBreakdown {
 interface SessionWithDurations extends StudySession {
   activityBreakdown: ActivityBreakdown
   study_durations?: StudyDuration[]
+}
+
+// Define extended TeachBackMetrics interface with optional extra properties
+interface ExtendedTeachBackMetrics {
+  averageGrade?: number;
+  improvement?: number;
+  topTopic?: string;
+  topTopicCount?: number;
+  totalSessions?: number;
+  sessionFrequency?: number;
 }
 
 export default function LearningInsights() {
@@ -51,10 +59,12 @@ export default function LearningInsights() {
   }, [session, isLoadingAuth, router])
 
   useEffect(() => {
-    const fetchData = async () => {
+    // Fetch data when component mounts
+    const fetchStudyData = async () => {
       if (!session?.user?.id) return
-
-      const supabase = createClient()
+      
+      setIsLoading(true)
+      const supabase = await createClient()
       
       try {
         // Fetch subscription tier
@@ -135,25 +145,61 @@ export default function LearningInsights() {
       }
     }
 
-    fetchData()
+    fetchStudyData()
   }, [session?.user?.id])
 
   const aggregatedData = aggregateSessions(sessions, period)
   const metrics = calculateSummaryMetrics(sessions, aggregatedData, teachBacks, flashcards)
 
-  // Calculate activity breakdown totals (in minutes)
-  const activityTotals = sessions.reduce((totals, session) => ({
+  // Filter sessions based on selected time period
+  const filteredSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.started_at);
+    const now = new Date();
+    
+    if (period === 'day') {
+      // Last 24 hours
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      return sessionDate >= yesterday;
+    } else if (period === 'week') {
+      // Last 7 days
+      const lastWeek = new Date(now);
+      lastWeek.setDate(now.getDate() - 7);
+      return sessionDate >= lastWeek;
+    } else if (period === 'month') {
+      // Last 30 days
+      const lastMonth = new Date(now);
+      lastMonth.setDate(now.getDate() - 30);
+      return sessionDate >= lastMonth;
+    }
+    return true;
+  });
+
+  // Calculate period-specific metrics
+  const totalStudyTime = filteredSessions.reduce((sum, session) => sum + Math.round((session.duration || 0) / 60), 0);
+  const sessionCount = filteredSessions.length;
+  const avgSessionDuration = sessionCount > 0 ? Math.round(totalStudyTime / sessionCount) : 0;
+
+  // Calculate activity breakdown totals for filtered sessions (in minutes)
+  const activityTotals = filteredSessions.reduce((totals, session) => ({
     module: totals.module + Math.round((session.activityBreakdown?.module || 0) / 60),
     teach_back: totals.teach_back + Math.round((session.activityBreakdown?.teach_back || 0) / 60),
     flashcards: totals.flashcards + Math.round((session.activityBreakdown?.flashcards || 0) / 60)
   }), { module: 0, teach_back: 0, flashcards: 0 })
 
   const hasTeachBackAnalytics = subscriptionTier === 'basic' || subscriptionTier === 'pro'
-  const hasFlashcardAnalytics = subscriptionTier === 'basic' || subscriptionTier === 'pro'
+  const _hasFlashcardAnalytics = subscriptionTier === 'basic' || subscriptionTier === 'pro'
 
   // Show loading state while checking auth
   if (isLoadingAuth) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-pulse">
+          <div className="h-6 w-24 bg-gray-300 dark:bg-gray-700 rounded mb-4"></div>
+          <div className="h-4 w-48 bg-gray-200 dark:bg-gray-800 rounded"></div>
+        </div>
+      </div>
+    )
   }
 
   // Don't render anything if not authenticated (will redirect)
@@ -166,7 +212,12 @@ export default function LearningInsights() {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="flex justify-center items-center min-h-screen">Loading your insights...</div>
+        <div className="flex justify-center items-center min-h-screen">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-300">Loading your insights...</p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -174,292 +225,307 @@ export default function LearningInsights() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pt-24 pb-8 max-w-6xl mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-text">Learning Insights</h1>
-          <p className="text-text-light mt-2">Track your study progress and performance over time</p>
-        </div>
+      <main className="pt-24 pb-16 max-w-6xl mx-auto px-4">
+        {/* Header Section */}
+        <div className="mb-10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Learning Insights</h1>
+              <p className="text-gray-700 dark:text-gray-200 mt-2">Track your study progress and performance over time</p>
+            </div>
 
-        {/* Time Period Filters */}
-        <div className="flex gap-4 mb-8">
-          {(['day', 'week', 'month'] as TimePeriod[]).map(p => (
-            <Button
-              key={p}
-              variant={period === p ? 'default' : 'outline'}
-              onClick={() => setPeriod(p)}
-            >
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </Button>
-          ))}
-        </div>
+            {/* Time Period Filters */}
+            <div className="mt-4 md:mt-0 flex gap-2 bg-background-card p-1 rounded-lg border border-border">
+              {(['day', 'week', 'month'] as TimePeriod[]).map(p => (
+                <Button
+                  key={p}
+                  variant={period === p ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPeriod(p)}
+                  className={period === p ? '' : 'text-gray-500 dark:text-gray-400'}
+                >
+                  {p === 'day' && <History className="h-4 w-4 mr-1" />}
+                  {p === 'week' && <Calendar className="h-4 w-4 mr-1" />}
+                  {p === 'month' && <Calendar className="h-4 w-4 mr-1" />}
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </Button>
+              ))}
+            </div>
+          </div>
 
-        {/* Summary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-text-light">Total Study Time</p>
-                <p className="text-2xl font-bold text-text mt-1">
-                  {Math.round(metrics.totalStudyTime)} mins
-                </p>
-                <div className="mt-2 space-y-1 text-sm">
-                  <p className="text-blue-500">📚 Modules: {activityTotals.module} mins</p>
-                  <p className="text-green-500">🎓 Teach-Back: {activityTotals.teach_back} mins</p>
-                  <p className="text-purple-500">🔄 Flashcards: {activityTotals.flashcards} mins</p>
+          {/* Insight Cards - Progress Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-6 border-l-4 border-l-blue-500 dark:border-l-blue-400">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center">
+                    <Clock className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-2" />
+                    Total Study Time
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                    {totalStudyTime} mins
+                  </p>
+                  <div className="mt-3 space-y-1 text-sm">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 mr-2"></div>
+                      <p className="text-gray-600 dark:text-gray-300">Modules: <span className="font-medium">{activityTotals.module} mins</span></p>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2"></div>
+                      <p className="text-gray-600 dark:text-gray-300">Teach-Back: <span className="font-medium">{activityTotals.teach_back} mins</span></p>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-purple-500 dark:bg-purple-400 mr-2"></div>
+                      <p className="text-gray-600 dark:text-gray-300">Flashcards: <span className="font-medium">{activityTotals.flashcards} mins</span></p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <Clock className="h-5 w-5 text-primary" />
-            </div>
-          </Card>
+            </Card>
 
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-text-light">Total Sessions</p>
-                <p className="text-2xl font-bold text-text mt-1">
-                  {metrics.sessionCount}
-                </p>
-                {metrics.teachBack && (
-                  <p className="text-sm text-text-light mt-2">
-                    Including {metrics.teachBack.totalSessions} teach-back sessions
+            <Card className="p-6 border-l-4 border-l-green-500 dark:border-l-green-400">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center">
+                    <BookOpen className="h-4 w-4 text-green-500 dark:text-green-400 mr-2" />
+                    Total Sessions
                   </p>
-                )}
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                    {sessionCount}
+                  </p>
+                  {metrics.teachBack && (
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2"></div>
+                      Including {metrics.teachBack.totalSessions} teach-back sessions
+                    </p>
+                  )}
+                </div>
               </div>
-              <BookOpen className="h-5 w-5 text-primary" />
-            </div>
-          </Card>
+            </Card>
 
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-text-light">Average Duration</p>
-                <p className="text-2xl font-bold text-text mt-1">
-                  {Math.round(metrics.avgSessionDuration)} mins
-                </p>
-                {metrics.improvement && (
-                  <div className="flex items-center mt-2 text-sm">
-                    {metrics.improvement > 0 ? (
-                      <>
-                        <ArrowUp className="h-4 w-4 text-green-500 mr-1" />
-                        <span className="text-green-500">{Math.round(metrics.improvement)}% from last {period}</span>
-                      </>
-                    ) : (
-                      <>
-                        <ArrowDown className="h-4 w-4 text-red-500 mr-1" />
-                        <span className="text-red-500">{Math.round(Math.abs(metrics.improvement))}% from last {period}</span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-              <TrendingUp className="h-5 w-5 text-primary" />
-            </div>
-          </Card>
-        </div>
-
-        {/* Flashcard Metrics */}
-        {metrics.flashcards && (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4">Flashcard Performance</h2>
-            {hasFlashcardAnalytics ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <Card className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm text-text-light">Total Reviewed</p>
-                        <p className="text-2xl font-bold text-text mt-1">
-                          {metrics.flashcards.totalReviewed}
-                        </p>
-                        <p className="text-sm text-text-light mt-2">
-                          Over {metrics.flashcards.sessionsCount} sessions
-                        </p>
-                      </div>
-                      <Layers className="h-5 w-5 text-primary" />
-                    </div>
-                  </Card>
-
-                  <Card className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm text-text-light">Accuracy Rate</p>
-                        <p className="text-2xl font-bold text-text mt-1">
-                          {Math.round(metrics.flashcards.accuracyRate)}%
-                        </p>
-                        {metrics.flashcards.improvement && (
-                          <div className="flex items-center mt-2 text-sm">
-                            {metrics.flashcards.improvement > 0 ? (
-                              <>
-                                <ArrowUp className="h-4 w-4 text-green-500 mr-1" />
-                                <span className="text-green-500">{Math.round(metrics.flashcards.improvement)}% improvement</span>
-                              </>
-                            ) : (
-                              <>
-                                <ArrowDown className="h-4 w-4 text-red-500 mr-1" />
-                                <span className="text-red-500">{Math.round(Math.abs(metrics.flashcards.improvement))}% decrease</span>
-                              </>
-                            )}
+            <Card className="p-6 border-l-4 border-l-purple-500 dark:border-l-purple-400">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center">
+                    <TrendingUp className="h-4 w-4 text-purple-500 dark:text-purple-400 mr-2" />
+                    Average Duration
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                    {avgSessionDuration} mins
+                  </p>
+                  {metrics.improvement && (
+                    <div className="mt-3">
+                      <div className="flex items-center text-sm">
+                        {metrics.improvement > 0 ? (
+                          <div className="flex items-center px-2 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded">
+                            <ArrowUp className="h-3 w-3 mr-1" />
+                            <span>{Math.round(metrics.improvement)}% from last {period}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded">
+                            <ArrowDown className="h-3 w-3 mr-1" />
+                            <span>{Math.round(Math.abs(metrics.improvement))}% from last {period}</span>
                           </div>
                         )}
                       </div>
-                      <CheckCircle2 className="h-5 w-5 text-primary" />
                     </div>
-                  </Card>
-
-                  <Card className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm text-text-light">Review Frequency</p>
-                        <p className="text-2xl font-bold text-text mt-1">
-                          {metrics.flashcards.reviewFrequency} / {period}
-                        </p>
-                        <p className="text-sm text-text-light mt-2">
-                          ~{Math.round(metrics.flashcards.cardsPerSession)} cards per session
-                        </p>
-                      </div>
-                      <BarChart className="h-5 w-5 text-primary" />
-                    </div>
-                  </Card>
+                  )}
                 </div>
-
-                {/* Flashcard Charts */}
-                <FlashcardChart flashcardMetrics={metrics.flashcards} />
-              </>
-            ) : (
-              <div className="bg-background-card rounded-xl p-8 border border-border">
-                <div className="flex items-center gap-4">
-                  <Lock className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="text-lg font-semibold mb-1">Premium Feature</h3>
-                    <p className="text-text-light mb-4">
-                      Upgrade to Basic or Pro to unlock detailed flashcard analytics and track your learning progress.
-                    </p>
-                    <UpgradeBanner type="study" />
+              </div>
+            </Card>
+          </div>
+        </div>
+        
+        {/* Data Visualization Section */}
+        <section className="mb-14">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+              <BarChart className="h-5 w-5 text-primary mr-2" />
+              Learning Trends & Visualizations
+            </h2>
+          </div>
+          
+          {/* Main Chart Area - Study Time Trends */}
+          <div className="mb-8">
+            <div className="bg-background-card rounded-xl border border-border overflow-hidden">
+              <div className="p-5 border-b border-border">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mr-3">
+                      <Clock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Study Time Distribution</h3>
+                  </div>
+                  <div className="mt-2 sm:mt-0 text-sm text-gray-500 dark:text-gray-400">
+                    {period === 'day' ? 'Last 24 hours' : period === 'week' ? 'Last 7 days' : 'Last 30 days'}
                   </div>
                 </div>
               </div>
-            )}
+              <div className="p-4 h-72">
+                <StudyTimeChart aggregatedData={aggregatedData} />
+              </div>
+            </div>
           </div>
-        )}
-
-        {/* Teach-Back Metrics */}
+          
+          {/* TeachBack Performance Chart */}
+          {hasTeachBackAnalytics && metrics.teachBack && teachBacks.length > 0 ? (
+            <div className="bg-background-card rounded-xl border border-border overflow-hidden">
+              <div className="p-5 border-b border-border">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mr-3">
+                      <Brain className="h-4 w-4 text-green-500 dark:text-green-400" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Teach-Back Performance</h3>
+                  </div>
+                  <div className="mt-2 sm:mt-0 sm:flex sm:items-center gap-4">
+                    <div className="flex items-center bg-background/50 px-2 py-1 rounded text-sm">
+                      <span className="text-gray-700 dark:text-gray-300 mr-2">Avg. Grade:</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{Math.round(metrics.teachBack?.averageGrade || 0)}%</span>
+                    </div>
+                    {metrics.teachBack?.improvement !== undefined && (
+                      <div className="flex items-center">
+                        <span className="text-gray-700 dark:text-gray-300 mr-2">Trend:</span>
+                        {metrics.teachBack?.improvement > 0 ? (
+                          <div className="flex items-center text-green-600 dark:text-green-400">
+                            <ArrowUp className="h-3 w-3 mr-1" />
+                            <span>{Math.round(metrics.teachBack?.improvement)}%</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center text-red-600 dark:text-red-400">
+                            <ArrowDown className="h-3 w-3 mr-1" />
+                            <span>{Math.round(Math.abs(metrics.teachBack?.improvement || 0))}%</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 h-72">
+                <TeachBackChart teachBacks={teachBacks} period={period} />
+              </div>
+            </div>
+          ) : hasTeachBackAnalytics ? (
+            <div className="bg-background-card rounded-xl border border-border overflow-hidden">
+              <div className="p-5 border-b border-border">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mr-3">
+                    <Brain className="h-4 w-4 text-green-500 dark:text-green-400" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Teach-Back Performance</h3>
+                </div>
+              </div>
+              <div className="p-8 text-center">
+                <p className="text-gray-500 dark:text-gray-400">You haven't completed any teach-back sessions yet.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Use the teach-back feature to improve your recall and understanding.</p>
+              </div>
+            </div>
+          ) : null}
+        </section>
+        
+        {/* Detailed Metrics Sections */}
         {metrics.teachBack && (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4">Teach-Back Performance</h2>
-            {hasTeachBackAnalytics ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-6">
-                  <div className="flex items-start justify-between">
+          <section className="mb-10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+                <Target className="h-5 w-5 text-primary mr-2" />
+                Detailed Performance Metrics
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="overflow-hidden">
+                <div className="p-4 border-b border-border bg-muted/30">
+                  <h3 className="font-semibold flex items-center">
+                    <Brain className="h-4 w-4 text-green-500 dark:text-green-400 mr-2" />
+                    Teach-Back Grade
+                  </h3>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-3">
                     <div>
-                      <p className="text-sm text-text-light">Overall Grade</p>
-                      <p className="text-2xl font-bold text-text mt-1">
-                        {Math.round(metrics.teachBack.averageGrade)}%
-                      </p>
-                      {metrics.teachBack.improvement && (
-                        <div className="flex items-center mt-2 text-sm">
-                          {metrics.teachBack.improvement > 0 ? (
-                            <>
-                              <ArrowUp className="h-4 w-4 text-green-500 mr-1" />
-                              <span className="text-green-500">{Math.round(metrics.teachBack.improvement)}% improvement</span>
-                            </>
+                      <div className="flex items-baseline mt-1">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {Math.round(metrics.teachBack?.averageGrade || 0)}%
+                        </p>
+                      </div>
+                      {metrics.teachBack?.improvement !== undefined && (
+                        <div className="mt-2">
+                          {metrics.teachBack?.improvement > 0 ? (
+                            <div className="inline-flex items-center text-sm px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded">
+                              <ArrowUp className="h-3 w-3 mr-1" />
+                              <span>{Math.round(metrics.teachBack?.improvement)}% improvement</span>
+                            </div>
                           ) : (
-                            <>
-                              <ArrowDown className="h-4 w-4 text-red-500 mr-1" />
-                              <span className="text-red-500">{Math.round(Math.abs(metrics.teachBack.improvement))}% decrease</span>
-                            </>
+                            <div className="inline-flex items-center text-sm px-2 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded">
+                              <ArrowDown className="h-3 w-3 mr-1" />
+                              <span>{Math.round(Math.abs(metrics.teachBack?.improvement || 0))}% decrease</span>
+                            </div>
                           )}
                         </div>
                       )}
                     </div>
-                    <Target className="h-5 w-5 text-primary" />
-                  </div>
-                </Card>
-
-                <Card className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-text-light">Session Frequency</p>
-                      <p className="text-2xl font-bold text-text mt-1">
-                        {metrics.teachBack.sessionFrequency.toFixed(1)} / {period}
-                      </p>
-                    </div>
-                    <Brain className="h-5 w-5 text-primary" />
-                  </div>
-                </Card>
-
-                <Card className="p-6">
-                  <div>
-                    <p className="text-sm text-text-light mb-2">Component Scores</p>
-                    <div className="space-y-2">
-                      <div>
-                        <div className="flex justify-between text-sm">
-                          <span>Clarity</span>
-                          <span className="font-medium">{Math.round(metrics.teachBack.averageClarity)}/10</span>
-                        </div>
-                        <div className="h-2 bg-blue-100 rounded-full mt-1">
-                          <div 
-                            className="h-full bg-blue-500 rounded-full"
-                            style={{ width: `${metrics.teachBack.averageClarity * 10}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm">
-                          <span>Completeness</span>
-                          <span className="font-medium">{Math.round(metrics.teachBack.averageCompleteness)}/10</span>
-                        </div>
-                        <div className="h-2 bg-green-100 rounded-full mt-1">
-                          <div 
-                            className="h-full bg-green-500 rounded-full"
-                            style={{ width: `${metrics.teachBack.averageCompleteness * 10}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm">
-                          <span>Correctness</span>
-                          <span className="font-medium">{Math.round(metrics.teachBack.averageCorrectness)}/10</span>
-                        </div>
-                        <div className="h-2 bg-purple-100 rounded-full mt-1">
-                          <div 
-                            className="h-full bg-purple-500 rounded-full"
-                            style={{ width: `${metrics.teachBack.averageCorrectness * 10}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            ) : (
-              <div className="bg-background-card rounded-xl p-8 border border-border">
-                <div className="flex items-center gap-4">
-                  <Lock className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="text-lg font-semibold mb-1">Premium Feature</h3>
-                    <p className="text-text-light mb-4">
-                      Upgrade to Basic or Pro to unlock detailed teach-back analytics and track your learning progress.
-                    </p>
-                    <UpgradeBanner type="study" />
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Study Time Chart */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4">Study Time Trends</h2>
-          <StudyTimeChart aggregatedData={aggregatedData} />
-        </div>
-
-        {/* Teach-Back Chart */}
-        {teachBacks.length > 0 && hasTeachBackAnalytics && (
-          <div>
-            <h2 className="text-xl font-bold mb-4">Teach-Back Grade Trends</h2>
-            <TeachBackChart teachBacks={teachBacks} period={period} />
-          </div>
+              </Card>
+              
+              <Card className="overflow-hidden">
+                <div className="p-4 border-b border-border bg-muted/30">
+                  <h3 className="font-semibold flex items-center">
+                    <Brain className="h-4 w-4 text-green-500 dark:text-green-400 mr-2" />
+                    Teach-Back Frequency
+                  </h3>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-baseline mt-1">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {metrics.teachBack?.sessionFrequency?.toFixed(1)}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                          per {period}
+                        </p>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                        Total: {metrics.teachBack?.totalSessions} sessions
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+              
+              <Card className="overflow-hidden">
+                <div className="p-4 border-b border-border bg-muted/30">
+                  <h3 className="font-semibold flex items-center">
+                    <Brain className="h-4 w-4 text-green-500 dark:text-green-400 mr-2" />
+                    Top Teach-Back Topic
+                  </h3>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      {metrics.teachBack && 'topTopic' in metrics.teachBack && metrics.teachBack.topTopic ? (
+                        <>
+                          <p className="text-lg font-medium text-gray-900 dark:text-white line-clamp-2">
+                            {(metrics.teachBack as ExtendedTeachBackMetrics).topTopic}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                            {(metrics.teachBack as ExtendedTeachBackMetrics).topTopicCount} sessions
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Not enough data yet
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </section>
         )}
       </main>
       <Footer />

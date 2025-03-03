@@ -59,21 +59,16 @@ export function calculateTeachBackMetrics(
   )
 
   // Calculate average grade
-  const totalGrade = teachBacks.reduce((sum, tb) => sum + tb.grade, 0)
+  const totalGrade = teachBacks.reduce((sum, tb) => sum + (tb.grade || 0), 0)
   const averageGrade = totalGrade / teachBacks.length
-
-  // Calculate average component scores
-  const totalClarity = teachBacks.reduce((sum, tb) => sum + tb.feedback.clarity.score, 0)
-  const totalCompleteness = teachBacks.reduce((sum, tb) => sum + tb.feedback.completeness.score, 0)
-  const totalCorrectness = teachBacks.reduce((sum, tb) => sum + tb.feedback.correctness.score, 0)
 
   // Calculate improvement by comparing average grades
   const midPoint = Math.floor(teachBacks.length / 2)
   const firstHalf = sortedTeachBacks.slice(0, midPoint)
   const secondHalf = sortedTeachBacks.slice(midPoint)
 
-  const firstHalfAvg = firstHalf.reduce((sum, tb) => sum + tb.grade, 0) / firstHalf.length
-  const secondHalfAvg = secondHalf.reduce((sum, tb) => sum + tb.grade, 0) / secondHalf.length
+  const firstHalfAvg = firstHalf.reduce((sum, tb) => sum + (tb.grade || 0), 0) / firstHalf.length
+  const secondHalfAvg = secondHalf.reduce((sum, tb) => sum + (tb.grade || 0), 0) / secondHalf.length
 
   // Calculate session frequency based on the current period
   const now = new Date()
@@ -101,13 +96,15 @@ export function calculateTeachBackMetrics(
     return date >= periodStart && date <= periodEnd
   }).length
 
+  // Calculate improvement with safeguard against division by zero
+  const improvementValue = firstHalfAvg > 0 
+    ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 
+    : 0
+
   return {
     totalSessions: teachBacks.length,
     averageGrade: averageGrade,
-    averageClarity: totalClarity / teachBacks.length,
-    averageCompleteness: totalCompleteness / teachBacks.length,
-    averageCorrectness: totalCorrectness / teachBacks.length,
-    improvement: ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100,
+    improvement: improvementValue,
     sessionFrequency: sessionsInPeriod
   }
 }
@@ -252,11 +249,25 @@ export function calculateSummaryMetrics(
       ((currentPeriodTime - previousPeriodTime) / previousPeriodTime) * 100 : 0
   }
 
-  // Calculate teach-back metrics if available
-  const teachBackMetrics = teachBacks ? calculateTeachBackMetrics(teachBacks, 'week') : undefined
+  // Calculate teach-back metrics if available and has valid data
+  let teachBackMetrics: TeachBackMetrics | undefined = undefined
+  if (teachBacks && teachBacks.length > 0) {
+    try {
+      teachBackMetrics = calculateTeachBackMetrics(teachBacks, 'week')
+    } catch (error) {
+      console.error('Error calculating teach-back metrics:', error)
+    }
+  }
 
-  // Calculate flashcard metrics if available
-  const flashcardMetrics = flashcards ? calculateFlashcardMetrics(flashcards, 'week') : undefined
+  // Calculate flashcard metrics if available and has valid data
+  let flashcardMetrics: FlashcardMetrics | undefined = undefined
+  if (flashcards && flashcards.length > 0) {
+    try {
+      flashcardMetrics = calculateFlashcardMetrics(flashcards, 'week')
+    } catch (error) {
+      console.error('Error calculating flashcard metrics:', error)
+    }
+  }
 
   return {
     totalStudyTime,

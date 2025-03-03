@@ -145,11 +145,11 @@ export default function PricingTable() {
         {/* Free tier */}
         <Card className="flex flex-col p-8">
           <div className="mb-8">
-            <h3 className="text-xl font-semibold text-text">Free</h3>
-            <p className="mt-4 text-text-light">Perfect for trying out our features</p>
+            <h3 className="text-xl font-semibold text-text dark:text-white">Free</h3>
+            <p className="mt-4 text-text-light dark:text-gray-300">Perfect for trying out our features</p>
             <p className="mt-6">
-              <span className="text-4xl font-bold text-text">$0</span>
-              <span className="text-text-light">/mo</span>
+              <span className="text-4xl font-bold text-text dark:text-white">$0</span>
+              <span className="text-text-light dark:text-gray-300">/mo</span>
             </p>
           </div>
           <ul className="mb-8 space-y-4 flex-1">
@@ -159,14 +159,14 @@ export default function PricingTable() {
                   feature.free ? (
                     <Check className="h-4 w-4 text-green-500" />
                   ) : (
-                    <X className="h-4 w-4 text-gray-300" />
+                    <X className="h-4 w-4 text-gray-300 dark:text-gray-600" />
                   )
                 ) : (
-                  <span className="text-sm font-medium text-green-600">
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
                     {feature.free}
                   </span>
                 )}
-                <span className="text-text-light">{feature.name}</span>
+                <span className="text-text-light dark:text-gray-300">{feature.name}</span>
               </li>
             ))}
           </ul>
@@ -176,20 +176,20 @@ export default function PricingTable() {
         </Card>
 
         {/* Basic tier */}
-        <Card className="flex flex-col p-8 relative border-blue-200 bg-blue-50/50">
+        <Card className="flex flex-col p-8 relative border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-900/30">
           <div className="absolute -top-4 left-1/2 -translate-x-1/2">
             <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
               Most Popular
             </span>
           </div>
           <div className="mb-8">
-            <h3 className="text-xl font-semibold text-text">Basic</h3>
-            <p className="mt-4 text-text-light">Perfect for regular learners</p>
+            <h3 className="text-xl font-semibold text-text dark:text-white">Basic</h3>
+            <p className="mt-4 text-text-light dark:text-gray-300">Perfect for regular learners</p>
             <p className="mt-6">
-              <span className="text-4xl font-bold text-text">
+              <span className="text-4xl font-bold text-text dark:text-white">
                 ${prices.basic[billingInterval]}
               </span>
-              <span className="text-text-light">/{billingInterval}</span>
+              <span className="text-text-light dark:text-gray-300">/{billingInterval}</span>
             </p>
           </div>
           <ul className="mb-8 space-y-4 flex-1">
@@ -199,14 +199,14 @@ export default function PricingTable() {
                   feature.basic ? (
                     <Check className="h-4 w-4 text-green-500" />
                   ) : (
-                    <X className="h-4 w-4 text-gray-300" />
+                    <X className="h-4 w-4 text-gray-300 dark:text-gray-600" />
                   )
                 ) : (
-                  <span className="text-sm font-medium text-green-600">
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
                     {feature.basic}
                   </span>
                 )}
-                <span className="text-text-light">{feature.name}</span>
+                <span className="text-text-light dark:text-gray-300">{feature.name}</span>
               </li>
             ))}
           </ul>
@@ -220,15 +220,15 @@ export default function PricingTable() {
         </Card>
 
         {/* Pro tier */}
-        <Card className="flex flex-col p-8 border-purple-200 bg-purple-50/50">
+        <Card className="flex flex-col p-8 border-purple-200 bg-purple-50/50 dark:bg-purple-900/20 dark:border-purple-900/30">
           <div className="mb-8">
-            <h3 className="text-xl font-semibold text-text">Pro</h3>
-            <p className="mt-4 text-text-light">Perfect for power users</p>
+            <h3 className="text-xl font-semibold text-text dark:text-white">Pro</h3>
+            <p className="mt-4 text-text-light dark:text-gray-300">Perfect for power users</p>
             <p className="mt-6">
-              <span className="text-4xl font-bold text-text">
+              <span className="text-4xl font-bold text-text dark:text-white">
                 ${prices.pro[billingInterval]}
               </span>
-              <span className="text-text-light">/{billingInterval}</span>
+              <span className="text-text-light dark:text-gray-300">/{billingInterval}</span>
             </p>
           </div>
           <ul className="mb-8 space-y-4 flex-1">
@@ -239,15 +239,15 @@ export default function PricingTable() {
                     feature.pro ? (
                       <Check className="h-4 w-4 text-green-500" />
                     ) : (
-                      <X className="h-4 w-4 text-gray-300" />
+                      <X className="h-4 w-4 text-gray-300 dark:text-gray-600" />
                     )
                   ) : (
-                    <span className="text-sm font-medium text-green-600">
+                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
                       {feature.pro}
                     </span>
                   )}
                 </div>
-                <span className="text-text-light text-sm">{feature.name}</span>
+                <span className="text-text-light dark:text-gray-300 text-sm">{feature.name}</span>
               </li>
             ))}
           </ul>

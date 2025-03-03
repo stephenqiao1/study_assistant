@@ -25,7 +25,7 @@ export function UsageIndicator({
   return (
     <div className={`space-y-2 ${className}`}>
       <div className="flex items-center justify-between text-sm">
-        <span className="text-text-light">
+        <span className="text-text-light dark:text-gray-300">
           {type === 'teach_back' ? 'Teach-Back Sessions' : 'Chat Messages'}
         </span>
         <span className="font-medium">

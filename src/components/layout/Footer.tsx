@@ -57,7 +57,7 @@ export default function Footer() {
               <BookOpen className="h-6 w-6 text-primary" />
               <span className="font-bold text-text">Academiq</span>
             </Link>
-            <p className="mt-2 text-sm text-text-light">
+            <p className="mt-2 text-sm text-text-light dark:text-gray-300">
               Your AI-powered learning companion
             </p>
           </div>
@@ -66,9 +66,9 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold mb-4 text-text">Quick Links</h3>
             <ul className="space-y-2">
-              <li><Link href="/" className="text-text-light hover:text-primary">Home</Link></li>
-              <li><Link href="/modules" className="text-text-light hover:text-primary">Modules</Link></li>
-              <li><Link href="/pricing" className="text-text-light hover:text-primary">Pricing</Link></li>
+              <li><Link href="/" className="text-text-light dark:text-gray-300 hover:text-primary hover:dark:text-primary">Home</Link></li>
+              <li><Link href="/modules" className="text-text-light dark:text-gray-300 hover:text-primary hover:dark:text-primary">Modules</Link></li>
+              <li><Link href="/pricing" className="text-text-light dark:text-gray-300 hover:text-primary hover:dark:text-primary">Pricing</Link></li>
             </ul>
           </div>
 
@@ -77,19 +77,19 @@ export default function Footer() {
             <h3 className="font-semibold mb-4 text-text">Contact & Support</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/privacy" className="text-text-light hover:text-primary transition-colors">
+                <Link href="/privacy" className="text-text-light dark:text-gray-300 hover:text-primary hover:dark:text-primary transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-text-light hover:text-primary transition-colors">
+                <Link href="/terms" className="text-text-light dark:text-gray-300 hover:text-primary hover:dark:text-primary transition-colors">
                   Terms of Service
                 </Link>
               </li>
               <li>
                 <a 
                   href="mailto:support@academiq.live" 
-                  className="text-text-light hover:text-primary transition-colors inline-flex items-center gap-2"
+                  className="text-text-light dark:text-gray-300 hover:text-primary hover:dark:text-primary transition-colors inline-flex items-center gap-2"
                 >
                   <Mail className="h-4 w-4" />
                   Contact Support
@@ -128,7 +128,7 @@ export default function Footer() {
                   <AlertDescription>{message.text}</AlertDescription>
                 </Alert>
               )}
-              <p className="text-xs text-text-light mt-2">
+              <p className="text-xs text-text-light dark:text-gray-300 mt-2">
                 By subscribing, you agree to our{' '}
                 <Link href="/privacy" className="text-primary hover:underline">
                   Privacy Policy
@@ -138,7 +138,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-text-light">
+        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-text-light dark:text-gray-300">
           <div className="flex items-center justify-center gap-4 mb-4">
             <ThemeToggle />
           </div>

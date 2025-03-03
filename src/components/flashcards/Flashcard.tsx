@@ -5,6 +5,14 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ThumbsUp, Brain, Zap } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkMathPlugin from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import { Pluggable } from 'unified'
+import 'katex/dist/katex.min.css'
+
+// Properly type the import to fix the error
+const remarkMath = remarkMathPlugin as Pluggable
 
 interface FlashcardProps {
   question: string
@@ -40,13 +48,63 @@ export default function Flashcard({
     }
   }
 
+  // Function to render text with LaTeX
+  const renderWithLatex = (content: string) => {
+    try {
+      // Check if content is empty or undefined
+      if (!content) return <span>No content</span>;
+      
+      // Make sure we're working with a string
+      const safeContent = String(content);
+      
+      // Make sure LaTeX delimiters are properly balanced
+      const processedContent = safeContent
+        // Replace any stray $ characters that might not be LaTeX with escaped ones
+        .replace(/\$/g, '\\$')
+        // Then restore actual LaTeX delimiters
+        .replace(/\\\$\\\$(.*?)\\\$\\\$/g, '$$$$1$$')  // Block math
+        .replace(/\\\$(.*?)\\\$/g, '$1');  // Inline math
+      
+      return (
+        <ReactMarkdown
+          remarkPlugins={[remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          className="prose prose-black dark:prose-invert max-w-none !text-black"
+          components={{
+            // Override any elements to ensure they use black text
+            p: ({node, ...props}) => <p className="!text-black" {...props} />,
+            span: ({node, ...props}) => <span className="!text-black" {...props} />,
+            li: ({node, ...props}) => <li className="!text-black" {...props} />,
+            a: ({node, ...props}) => <a className="!text-black underline" {...props} />,
+            h1: ({node, ...props}) => <h1 className="!text-black" {...props} />,
+            h2: ({node, ...props}) => <h2 className="!text-black" {...props} />,
+            h3: ({node, ...props}) => <h3 className="!text-black" {...props} />,
+            h4: ({node, ...props}) => <h4 className="!text-black" {...props} />,
+            h5: ({node, ...props}) => <h5 className="!text-black" {...props} />,
+            h6: ({node, ...props}) => <h6 className="!text-black" {...props} />,
+            strong: ({node, ...props}) => <strong className="!text-black" {...props} />,
+            em: ({node, ...props}) => <em className="!text-black" {...props} />,
+            code: ({node, ...props}) => <code className="!text-black bg-gray-100 px-1 rounded" {...props} />,
+            pre: ({node, ...props}) => <pre className="!text-black bg-gray-100 p-2 rounded" {...props} />
+          }}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      );
+    } catch (error) {
+      console.error('Error rendering LaTeX:', error);
+      // Fallback to plain text if LaTeX rendering fails
+      return <span className="text-black">{content}</span>;
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       {/* Progress indicator */}
-      <div className="text-center mb-4 text-text-light">
+      <div className="text-center mb-4 text-black py-2 px-3 rounded-md bg-background border">
         <div>Card {currentIndex + 1} of {totalCards}</div>
         {dueDate && (
-          <div className="text-sm mt-1">
+          <div className="text-sm mt-1 text-black">
             Next review: {new Date(dueDate).toLocaleDateString()}
           </div>
         )}
@@ -54,7 +112,7 @@ export default function Flashcard({
 
       {/* Flashcard */}
       <div
-        className="relative perspective-1000 w-full aspect-[4/3] cursor-pointer mb-6"
+        className="relative perspective-1000 w-full aspect-[5/2] cursor-pointer mb-4"
         onClick={handleFlip}
       >
         <AnimatePresence initial={false} mode="wait">
@@ -66,13 +124,13 @@ export default function Flashcard({
             transition={{ duration: 0.4 }}
             className="absolute inset-0"
           >
-            <Card className="w-full h-full flex items-center justify-center p-8 bg-white">
-              <div className="text-center">
-                <div className="text-sm text-text-light mb-4">
+            <Card className="w-full h-full flex items-center justify-center p-6 bg-white overflow-auto text-black [&_*]:text-black">
+              <div className="text-center w-full">
+                <div className="text-sm text-black mb-2">
                   {isFlipped ? 'Answer' : 'Question'}
                 </div>
-                <div className="text-xl text-text">
-                  {isFlipped ? answer : question}
+                <div className="text-xl !text-black">
+                  {renderWithLatex(isFlipped ? answer : question)}
                 </div>
               </div>
             </Card>
@@ -82,8 +140,8 @@ export default function Flashcard({
 
       {/* Controls */}
       {isFlipped && onRecallRating && (
-        <div className="flex flex-col items-center gap-4 mt-8">
-          <div className="text-sm text-text-light mb-2">
+        <div className="flex flex-col items-center gap-2 mt-4">
+          <div className="text-sm text-black mb-1">
             How well did you remember this?
           </div>
           <div className="flex justify-center gap-4">

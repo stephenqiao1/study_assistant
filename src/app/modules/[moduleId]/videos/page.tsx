@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { use } from 'react'
+import { useState, useEffect, useCallback, use } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { Button } from '@/components/ui/button'
@@ -85,7 +84,10 @@ interface YouTubeVideoItem {
 }
 
 export default function VideosPage({ params }: PageProps) {
-  const { moduleId } = use(params)
+  // Unwrap the params Promise with React.use()
+  const resolvedParams = use(params);
+  const { moduleId } = resolvedParams;
+  
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
   const _router = useRouter()
   const searchParams = useSearchParams()
@@ -163,22 +165,33 @@ export default function VideosPage({ params }: PageProps) {
     const fetchData = async () => {
       if (!session?.user?.id) return
       
-      const supabase = createClient()
+      const supabase = await createClient()
       
       try {
         // Check if user is premium
         const userIsPremium = await isPremiumUser(session.user.id)
         setIsPremium(userIsPremium)
         
-        // Fetch module data
+        // Check if moduleId is a valid UUID
+        const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(moduleId);
+        
+        if (!isValidUuid) {
+          console.error('Invalid module ID format:', moduleId);
+          throw new Error('Invalid module ID format');
+        }
+        
+        // Fetch module data using moduleId directly as the study_session_id
         const { data: studySession, error: sessionError } = await supabase
           .from('study_sessions')
           .select('id, module_title, details')
-          .eq('module_title', moduleId)
-          .eq('user_id', session.user.id)
+          .eq('id', moduleId)
           .single()
           
-        if (sessionError) throw sessionError
+        if (sessionError) {
+          console.error('Error fetching study session:', sessionError);
+          throw sessionError;
+        }
+        
         setStudySessionId(studySession.id)
         setModuleData(studySession)
         
@@ -207,7 +220,7 @@ export default function VideosPage({ params }: PageProps) {
         const { data: savedVideoData, error: savedVideoError } = await supabase
           .from('saved_videos')
           .select('*')
-          .eq('module_title', moduleId)
+          .eq('study_session_id', studySession.id)
           .eq('user_id', session.user.id)
           .order('saved_at', { ascending: false })
           
@@ -309,7 +322,7 @@ export default function VideosPage({ params }: PageProps) {
   const handleSaveVideo = async (video: VideoType) => {
     if (!session?.user?.id || !studySessionId) return
     
-    const supabase = createClient()
+    const supabase = await createClient()
     
     try {
       // Check if this video is already saved - Modified approach to avoid 406 error
@@ -318,7 +331,7 @@ export default function VideosPage({ params }: PageProps) {
         .select('*')
         .eq('video_id', video.id)
         .eq('user_id', session.user.id)
-        .eq('module_title', moduleId)
+        .eq('study_session_id', studySessionId)
         
       // Check if we found any videos - we expect at most one due to unique constraint
       if (!checkError && existingVideos && existingVideos.length > 0) {
@@ -360,7 +373,7 @@ export default function VideosPage({ params }: PageProps) {
             video_url: video.videoUrl,
             note_id: selectedNote?.id || null,
             user_id: session.user.id,
-            module_title: moduleId,
+            study_session_id: studySessionId,
             saved_at: new Date().toISOString()
           })
           .select()
@@ -459,27 +472,33 @@ export default function VideosPage({ params }: PageProps) {
         <div className="max-w-5xl mx-auto p-4">
           <div className="flex flex-col space-y-6">
             {/* Header with back button */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Link href={`/modules/${moduleId}`}>
-                  <Button variant="ghost" size="sm">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-8 mb-6">
+              <div>
+                <Link href={`/modules/${moduleId}?title=${encodeURIComponent(moduleData?.details?.title || moduleData?.module_title || 'Untitled Module')}`}>
+                  <Button variant="outline" size="sm" className="mb-3">
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to Module
                   </Button>
                 </Link>
-                <h1 className="text-2xl font-bold">YouTube Videos</h1>
+                <h1 className="text-3xl font-bold">{moduleData?.details?.title || 'YouTube Videos'}</h1>
+                <p className="text-muted-foreground mt-1">Find and save educational videos for your studies</p>
               </div>
               <Button
                 variant="outline"
                 onClick={() => setShowSavedOnly(!showSavedOnly)}
+                className="self-start md:self-center"
               >
-                {showSavedOnly ? "Show Search Results" : "Show Saved Videos"}
+                {showSavedOnly ? (
+                  <><Search className="h-4 w-4 mr-2" /> Show Search Results</>
+                ) : (
+                  <><Bookmark className="h-4 w-4 mr-2" /> Show Saved Videos</>
+                )}
               </Button>
             </div>
             
             {/* API Key Missing Alert */}
             {showApiKeyMissing && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="mb-6">
                 <CircleSlash className="h-4 w-4" />
                 <AlertTitle>YouTube API Key Missing</AlertTitle>
                 <AlertDescription>
@@ -490,38 +509,41 @@ export default function VideosPage({ params }: PageProps) {
             
             {/* Search section */}
             {!showSavedOnly && (
-              <Card className="bg-background-card">
+              <Card className="bg-background-card shadow-sm mb-8">
                 <CardHeader>
                   <CardTitle className="text-xl">Search for Videos</CardTitle>
                   <CardDescription>
                     Find educational videos related to your notes or any topic
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col space-y-4">
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Input
-                          placeholder="Enter search terms..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleSearch();
-                            }
-                          }}
-                        />
-                      </div>
-                      <Button onClick={handleSearch} disabled={isSearching}>
-                        {isSearching ? "Searching..." : "Search"}
-                        {!isSearching && <Search className="ml-2 h-4 w-4" />}
-                        {isSearching && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                      </Button>
+                <CardContent className="space-y-6">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Enter search terms..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSearch();
+                          }
+                        }}
+                        className="border-border"
+                      />
                     </div>
-                    
-                    {/* Select a note to search from */}
+                    <Button onClick={handleSearch} disabled={isSearching} className="shrink-0">
+                      {isSearching ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Searching...</>
+                      ) : (
+                        <><Search className="mr-2 h-4 w-4" /> Search</>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {/* Select a note to search from */}
+                  {notes.length > 0 && (
                     <div>
-                      <p className="text-sm mb-2">Or search based on one of your notes:</p>
+                      <p className="text-sm mb-3 font-medium">Search based on your notes:</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                         {notes.slice(0, 6).map(note => (
                           <Card 
@@ -548,60 +570,76 @@ export default function VideosPage({ params }: PageProps) {
                         ))}
                       </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             )}
             
             {/* Videos display */}
             <div>
-              <h2 className="text-xl font-semibold mb-4">
-                {showSavedOnly 
-                  ? "Saved Videos" 
-                  : selectedNote 
-                    ? `Videos related to "${selectedNote.title}"` 
-                    : isSearching && videos.length === 0
-                      ? "Finding relevant videos..."
-                      : searchQuery
-                        ? `Videos for "${searchQuery}"`
-                        : "Recommended Videos"}
-              </h2>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-semibold">
+                  {showSavedOnly 
+                    ? "Saved Videos" 
+                    : selectedNote 
+                      ? `Videos related to "${selectedNote.title}"` 
+                      : isSearching && videos.length === 0
+                        ? "Finding relevant videos..."
+                        : searchQuery
+                          ? `Videos for "${searchQuery}"`
+                          : "Recommended Videos"}
+                </h2>
+                
+                {/* Display count when there are videos */}
+                {(showSavedOnly ? savedVideos.length > 0 : videos.length > 0) && (
+                  <span className="text-muted-foreground text-sm">
+                    {showSavedOnly 
+                      ? `${savedVideos.length} saved video${savedVideos.length !== 1 ? 's' : ''}` 
+                      : `${videos.length} video${videos.length !== 1 ? 's' : ''}`}
+                  </span>
+                )}
+              </div>
               
               {isSearching && videos.length === 0 ? (
-                <div className="text-center py-10">
+                <div className="text-center py-12 bg-background-card rounded-lg shadow-sm border border-border">
                   <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin mb-4" />
                   <h3 className="text-lg font-medium">Finding videos...</h3>
-                  <p className="text-text-light mt-2">
-                    Searching for the most relevant educational videos
+                  <p className="text-text-light mt-2 max-w-md mx-auto">
+                    Searching for the most relevant educational videos for your studies
                   </p>
                 </div>
               ) : displayVideos.length === 0 ? (
-                <div className="text-center py-10">
+                <div className="text-center py-12 bg-background-card rounded-lg shadow-sm border border-border">
                   {showSavedOnly ? (
                     <>
-                      <Bookmark className="mx-auto h-12 w-12 text-text-light mb-4" />
+                      <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+                        <Bookmark className="h-8 w-8 text-muted-foreground" />
+                      </div>
                       <h3 className="text-lg font-medium">No saved videos yet</h3>
-                      <p className="text-text-light mt-2 mb-4">
+                      <p className="text-text-light mt-2 mb-6 max-w-md mx-auto">
                         Search for videos and bookmark them to save them for later.
                       </p>
                       <Button onClick={() => setShowSavedOnly(false)}>
+                        <Search className="mr-2 h-4 w-4" />
                         Search for Videos
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Search className="mx-auto h-12 w-12 text-text-light mb-4" />
+                      <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+                        <Search className="h-8 w-8 text-muted-foreground" />
+                      </div>
                       <h3 className="text-lg font-medium">No videos found</h3>
-                      <p className="text-text-light mt-2">
+                      <p className="text-text-light mt-2 max-w-md mx-auto">
                         Try searching for different terms or selecting a note to find related videos.
                       </p>
                     </>
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {displayVideos.map(video => (
-                    <Card key={video.id} className="bg-background-card overflow-hidden flex flex-col">
+                    <Card key={video.id} className="bg-background-card overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
                       <div className="relative pb-[56.25%] bg-black">
                         <Image 
                           src={video.thumbnail} 
@@ -613,7 +651,7 @@ export default function VideosPage({ params }: PageProps) {
                       </div>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base line-clamp-2">{video.title}</CardTitle>
-                        <CardDescription className="line-clamp-1">
+                        <CardDescription className="line-clamp-1 flex items-center gap-1">
                           {video.channel} • {new Date(video.publishedAt).toLocaleDateString()}
                         </CardDescription>
                       </CardHeader>
@@ -627,6 +665,7 @@ export default function VideosPage({ params }: PageProps) {
                           variant="outline" 
                           size="sm"
                           onClick={() => window.open(video.videoUrl, '_blank')}
+                          className="gap-1"
                         >
                           Watch <ExternalLink className="ml-1 h-3 w-3" />
                         </Button>
@@ -634,6 +673,7 @@ export default function VideosPage({ params }: PageProps) {
                           variant={video.bookmarked ? "default" : "secondary"}
                           size="sm"
                           onClick={() => handleSaveVideo(video)}
+                          className="gap-1"
                         >
                           {video.bookmarked ? (
                             <>Saved <Bookmark className="ml-1 h-3 w-3 fill-current" /></>

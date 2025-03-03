@@ -63,21 +63,21 @@ export function UpgradeBanner({ type = 'dashboard' }: UpgradeBannerProps) {
   if (!isVisible) return null
 
   return (
-    <div className={`relative ${type === 'dashboard' ? 'mb-8' : 'mb-4'} rounded-lg border bg-gradient-to-r from-blue-50 to-purple-50 p-6 shadow-sm`}>
+    <div className={`relative ${type === 'dashboard' ? 'mb-8' : 'mb-4'} rounded-lg border bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 dark:border-gray-800 p-6 shadow-sm`}>
       <button
         onClick={() => setIsVisible(false)}
-        className="absolute right-2 top-2 text-gray-400 hover:text-gray-500"
+        className="absolute right-2 top-2 text-gray-400 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300"
       >
         <X className="h-5 w-5" />
       </button>
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900">
+          <h3 className="font-semibold text-gray-900 dark:text-white">
             {type === 'dashboard' 
               ? 'Unlock Advanced Features'
               : 'Get Unlimited Study Sessions'}
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">
             {type === 'dashboard'
               ? 'Upgrade to Basic or Pro for unlimited usage, auto-generated flashcards, and more!'
               : 'Upgrade to continue your learning journey without limits.'}

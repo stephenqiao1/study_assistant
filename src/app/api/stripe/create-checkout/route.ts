@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { Database, SubscriptionTier, SubscriptionInterval } from '@/types/supabase'
 import { createCheckoutSession, stripe } from '@/utils/stripe'
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 export async function POST(request: Request) {
   try {
@@ -37,28 +33,22 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get the access token from the Authorization header
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Missing or invalid Authorization header' },
-        { status: 401 }
-      )
-    }
-
-    const accessToken = authHeader.split(' ')[1]
+    // Create a Supabase client with proper cookie handling
+    const supabase = createRouteHandlerClient<Database>({ cookies })
     
-    // Get the user from the session token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken)
-
-    if (userError || !user) {
-      console.error('Auth error:', userError)
+    // Check if user is authenticated
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session?.user) {
+      console.error('Auth error:', sessionError)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
-
+    
+    const user = session.user
+    
     // Get or create Stripe customer
     const { data: subscription } = await supabase
       .from('subscriptions')

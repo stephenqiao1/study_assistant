@@ -31,7 +31,7 @@ const StudySessionsSidebar: FC<StudySessionsSidebarProps> = ({ sessions }) => {
     <aside className="w-64 h-full bg-background-card border-r border-border flex flex-col">
       <div className="p-4 border-b border-border">
         <h2 className="font-semibold text-text">Modules</h2>
-        <p className="text-sm text-text-light mt-1">Your study modules</p>
+        <p className="text-sm text-text-light dark:text-gray-300 mt-1">Your study modules</p>
       </div>
       <div className="p-4">
         <nav className="space-y-2">

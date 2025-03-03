@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 
 export const useRequireAuth = (redirectTo = '/login') => {
@@ -10,7 +10,8 @@ export const useRequireAuth = (redirectTo = '/login') => {
 
   useEffect(() => {
     if (!isLoading && !session) {
-      router.push(redirectTo)
+      // Redirect to login if not authenticated
+      router.push(`${redirectTo}${redirectTo.includes('?') ? '&' : '?'}from=protected`)
     }
   }, [session, isLoading, router, redirectTo])
 
@@ -20,12 +21,19 @@ export const useRequireAuth = (redirectTo = '/login') => {
 export const useRequireNoAuth = (redirectTo = '/modules') => {
   const { session, user, isLoading, isEmailVerified } = useAuth()
   const router = useRouter()
-
+  const searchParams = useSearchParams()
+  
   useEffect(() => {
     if (!isLoading && session) {
-      router.push(redirectTo)
+      // Get the 'from' query parameter to avoid redirect loops
+      const from = searchParams.get('from')
+      
+      // Only redirect if we're not coming from a protected page
+      if (from !== 'modules' && from !== 'protected') {
+        router.push(redirectTo)
+      }
     }
-  }, [session, isLoading, router, redirectTo])
+  }, [session, isLoading, router, redirectTo, searchParams])
 
   return { session, user, isLoading, isEmailVerified }
 } 

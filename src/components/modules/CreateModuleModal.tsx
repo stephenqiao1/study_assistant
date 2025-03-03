@@ -9,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogPortal,
+  DialogOverlay,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -105,31 +107,34 @@ Summarize the main points covered in this module.
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create New Module</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Module Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter module title"
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !title}>
-              {isSubmitting ? 'Creating...' : 'Create Module'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+      <DialogPortal>
+        <DialogOverlay className="bg-black opacity-100" />
+        <DialogContent className="bg-background border border-border">
+          <DialogHeader>
+            <DialogTitle>Create New Module</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Module Title</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter module title"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting || !title}>
+                {isSubmitting ? 'Creating...' : 'Create Module'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </DialogPortal>
     </Dialog>
   )
 } 

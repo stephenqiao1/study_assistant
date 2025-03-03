@@ -66,14 +66,14 @@ export function SubscriptionStatus() {
       
       {/* Current Plan */}
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-gray-500">Current Plan</h3>
+        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-300">Current Plan</h3>
         <div className="mt-2 flex items-center justify-between">
           <div>
             <p className="text-lg font-semibold">
               {teachBackUsage.limit === -1 ? 'Pro' : 
                teachBackUsage.limit === 50 ? 'Basic' : 'Free'} Plan
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-300">
               {teachBackUsage.limit === -1 ? 'Unlimited access to all features' :
                teachBackUsage.limit === 50 ? 'Extended access to key features' :
                'Limited access to basic features'}
@@ -95,7 +95,7 @@ export function SubscriptionStatus() {
         <div>
           <div className="flex justify-between mb-2">
             <span className="text-sm font-medium">Teach-Back Sessions</span>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-500 dark:text-gray-300">
               {teachBackUsage.current} / {teachBackUsage.limit === -1 ? '∞' : teachBackUsage.limit}
             </span>
           </div>
@@ -108,7 +108,7 @@ export function SubscriptionStatus() {
 
         <div className="pt-4 border-t">
           <h4 className="text-sm font-medium mb-2">Additional Features</h4>
-          <div className="flex items-center text-sm text-gray-500">
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-300">
             <div className={`w-2 h-2 rounded-full mr-2 ${hasAutoFlashcards ? 'bg-green-500' : 'bg-gray-300'}`} />
             Auto-generate flashcards {hasAutoFlashcards ? '(Enabled)' : '(Upgrade to enable)'}
           </div>

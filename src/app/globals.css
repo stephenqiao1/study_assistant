@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -186,7 +189,17 @@
 }
 
 body {
-  color: var(--foreground);
+  color: var(--text);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Add specific styling for math elements */
+.math-inline, .math-display {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.math-display {
+  margin: 1rem 0;
 }

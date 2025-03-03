@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { BookOpen, Eye, EyeOff } from 'lucide-react'
@@ -8,7 +8,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRequireNoAuth } from '@/hooks/useRequireAuth'
 
-export default function SignUp() {
+// Separate component that uses useRequireNoAuth
+function SignUpContent() {
   const { session, isLoading: isLoadingAuth } = useRequireNoAuth()
   const router = useRouter()
   const [formData, setFormData] = useState({
@@ -300,5 +301,19 @@ export default function SignUp() {
         </p>
       </div>
     </div>
+  )
+}
+
+// Main component with Suspense boundary
+export default function SignUp() {
+  return (
+    <Suspense fallback={<div className="container flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h2 className="text-2xl font-semibold">Loading...</h2>
+        <p className="text-muted-foreground">Please wait while we prepare the signup page</p>
+      </div>
+    </div>}>
+      <SignUpContent />
+    </Suspense>
   )
 } 

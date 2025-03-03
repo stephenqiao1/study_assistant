@@ -1,14 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import TextEditor from '@/components/teach/TextEditor'
 import AudioRecorder from '@/components/teach/AudioRecorder'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/utils/supabase/client'
-import { use } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, BookOpen } from 'lucide-react'
+import { ArrowLeft, BookOpen, Lightbulb, PenLine, CheckCircle, Loader2 } from 'lucide-react'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import Footer from '@/components/layout/Footer'
 import Navbar from '@/components/layout/Navbar'
@@ -42,8 +41,10 @@ interface PageProps {
 }
 
 export default function TeachPage({ params }: PageProps) {
+  // Unwrap the params Promise with React.use()
+  const resolvedParams = use(params);
+  const { moduleId } = resolvedParams;
   const router = useRouter()
-  const { moduleId } = use(params)
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
   const { teach_back: teachBackUsage, isLoading: isLoadingUsage, error: usageError } = useUsageLimits()
   const searchParams = useSearchParams()
@@ -52,7 +53,6 @@ export default function TeachPage({ params }: PageProps) {
   const [text, setText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
-  const [moduleContent, setModuleContent] = useState('')
   const [moduleTitle, setModuleTitle] = useState('')
   const [submissionTimestamp, setSubmissionTimestamp] = useState<string | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
@@ -84,12 +84,21 @@ export default function TeachPage({ params }: PageProps) {
   useEffect(() => {
     // Fetch module details when component mounts
     const fetchModuleDetails = async () => {
-      const supabase = createClient()
+      const supabase = await createClient()
       try {
+        // Check if moduleId is a valid UUID
+        const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(moduleId);
+        
+        if (!isValidUuid) {
+          console.error('Invalid module ID format:', moduleId);
+          throw new Error('Invalid module ID format');
+        }
+        
+        // Using moduleId directly as the study_session_id
         const { data: studySession, error } = await supabase
           .from('study_sessions')
-          .select('id, details')
-          .eq('module_title', moduleId)
+          .select('id, module_title, details')
+          .eq('id', moduleId)
           .single()
 
         if (error) {
@@ -98,8 +107,7 @@ export default function TeachPage({ params }: PageProps) {
         }
 
         setStudySessionId(studySession.id)
-        setModuleTitle(studySession.details.title)
-        setModuleContent(studySession.details.content)
+        setModuleTitle(studySession.details?.title || studySession.module_title || 'Untitled Module')
         
         // If a noteId is provided, fetch the note content
         if (noteId) {
@@ -126,16 +134,13 @@ export default function TeachPage({ params }: PageProps) {
     fetchModuleDetails()
   }, [moduleId, noteId])
 
-  const gradeExplanation = async (explanation: string, moduleContent: string): Promise<GradingResult> => {
+  const gradeExplanation = async (explanation: string): Promise<GradingResult> => {
     const prompt = `
       Grade the following explanation of a concept based on these criteria:
       
       1. Clarity (0-10): Is the explanation clear and easy to understand?
-      2. Completeness (0-10): Does it cover all key points from the original content?
+      2. Completeness (0-10): Does it cover all key points related to the topic?
       3. Correctness (0-10): Are the facts and reasoning accurate?
-      
-      Original content to be explained:
-      ${moduleContent}
       
       Student's explanation:
       ${explanation}
@@ -195,7 +200,7 @@ export default function TeachPage({ params }: PageProps) {
     setIsSubmitting(true)
     
     try {
-      const supabase = createClient()
+      const supabase = await createClient()
 
       // Check and increment usage
       const { allowed, error: usageError } = await checkAndIncrementUsage(session.user.id, 'teach_back')
@@ -204,47 +209,64 @@ export default function TeachPage({ params }: PageProps) {
         throw new Error(usageError)
       }
 
-      // Get the study session ID
-      const { data: studySession, error: sessionError } = await supabase
-        .from('study_sessions')
-        .select('id')
-        .eq('module_title', moduleId)
-        .single()
+      // Use the already stored studySessionId if available
+      let currentStudySessionId = studySessionId;
+      
+      // If we don't have a studySessionId yet, try to fetch it
+      if (!currentStudySessionId) {
+        // Check if moduleId is a valid UUID
+        const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(moduleId);
+        
+        if (!isValidUuid) {
+          throw new Error('Invalid module ID format');
+        }
+        
+        // Get the study session by ID
+        const { data: studySession, error: sessionError } = await supabase
+          .from('study_sessions')
+          .select('id')
+          .eq('id', moduleId)
+          .single()
+  
+        if (studySession) {
+          currentStudySessionId = studySession.id;
+        } else if (sessionError) {
+          console.error('Error fetching study session:', sessionError);
+          throw new Error('Error fetching study session');
+        }
+      }
 
-      let studySessionId = studySession?.id
-
-      // If no study session exists, create one
-      if (!studySession && sessionError?.code === 'PGRST116') {
+      // If we still don't have a study session ID, create a new session
+      if (!currentStudySessionId) {
         const { data: newSession, error: createSessionError } = await supabase
           .from('study_sessions')
           .insert({
+            id: moduleId, // Use the moduleId as the session ID
             user_id: session.user.id,
-            module_title: moduleId,
+            module_title: moduleTitle,
             details: {
-              title: moduleTitle,
-              content: moduleContent
+              title: moduleTitle
             }
           })
           .select()
           .single()
 
         if (createSessionError) {
-          throw new Error('Failed to create study session')
+          console.error('Failed to create study session:', createSessionError);
+          throw new Error('Failed to create study session');
         }
 
-        studySessionId = newSession.id
-      } else if (sessionError) {
-        throw new Error('Error fetching study session')
+        currentStudySessionId = newSession.id;
       }
 
-      // Grade the explanation first
-      const gradingResult = await gradeExplanation(text, moduleContent)
+      // Grade the explanation
+      const gradingResult = await gradeExplanation(text)
 
       // Create a new teach back entry with the grading results
       const { data: newTeachBack, error: createError } = await supabase
         .from('teach_backs')
         .insert({
-          study_session_id: studySessionId,
+          study_session_id: currentStudySessionId,
           user_id: session.user.id,
           content: text,
           source_note_id: noteId || null,
@@ -313,29 +335,42 @@ export default function TeachPage({ params }: PageProps) {
             <UpgradeBanner type="study" />
           )}
 
-          <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <Link href={`/modules/${moduleId}`}>
+          <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <Link href={`/modules/${moduleId}?title=${encodeURIComponent(moduleTitle)}`} className="inline-block mb-3">
                 <Button variant="outline" className="gap-2">
                   <ArrowLeft className="h-4 w-4" />
                   Back to Module
                 </Button>
               </Link>
-            </div>
-            <h2 className="text-sm font-medium text-text-light mb-2">Teaching Back</h2>
-            <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
-            {sourceInfo && (
-              <div className="mt-2 text-sm text-primary">
-                Content from {sourceInfo}
+              <h1 className="text-3xl font-bold text-text mb-1">{moduleTitle}</h1>
+              <div className="text-sm font-medium text-primary flex items-center">
+                <BookOpen className="h-4 w-4 mr-1" />
+                Teaching Back
               </div>
-            )}
+              {sourceInfo && (
+                <div className="mt-2 text-sm text-primary">
+                  Content from {sourceInfo}
+                </div>
+              )}
+            </div>
+            
+            {/* Usage Indicator */}
+            <div className="md:text-right min-w-[200px]">
+              <UsageIndicator
+                current={teachBackUsage.current}
+                limit={teachBackUsage.limit}
+                isLimited={teachBackUsage.isLimited}
+                type="teach_back"
+              />
+            </div>
           </div>
 
           {/* Display note reference banner if coming from a note */}
           {noteId && noteTitle && (
-            <div className="mb-6 bg-primary/10 rounded-md p-4 border border-primary/20">
+            <div className="mb-6 bg-primary/10 rounded-lg p-5 border border-primary/20 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="text-primary mt-0.5">
+                <div className="text-primary mt-0.5 bg-primary/10 p-2.5 rounded-full">
                   <BookOpen className="h-5 w-5" />
                 </div>
                 <div>
@@ -349,19 +384,12 @@ export default function TeachPage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Usage Indicator */}
-          <div className="mb-8">
-            <UsageIndicator
-              current={teachBackUsage.current}
-              limit={teachBackUsage.limit}
-              isLimited={teachBackUsage.isLimited}
-              type="teach_back"
-            />
-          </div>
-
           <div className="bg-background-card rounded-xl shadow-sm border border-border p-8 mb-8">
-            <div className="bg-background/50 dark:bg-background/10 p-4 rounded-lg border border-border mb-8">
-              <h2 className="font-semibold mb-2 text-text">🎓 Feynman Technique Tips:</h2>
+            <div className="bg-background/50 dark:bg-background/10 p-5 rounded-lg border border-border mb-8">
+              <h2 className="font-semibold mb-3 text-text text-lg flex items-center">
+                <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
+                Feynman Technique Tips
+              </h2>
               <ul className="list-disc list-inside space-y-2 text-sm text-text-light">
                 <li>Explain the concept as if teaching it to a complete beginner</li>
                 <li>Use simple language and avoid jargon</li>
@@ -378,7 +406,10 @@ export default function TeachPage({ params }: PageProps) {
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-text">✍️ Your Explanation</h2>
+                  <h2 className="text-xl font-semibold text-text flex items-center">
+                    <PenLine className="h-5 w-5 mr-2 text-primary" />
+                    Your Explanation
+                  </h2>
                   <AudioRecorder 
                     onTranscriptionComplete={handleTranscription}
                     disabled={teachBackUsage.isLimited}
@@ -401,13 +432,22 @@ export default function TeachPage({ params }: PageProps) {
                   onClick={handleSubmit} 
                   size="lg"
                   disabled={isSubmitting || teachBackUsage.isLimited || !text.trim()}
+                  className="shadow-sm hover:shadow-md transition-shadow"
                 >
-                  {isSubmitting ? 'Grading your explanation...' : 'Submit Teach-Back Session'}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Grading your explanation...
+                    </>
+                  ) : (
+                    <>Submit Teach-Back Session</>
+                  )}
                 </Button>
               </div>
             ) : (
               <div className="mt-8 flex justify-end">
-                <Button onClick={handleViewResults}>
+                <Button onClick={handleViewResults} className="shadow-sm hover:shadow-md transition-shadow">
+                  <CheckCircle className="h-4 w-4 mr-2" />
                   View Results
                 </Button>
               </div>

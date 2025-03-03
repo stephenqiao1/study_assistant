@@ -39,8 +39,8 @@ export default function Navbar({ showSignOut = true }: NavbarProps) {
             {session ? (
               // Authenticated navigation items
               <>
-                <Link href="/modules" className="text-text hover:text-primary">Modules</Link>
-                <Link href="/insights" className="text-text hover:text-primary flex items-center gap-1">
+                <Link href="/modules" className="text-gray-700 dark:text-white hover:text-primary">Modules</Link>
+                <Link href="/insights" className="text-gray-700 dark:text-white hover:text-primary flex items-center gap-1">
                   <LineChart className="h-4 w-4" />
                   Insights
                 </Link>
@@ -48,7 +48,7 @@ export default function Navbar({ showSignOut = true }: NavbarProps) {
                 {showSignOut && (
                   <Button 
                     variant="ghost" 
-                    className="text-text hover:text-primary flex items-center gap-2"
+                    className="text-gray-700 dark:text-white hover:text-primary flex items-center gap-2"
                     onClick={handleSignOut}
                   >
                     <LogOut className="h-4 w-4" />

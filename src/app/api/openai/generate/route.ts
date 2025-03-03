@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { zodResponseFormat } from "openai/helpers/zod"
 import { FlashcardsResponse } from '@/types/flashcards'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -9,6 +11,24 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
+    // Authenticate the user
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    // Check if in development mode
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    // If not in development and no session, return unauthorized
+    if (!isDevelopment && (sessionError || !session?.user)) {
+      console.error('Auth error:', sessionError)
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Log authentication status
+    
     const { content, prompt } = await request.json()
     
     if (!content || !prompt) {

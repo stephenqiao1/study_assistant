@@ -7,6 +7,16 @@ import { Textarea } from '@/components/ui/textarea'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, X, ArrowRight } from 'lucide-react'
 import stringSimilarity from 'string-similarity'
+import ReactMarkdown from 'react-markdown'
+// Use specific versions to avoid compatibility issues
+import { Pluggable } from 'unified'
+import rehypeKatex from 'rehype-katex'
+// Import the default export from remark-math to avoid compatibility issues
+import remarkMathPlugin from 'remark-math'
+import 'katex/dist/katex.min.css'
+
+// Properly type the import to fix the error
+const remarkMath = remarkMathPlugin as Pluggable
 
 interface WriteModeProps {
   question: string
@@ -77,6 +87,39 @@ function calculateScore(userAnswer: string, correctAnswer: string): ScoringResul
   }
 }
 
+// Function to render text with LaTeX
+const renderWithLatex = (content: string) => {
+  try {
+    // Check if content is empty or undefined
+    if (!content) return <span>No content</span>;
+    
+    // Make sure we're working with a string
+    const safeContent = String(content);
+    
+    // Make sure LaTeX delimiters are properly balanced
+    const processedContent = safeContent
+      // Replace any stray $ characters that might not be LaTeX with escaped ones
+      .replace(/\$/g, '\\$')
+      // Then restore actual LaTeX delimiters
+      .replace(/\\\$\\\$(.*?)\\\$\\\$/g, '$$$$1$$')  // Block math
+      .replace(/\\\$(.*?)\\\$/g, '$1');  // Inline math
+    
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkMath as Pluggable]}
+        rehypePlugins={[rehypeKatex]}
+        className="prose dark:prose-invert max-w-none"
+      >
+        {processedContent}
+      </ReactMarkdown>
+    );
+  } catch (error) {
+    console.error('Error rendering LaTeX:', error);
+    // Fallback to plain text if LaTeX rendering fails
+    return <span>{content}</span>;
+  }
+};
+
 export default function WriteMode({
   question,
   answer,
@@ -119,7 +162,7 @@ export default function WriteMode({
   return (
     <div className="w-full max-w-2xl mx-auto">
       {/* Progress indicator */}
-      <div className="text-center mb-4 text-text-light">
+      <div className="text-center mb-4 text-text-light dark:text-gray-300">
         <div>Card {currentIndex + 1} of {totalCards}</div>
         {dueDate && (
           <div className="text-sm mt-1">
@@ -131,8 +174,10 @@ export default function WriteMode({
       {/* Question Card */}
       <Card className="w-full p-8 bg-white mb-6">
         <div className="text-center">
-          <div className="text-sm text-text-light mb-4">Question</div>
-          <div className="text-xl text-text mb-8">{question}</div>
+          <div className="text-sm text-text-light dark:text-gray-300 mb-4">Question</div>
+          <div className="text-xl text-text mb-8">
+            {renderWithLatex(question)}
+          </div>
           
           <Textarea
             value={userAnswer}
@@ -186,18 +231,20 @@ export default function WriteMode({
 
                   <div className="mb-4">
                     <div className="text-sm font-medium mb-1">Your Answer:</div>
-                    <div className="text-text-light">{userAnswer}</div>
+                    <div className="text-text-light dark:text-gray-300">{userAnswer}</div>
                   </div>
 
                   <div className="mb-4">
                     <div className="text-sm font-medium mb-1">Correct Answer:</div>
-                    <div className="text-text">{answer}</div>
+                    <div className="text-text">
+                      {renderWithLatex(answer)}
+                    </div>
                   </div>
 
                   {scoringResult.missingKeywords.length > 0 && (
                     <div className="mt-4 text-sm">
                       <div className="font-medium text-yellow-600 mb-1">Key concepts to include:</div>
-                      <div className="text-text-light">
+                      <div className="text-text-light dark:text-gray-300">
                         {scoringResult.missingKeywords.join(', ')}
                       </div>
                     </div>

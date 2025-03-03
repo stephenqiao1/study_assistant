@@ -1,20 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { use } from 'react'
+import { useState, useEffect, useCallback, useMemo, use, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRequireAuth } from '@/hooks/useRequireAuth'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
-import Link from 'next/link'
-import { ArrowLeft, RefreshCcw, Download, Lightbulb, Loader2, Plus, Crown } from 'lucide-react'
+import { Badge as _Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader as _CardHeader, CardFooter as _CardFooter } from '@/components/ui/card'
+import _Link from 'next/link'
+import { ArrowLeft, RefreshCcw, Download, Lightbulb as _Lightbulb, Loader2, Plus, Crown, BookOpen as _BookOpen, FileText, Sparkles } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { useStudyDuration } from '@/hooks/useStudyDuration'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import { Pluggable } from 'unified'
+import FormulaStyles from '@/components/modules/FormulaStyles'
 import 'katex/dist/katex.min.css'
 import { useToast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
@@ -54,33 +55,105 @@ interface FormulaType {
   } | null
 }
 
+function InvalidModuleIdError({ moduleId, moduleTitle, onBack }: { moduleId: string, moduleTitle?: string, onBack: () => void }) {
+  return (
+    <Card className="bg-background-card p-8 text-center max-w-3xl mx-auto">
+      <div className="flex flex-col items-center justify-center py-8">
+        <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3 mb-4">
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            className="h-10 w-10 text-red-600 dark:text-red-400"
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Invalid Module ID</h2>
+        {moduleTitle && <p className="text-sm text-text-light mb-3">Module: {moduleTitle}</p>}
+        <p className="text-text-light mb-6 max-w-md">
+          The module ID "{moduleId}" is not in a valid format. Module IDs must be in UUID format.
+        </p>
+        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md mb-6 text-left w-full max-w-md">
+          <h3 className="text-sm font-medium mb-2">Supported UUID Format:</h3>
+          <code className="text-xs bg-gray-100 dark:bg-gray-700 p-1 rounded">
+            xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+          </code>
+          <p className="text-xs mt-2 text-text-light">
+            Example: 123e4567-e89b-12d3-a456-426614174000
+          </p>
+        </div>
+        <Button onClick={onBack} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Go Back to Modules
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
 export default function FormulaSheetPage({ params }: PageProps) {
-  const { moduleId } = use(params)
-  const { isLoading: isLoadingAuth } = useRequireAuth()
-  const { toast } = useToast()
-  const router = useRouter()
-  const supabase = createClient()
+  const resolvedParams = use(params);
+  const { moduleId } = resolvedParams;
+  
+  // React hooks must be called at the top level of the component
+  const { session: _session, isLoading: isLoadingAuth } = useRequireAuth();
+  const { toast } = useToast();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [moduleTitle, setModuleTitle] = useState('');
+  const [formulas, setFormulas] = useState<FormulaType[]>([]);
+  const [categorizedFormulas, setCategorizedFormulas] = useState<Record<string, FormulaType[]>>({});
+  const [isPremium, setIsPremium] = useState(false);
+  const [isPremiumDialogOpen, setIsPremiumDialogOpen] = useState(false);
+  const [_premiumFeatureAttempted, setPremiumFeatureAttempted] = useState<string>('');
+  const hasInitiatedFetch = useRef(false);
+  
+  // Quick check for undefined or 'undefined' moduleId
+  const shouldRedirect = !moduleId || moduleId === 'undefined';
+  
+  // Memoize the moduleId to ensure it remains stable
+  const stableModuleId = useMemo(() => moduleId, [moduleId]);
+  
+  // Add early UUID validation to check moduleId
+  const isValidUuid = useMemo(() => {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return stableModuleId && uuidPattern.test(stableModuleId);
+  }, [stableModuleId]);
   
   const searchParams = useMemo(() => {
     return new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
-  }, [])
+  }, []);
   
-  const [isLoading, setIsLoading] = useState(true)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isRegenerating, setIsRegenerating] = useState(false)
-  const [moduleTitle, setModuleTitle] = useState('')
-  const [studySessionId, setStudySessionId] = useState<string | null>(null)
-  const [formulas, setFormulas] = useState<FormulaType[]>([])
-  const [categorizedFormulas, setCategorizedFormulas] = useState<Record<string, FormulaType[]>>({})
-  const [isPremium, setIsPremium] = useState(false)
-  const [isPremiumDialogOpen, setIsPremiumDialogOpen] = useState(false)
-  const [premiumFeatureAttempted, setPremiumFeatureAttempted] = useState<string>('')
+  // Track study duration with the moduleId (which is now the study session ID)
+  useStudyDuration(isValidUuid ? stableModuleId : '', 'module');
   
-  useStudyDuration(studySessionId || '', 'module')
+  // Effect for client-side redirect
+  useEffect(() => {
+    if (shouldRedirect && typeof window !== 'undefined') {
+      window.location.href = '/modules';
+    }
+  }, [shouldRedirect]);
+  
+  // Only show a warning toast for invalid moduleIds during development
+  useEffect(() => {
+    if (!isValidUuid && stableModuleId && process.env.NODE_ENV === 'development') {
+      console.warn(`Non-UUID format moduleId detected: ${stableModuleId}. Database operations will fail.`);
+    }
+  }, [isValidUuid, stableModuleId]);
   
   useEffect(() => {
     const checkPremiumStatus = async () => {
       try {
+        const supabase = await createClient();
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.user?.id) return
         
@@ -93,16 +166,26 @@ export default function FormulaSheetPage({ params }: PageProps) {
       }
     }
     
-    checkPremiumStatus()
-  }, [supabase])
+    if (isValidUuid) {
+      checkPremiumStatus()
+    }
+  }, [isValidUuid]);
   
-  const fetchFormulas = useCallback(async () => {
+  const fetchFormulas = useCallback(async (currentModuleId: string) => {
     setIsLoading(true)
     try {
+      // Skip database operations for invalid UUIDs
+      if (!isValidUuid) {
+        setFormulas([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      const supabase = await createClient();
       const { data, error: fetchError } = await supabase
         .from('formulas')
         .select('*')
-        .eq('module_id', moduleId)
+        .eq('study_session_id', currentModuleId)
         .order('created_at', { ascending: false })
       
       if (fetchError) throw fetchError
@@ -124,11 +207,12 @@ export default function FormulaSheetPage({ params }: PageProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [moduleId, supabase, toast])
+  }, [toast, isValidUuid]);
   
   useEffect(() => {
     const fetchSessionData = async () => {
       try {
+        const supabase = await createClient();
         const { data: { session } } = await supabase.auth.getSession()
         
         if (!session?.user?.id) {
@@ -136,9 +220,16 @@ export default function FormulaSheetPage({ params }: PageProps) {
           return
         }
         
-        setStudySessionId(session.user.id)
-        setModuleTitle(searchParams.get('title') || 'Untitled Module')
-        fetchFormulas()
+        // Always set moduleTitle from URL params
+        const titleFromURL = searchParams.get('title')
+        setModuleTitle(titleFromURL || 'Untitled Module')
+        
+        // Now fetch formulas using the moduleId (which is the study session ID)
+        // Only fetch once to avoid potential infinite loops
+        if (stableModuleId && isValidUuid && !hasInitiatedFetch.current) {
+          hasInitiatedFetch.current = true;
+          fetchFormulas(stableModuleId)
+        }
       } catch (_error) {
         // Log authentication error
         console.error("Session loading error:", _error);
@@ -147,11 +238,12 @@ export default function FormulaSheetPage({ params }: PageProps) {
           description: "Please try logging in again.",
           variant: "destructive"
         })
+        setIsLoading(false);
       }
     }
     
     fetchSessionData()
-  }, [router, searchParams, fetchFormulas, supabase, toast])
+  }, [router, searchParams, fetchFormulas, toast, stableModuleId, isValidUuid])
   
   useEffect(() => {
     const categorized: Record<string, FormulaType[]> = {}
@@ -173,9 +265,19 @@ export default function FormulaSheetPage({ params }: PageProps) {
       return
     }
     
+    if (!isValidUuid) {
+      toast({
+        title: "Invalid Module ID",
+        description: "Cannot generate formulas for this module due to an invalid ID format.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsGenerating(true)
     try {
-      const moduleData = await getModuleData(moduleId)
+      const supabase = await createClient();
+      const moduleData = await getModuleData(stableModuleId)
       
       if (moduleData) {
         const response = await fetch('/api/ai/extract-formulas', {
@@ -183,12 +285,12 @@ export default function FormulaSheetPage({ params }: PageProps) {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ moduleId, moduleContent: moduleData }),
+          body: JSON.stringify({ study_session_id: stableModuleId, moduleContent: moduleData }),
         })
         
         if (!response.ok) throw new Error('Failed to generate formulas')
         
-        await fetchFormulas()
+        await fetchFormulas(stableModuleId)
       } else {
         toast({
           title: "No formulas found",
@@ -207,12 +309,18 @@ export default function FormulaSheetPage({ params }: PageProps) {
     }
   }
   
-  const getModuleData = async (moduleId: string) => {
+  const getModuleData = async (sessionId: string) => {
     try {
+      // Skip database operations for invalid UUIDs
+      if (!isValidUuid) {
+        return null;
+      }
+      
+      const supabase = await createClient();
       const { data, error } = await supabase
         .from('notes')
         .select('content')
-        .eq('module_id', moduleId)
+        .eq('study_session_id', sessionId)
       
       if (error) {
         console.error('Error fetching module notes:', error)
@@ -246,14 +354,24 @@ export default function FormulaSheetPage({ params }: PageProps) {
       return
     }
     
+    if (!isValidUuid) {
+      toast({
+        title: "Invalid Module ID",
+        description: "Cannot update formulas for this module due to an invalid ID format.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsRegenerating(true)
     try {
+      const supabase = await createClient();
       const response = await fetch('/api/ai/regenerate-descriptions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ moduleId, formulas }),
+        body: JSON.stringify({ study_session_id: stableModuleId, formulas }),
       })
       
       if (response.ok) {
@@ -262,7 +380,7 @@ export default function FormulaSheetPage({ params }: PageProps) {
           description: "Formula descriptions have been updated successfully.",
         })
         
-        await fetchFormulas()
+        await fetchFormulas(stableModuleId)
       } else {
         toast({
           title: "No descriptions updated",
@@ -286,6 +404,10 @@ export default function FormulaSheetPage({ params }: PageProps) {
     window.print()
   }
   
+  const handleGoBack = () => {
+    router.push('/modules')
+  }
+  
   const categories = [...new Set(formulas.map(f => f.category))].sort()
   
   const formulasByCategory = categories.reduce((acc, category) => {
@@ -301,95 +423,85 @@ export default function FormulaSheetPage({ params }: PageProps) {
     setIsPremiumDialogOpen(true)
   }
 
+  // If the moduleId is invalid and we're not redirecting, show custom error
+  if (!shouldRedirect && !isValidUuid && !isLoadingAuth && !isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-24 pb-8">
+          <div className="max-w-6xl mx-auto px-4">
+            <InvalidModuleIdError moduleId={moduleId} moduleTitle={moduleTitle} onBack={handleGoBack} />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <FormulaStyles />
-      
-      <AlertDialog open={isPremiumDialogOpen} onOpenChange={setIsPremiumDialogOpen}>
-        <AlertDialogContent className="bg-background border-border shadow-lg !bg-opacity-100" style={{ backgroundColor: 'var(--background)', backdropFilter: 'none' }}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Premium Feature</AlertDialogTitle>
-            <AlertDialogDescription>
-              {premiumFeatureAttempted} is a premium feature. Upgrade to a premium plan to access AI-powered formula features.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => router.push('/pricing')}>
-              View Pricing
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <main className="pt-24 pb-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <Link href={`/modules/${moduleId}`}>
-                <Button variant="outline" className="gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Module
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+            <div>
+              <div className="flex items-center space-x-3 mb-2">
+                <Button variant="ghost" onClick={handleGoBack} className="p-2">
+                  <ArrowLeft className="h-5 w-5" />
                 </Button>
-              </Link>
+                <h1 className="text-2xl md:text-3xl font-bold text-text-heading">Formula Sheet</h1>
+              </div>
+              {moduleTitle && (
+                <p className="text-lg text-text-light ml-10">
+                  {moduleTitle}
+                </p>
+              )}
             </div>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-sm font-medium text-text-light mb-2">Formula Sheet</h2>
-                <h1 className="text-3xl font-bold text-text">{moduleTitle}</h1>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-                <Button 
-                  onClick={handleGenerateFormulas} 
-                  disabled={isGenerating || isRegenerating}
-                  className="gap-2"
-                >
-                  {isGenerating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  {isGenerating ? 'Generating...' : 'Generate Formula Sheet'}
-                  {!isPremium && <Crown className="h-3 w-3 ml-1" />}
+            
+            <div className="flex flex-wrap items-center space-x-2">
+              {isPremium ? (
+                <Button variant="outline" onClick={handleRegenerateDescriptions} disabled={isRegenerating} className="gap-2">
+                  <RefreshCcw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+                  {isRegenerating ? 'Updating...' : 'Regenerate Descriptions'}
                 </Button>
-                
-                {formulas.length > 0 && (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleRegenerateDescriptions} 
-                    disabled={isRegenerating || isGenerating}
-                    className="gap-2"
-                  >
-                    {isRegenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCcw className="h-4 w-4" />
-                    )}
-                    {isRegenerating ? 'Updating...' : 'AI Descriptions'}
-                    {!isPremium && <Crown className="h-3 w-3 ml-1" />}
-                  </Button>
-                )}
-                
-                <Button variant="outline" onClick={handleExport} className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Export PDF
+              ) : (
+                <Button variant="outline" onClick={showPremiumDialog} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  AI Descriptions
+                  <Crown className="h-3 w-3 ml-1" />
                 </Button>
-              </div>
+              )}
+              
+              <Button variant="outline" onClick={handleExport} className="gap-2">
+                <Download className="h-4 w-4" />
+                Export PDF
+              </Button>
             </div>
           </div>
 
           {formulas.length === 0 ? (
-            <Card className="bg-background-card p-6 text-center">
+            <Card className="bg-background-card p-8 text-center shadow-sm border-border">
               <div className="flex flex-col items-center justify-center py-12">
-                <Lightbulb className="h-12 w-12 text-text-light mb-4" />
-                <h3 className="text-xl font-bold mb-2">No Formulas Found</h3>
-                <p className="text-text-light max-w-md mx-auto mb-6">
+                <div className="rounded-full bg-background-secondary p-4 mb-6">
+                  <FileText className="h-10 w-10 text-text-light" />
+                </div>
+                <h3 className="text-xl font-bold mb-3">No Formulas Found</h3>
+                <p className="text-text-light max-w-md mx-auto mb-8">
                   Your formula sheet will automatically extract mathematical equations from your notes.
                   Add equations to your notes using LaTeX syntax ($...$) and then generate your formula sheet.
                 </p>
-                <Button onClick={handleGenerateFormulas} disabled={isGenerating} className="gap-2">
-                  {isGenerating ? 'Generating...' : 'Generate Formula Sheet'}
+                <Button onClick={handleGenerateFormulas} disabled={isGenerating || !isValidUuid} className="gap-2">
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Generate Formula Sheet
+                    </>
+                  )}
                   {!isPremium && <Crown className="h-3 w-3 ml-1" />}
                 </Button>
               </div>
@@ -404,21 +516,23 @@ export default function FormulaSheetPage({ params }: PageProps) {
               </div>
               
               <Tabs defaultValue="categorized" className="print:hidden">
-                <TabsList>
-                  <TabsTrigger value="categorized">By Category</TabsTrigger>
-                  <TabsTrigger value="all">Full List</TabsTrigger>
-                </TabsList>
+                <div className="mb-6 bg-background-secondary p-1 rounded-lg inline-block">
+                  <TabsList className="bg-transparent">
+                    <TabsTrigger value="categorized" className="data-[state=active]:bg-background-card data-[state=active]:shadow-sm">By Category</TabsTrigger>
+                    <TabsTrigger value="all" className="data-[state=active]:bg-background-card data-[state=active]:shadow-sm">Full List</TabsTrigger>
+                  </TabsList>
+                </div>
                 
-                <TabsContent value="categorized">
+                <TabsContent value="categorized" className="mt-6">
                   {categories.length > 0 ? (
-                    <Accordion type="single" collapsible className="mt-4">
+                    <Accordion type="single" collapsible className="mt-4 space-y-4">
                       {categories.map(category => (
-                        <AccordionItem key={category} value={category}>
-                          <AccordionTrigger className="text-lg font-medium dark:text-white">
+                        <AccordionItem key={category} value={category} className="border-border bg-background-card rounded-lg overflow-hidden shadow-sm">
+                          <AccordionTrigger className="text-lg font-medium px-6 py-4 hover:bg-muted/30 data-[state=open]:bg-muted/20">
                             {category} <span className="ml-2 text-xs text-muted-foreground">({formulasByCategory[category].length})</span>
                           </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="grid grid-cols-1 gap-4 mt-2">
+                          <AccordionContent className="px-6 pb-6 pt-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                               {formulasByCategory[category].map(formula => (
                                 <FormulaCard key={formula.id} formula={formula} />
                               ))}
@@ -428,20 +542,20 @@ export default function FormulaSheetPage({ params }: PageProps) {
                       ))}
                     </Accordion>
                   ) : (
-                    <div className="text-center py-8">
-                      <p>No formulas found. Generate a formula sheet to get started.</p>
+                    <div className="text-center py-8 bg-background-card rounded-lg border border-border p-6">
+                      <p>No categorized formulas found. Generate a formula sheet to get started.</p>
                     </div>
                   )}
                 </TabsContent>
                 
-                <TabsContent value="all">
-                  <div className="grid grid-cols-1 gap-4 mt-4">
+                <TabsContent value="all" className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                     {formulas.length > 0 ? (
                       formulas.map(formula => (
                         <FormulaCard key={formula.id} formula={formula} />
                       ))
                     ) : (
-                      <div className="text-center py-8 dark:text-white">
+                      <div className="text-center py-8 bg-background-card rounded-lg border border-border p-6 col-span-full dark:text-white">
                         <p>No formulas found. Generate a formula sheet to get started.</p>
                       </div>
                     )}
@@ -458,19 +572,14 @@ export default function FormulaSheetPage({ params }: PageProps) {
                         <div key={formula.id} className="border p-4 rounded">
                           <div className="formula-display mb-2">
                             <ReactMarkdown
-                              remarkPlugins={[remarkMath]}
-                              rehypePlugins={[rehypeKatex]}
+                              remarkPlugins={[remarkMath as Pluggable]}
+                              rehypePlugins={[rehypeKatex as Pluggable]}
                             >
                               {formula.is_block ? `$$${formula.latex}$$` : `$${formula.latex}$`}
                             </ReactMarkdown>
                           </div>
                           {formula.description && (
                             <p className="text-sm text-text-light">{formula.description}</p>
-                          )}
-                          {formula.notes && (
-                            <p className="text-xs mt-2">
-                              Source: {formula.notes.title}
-                            </p>
                           )}
                         </div>
                       ))}
@@ -482,92 +591,49 @@ export default function FormulaSheetPage({ params }: PageProps) {
           )}
         </div>
       </main>
-
       <Footer />
+      
+      {/* Premium upgrade dialog */}
+      <AlertDialog open={isPremiumDialogOpen} onOpenChange={setIsPremiumDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Upgrade to Premium</AlertDialogTitle>
+            <AlertDialogDescription>
+              AI-powered description generation for formulas is a premium feature. Upgrade your account to access this and other premium features.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => router.push('/pricing')}>
+              View Premium Plans
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <FormulaStyles />
     </div>
   )
 }
 
 function FormulaCard({ formula }: { formula: FormulaType }) {
   return (
-    <Card className="bg-background-card p-4 overflow-x-auto dark:shadow-md dark:border-gray-700">
-      <div className="formula-display mb-3">
-        <ReactMarkdown
-          remarkPlugins={[remarkMath]}
-          rehypePlugins={[rehypeKatex]}
-        >
-          {formula.is_block ? `$$${formula.latex}$$` : `$${formula.latex}$`}
-        </ReactMarkdown>
-      </div>
-      {formula.description && (
-        <p className="text-sm font-medium text-text dark:text-white">{formula.description}</p>
-      )}
-      <div className="flex items-center justify-between mt-3">
-        <Badge variant="secondary" className="dark:bg-gray-700 dark:text-gray-100">{formula.category}</Badge>
-        {formula.notes && (
-          <span className="text-xs text-text-light dark:text-gray-300">Source: {formula.notes.title}</span>
-        )}
-      </div>
+    <Card className="bg-background-card border-border overflow-hidden hover:shadow-md transition-all">
+      <CardContent className="p-5">
+        <div className="flex flex-col space-y-3">
+          <div className="formula-display mb-2 overflow-x-auto">
+            <ReactMarkdown
+              remarkPlugins={[remarkMath as Pluggable]}
+              rehypePlugins={[rehypeKatex as Pluggable]}
+            >
+              {formula.is_block ? `$$${formula.latex}$$` : `$${formula.latex}$`}
+            </ReactMarkdown>
+          </div>
+          {formula.description && (
+            <p className="text-sm text-text-light">{formula.description}</p>
+          )}
+        </div>
+      </CardContent>
     </Card>
-  )
-}
-
-function FormulaStyles() {
-  return (
-    <style jsx global>{`
-      .dark .katex,
-      .dark .katex-display,
-      .dark .katex .base,
-      .dark .katex .strut,
-      .dark .katex .mathit,
-      .dark .katex .mathnormal,
-      .dark .katex .mathbf,
-      .dark .katex .amsrm,
-      .dark .katex .textstyle > .mord,
-      .dark .katex .textstyle > .mord > .mord,
-      .dark .katex .textstyle > .mord > .mord > .mord,
-      .dark .katex .textstyle > .mord > .mord > .mord > .mord,
-      .dark .katex .textstyle > .mord > .mord > .mord > .mord > .mord,
-      .dark .katex .mbin,
-      .dark .katex .mrel,
-      .dark .katex .mopen,
-      .dark .katex .mclose,
-      .dark .katex .mpunct,
-      .dark .katex .minner,
-      .dark .katex .mop,
-      .dark .katex .mord.text,
-      .dark .katex .mspace {
-        color: white !important;
-      }
-      
-      .dark .katex .frac-line {
-        border-color: white !important;
-      }
-      
-      .dark .katex .sqrt > .sqrt-sign {
-        color: white !important;
-      }
-      
-      .dark .katex .accent > .accent-body {
-        color: white !important;
-      }
-      
-      .dark .formula-display {
-        color: white !important;
-      }
-      
-      .dark .katex .overline .overline-line {
-        border-top-color: white !important;
-      }
-      
-      .dark .katex .underline .underline-line {
-        border-bottom-color: white !important;
-      }
-      
-      .dark .katex .stretchy {
-        border-color: white !important;
-        color: white !important;
-      }
-    `}</style>
   )
 }

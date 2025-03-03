@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Brain, ScrollText } from 'lucide-react'
+import { Brain, ScrollText, FileText } from 'lucide-react'
 
 interface StudyToolSelectorProps {
   moduleId: string
@@ -20,6 +20,12 @@ const toolConfig = {
     icon: ScrollText,
     description: 'Review key concepts with flashcards',
     color: 'text-green-500'
+  },
+  formulas: {
+    label: 'Formula Sheet',
+    icon: FileText,
+    description: 'Access mathematical formulas and equations',
+    color: 'text-purple-500'
   }
 }
 
@@ -49,7 +55,7 @@ export default function StudyToolSelector({ moduleId }: StudyToolSelectorProps) 
               </div>
               <div>
                 <h3 className="font-semibold text-lg text-text mb-1">{config.label}</h3>
-                <p className="text-text-light text-sm">{config.description}</p>
+                <p className="text-text-light dark:text-gray-300 text-sm">{config.description}</p>
               </div>
             </div>
           </CardContent>

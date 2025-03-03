@@ -11,10 +11,12 @@ import {
   Tooltip,
   Legend,
   Filler,
-  TooltipItem
+  TooltipItem,
+  Scale as _ChartScale
 } from 'chart.js'
 import { TeachBackSession, TimePeriod } from '@/types/insights'
 import { format, startOfWeek, startOfMonth } from 'date-fns'
+import { Scale as _Scale } from 'lucide-react'
 
 // Register ChartJS components
 ChartJS.register(
@@ -66,14 +68,18 @@ export default function TeachBackChart({ teachBacks, period }: TeachBackChartPro
     return total / sessions.length
   })
 
+  // Calculate the maximum grade with padding (if not already 100)
+  const maxValue = Math.max(...averageGrades, 80); // Set a minimum of 80 for better visibility
+  const paddedMaxValue = Math.min(100, maxValue * 1.15); // Add 15% padding, but cap at 100%
+
   const data = {
     labels,
     datasets: [
       {
         label: 'Overall Grade',
         data: averageGrades,
-        borderColor: 'rgb(59, 130, 246)', // blue-500
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: 'rgb(34, 197, 94)', // green-500
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
         fill: true,
         tension: 0.4
       }
@@ -90,28 +96,58 @@ export default function TeachBackChart({ teachBacks, period }: TeachBackChartPro
       tooltip: {
         mode: 'index' as const,
         intersect: false,
+        position: 'nearest' as const,
+        padding: 10,
         callbacks: {
           label: (context: TooltipItem<'line'>) => {
             const value = context.parsed.y
             return `Grade: ${Math.round(value)}%`
+          },
+          title: (tooltipItems: TooltipItem<'line'>[]) => {
+            return tooltipItems[0].label;
           }
         }
       }
     },
+    interaction: {
+      mode: 'nearest' as const,
+      axis: 'x' as const,
+      intersect: false
+    },
     scales: {
       y: {
         beginAtZero: true,
+        suggestedMax: paddedMaxValue,
         max: 100,
         title: {
           display: true,
           text: 'Grade (%)'
+        },
+        ticks: {
+          padding: 10
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)'
         }
+      },
+      x: {
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)'
+        }
+      }
+    },
+    layout: {
+      padding: {
+        top: 20,
+        right: 20,
+        bottom: 10,
+        left: 10
       }
     }
   }
 
   return (
-    <div className="w-full h-[400px] bg-white rounded-lg p-4 border">
+    <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg p-4">
       <Line data={data} options={options} />
     </div>
   )

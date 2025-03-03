@@ -18,7 +18,9 @@ export async function POST(request: Request) {
 
   try {
     const event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    const supabase = createClient()
+
+    // Connect to Supabase
+    const supabase = await createClient()
 
     switch (event.type) {
       case 'customer.subscription.created':
