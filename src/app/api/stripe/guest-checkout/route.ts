@@ -46,7 +46,11 @@ export async function POST(request: Request) {
       mode: 'subscription',
       success_url: `${returnUrl}?success=true`,
       cancel_url: `${returnUrl}?canceled=true`,
-      allow_promotion_codes: true,
+      discounts: [
+        {
+          coupon: 'Rb1UQ59X',
+        },
+      ],
       billing_address_collection: 'required',
     });
 

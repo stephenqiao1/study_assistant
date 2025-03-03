@@ -71,10 +71,27 @@ export function UpgradeModal({ isOpen, onClose, feature, currentUsage, limit }: 
             Upgrade to get more {featureLabels[feature]} and unlock additional features!
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Special Promotion Banner */}
+        <div className="bg-gradient-to-r from-purple-600 to-blue-500 text-white p-3 rounded-lg mb-4">
+          <div className="text-center">
+            <p className="font-bold">🎉 Special Launch Promotion! 🎉</p>
+            <p className="text-sm">Get <span className="font-bold">80% OFF</span> all plans for the first 100 users!</p>
+            <p className="text-xs mt-1">Discount automatically applied at checkout</p>
+          </div>
+        </div>
+        
         <div className="grid gap-4 py-4">
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-              <h3 className="font-semibold text-blue-900">Basic Plan - $9.99/month</h3>
+              <h3 className="font-semibold text-blue-900">Basic Plan</h3>
+              <div className="flex items-center mt-1">
+                <span className="text-blue-900 font-bold text-lg">$9.99/month</span>
+                <span className="ml-2 bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  80% OFF
+                </span>
+              </div>
+              <p className="text-sm text-green-600 mt-0.5">You pay: $1.99/month</p>
               <ul className="mt-2 space-y-1 text-sm text-blue-700">
                 <li>• 50 {featureLabels[feature]} per month</li>
                 <li>• Auto-generate flashcards</li>
@@ -89,7 +106,14 @@ export function UpgradeModal({ isOpen, onClose, feature, currentUsage, limit }: 
               </Button>
             </div>
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-              <h3 className="font-semibold text-purple-900">Pro Plan - $19.99/month</h3>
+              <h3 className="font-semibold text-purple-900">Pro Plan</h3>
+              <div className="flex items-center mt-1">
+                <span className="text-purple-900 font-bold text-lg">$19.99/month</span>
+                <span className="ml-2 bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  80% OFF
+                </span>
+              </div>
+              <p className="text-sm text-green-600 mt-0.5">You pay: $3.99/month</p>
               <ul className="mt-2 space-y-1 text-sm text-purple-700">
                 <li>• Unlimited {featureLabels[feature]}</li>
                 <li>• Priority support</li>

@@ -121,6 +121,16 @@ export default function PricingTable() {
 
   return (
     <div className="mt-16 flex flex-col items-center">
+      {/* Special Promotion Banner */}
+      <div className="w-full max-w-4xl mb-8 bg-gradient-to-r from-purple-600 to-blue-500 text-white p-4 rounded-lg shadow-md">
+        <div className="flex flex-col items-center text-center">
+          <h2 className="text-2xl font-bold mb-2">🎉 Special Launch Promotion! 🎉</h2>
+          <p className="text-lg mb-1">Get <span className="font-bold text-xl">80% OFF</span> all plans for the first 100 users!</p>
+          <p className="text-sm opacity-90 mb-2">Limited time offer - Discount automatically applied at checkout</p>
+          <p className="text-xs opacity-80">Coupon code: <span className="font-mono font-bold bg-white/20 px-2 py-1 rounded">Rb1UQ59X</span> (already applied for you)</p>
+        </div>
+      </div>
+
       {/* Billing interval toggle */}
       <div className="flex items-center gap-4 mb-8">
         <Button
@@ -185,11 +195,17 @@ export default function PricingTable() {
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-text dark:text-white">Basic</h3>
             <p className="mt-4 text-text-light dark:text-gray-300">Perfect for regular learners</p>
-            <p className="mt-6">
+            <p className="mt-6 flex items-center">
               <span className="text-4xl font-bold text-text dark:text-white">
                 ${prices.basic[billingInterval]}
               </span>
               <span className="text-text-light dark:text-gray-300">/{billingInterval}</span>
+              <span className="ml-2 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
+                80% OFF
+              </span>
+            </p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+              You pay: ${(prices.basic[billingInterval] * 0.2).toFixed(2)}
             </p>
           </div>
           <ul className="mb-8 space-y-4 flex-1">
@@ -224,11 +240,17 @@ export default function PricingTable() {
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-text dark:text-white">Pro</h3>
             <p className="mt-4 text-text-light dark:text-gray-300">Perfect for power users</p>
-            <p className="mt-6">
+            <p className="mt-6 flex items-center">
               <span className="text-4xl font-bold text-text dark:text-white">
                 ${prices.pro[billingInterval]}
               </span>
               <span className="text-text-light dark:text-gray-300">/{billingInterval}</span>
+              <span className="ml-2 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
+                80% OFF
+              </span>
+            </p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+              You pay: ${(prices.pro[billingInterval] * 0.2).toFixed(2)}
             </p>
           </div>
           <ul className="mb-8 space-y-4 flex-1">

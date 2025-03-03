@@ -64,7 +64,12 @@ export async function createCheckoutSession({
         tier,
         interval
       }
-    }
+    },
+    discounts: [
+      {
+        coupon: 'Rb1UQ59X',
+      },
+    ],
   })
 
   return session
