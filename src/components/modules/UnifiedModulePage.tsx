@@ -160,12 +160,47 @@ interface Flashcard {
   updated_at?: string;
   difficulty?: number;
   last_reviewed?: string;
+  last_reviewed_at?: string;
   review_count?: number;
+  repetitions?: number;
+  last_recall_rating?: 'easy' | 'good' | 'hard' | 'forgot';
   module_id?: string;
   user_id?: string;
   tags?: string[];
   metadata?: Record<string, unknown>;
   due_date?: string;
+}
+
+// Add interfaces for videos and formulas
+interface Video {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  url: string;
+  channelTitle?: string;
+  channel?: string;
+  publishedAt?: string;
+  published_at?: string;
+  duration?: string;
+  viewCount?: number;
+  saved?: boolean;
+  bookmarked?: boolean;
+  videoUrl?: string;
+  video_url?: string;
+  video_id?: string;
+}
+
+interface Formula {
+  id: string;
+  latex: string;
+  formula: string;
+  description?: string;
+  category: string;
+  is_block: boolean;
+  created_at?: string;
+  user_id?: string;
+  study_session_id?: string;
 }
 
 export default function UnifiedModulePage({ module, _allSessions, notes: initialNotes, isPremiumUser, userId }: UnifiedModulePageProps) {
@@ -235,7 +270,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   // Add state for flashcard filtering and stats
   const [flashcardFilterType, setFlashcardFilterType] = useState<'all' | 'difficult' | 'easy' | 'new'>('all');
   const [flashcardSortType, setFlashcardSortType] = useState<'default' | 'newest' | 'oldest'>('default');
-  const [flashcardStats, setFlashcardStats] = useState<{
+  const [_flashcardStats, setFlashcardStats] = useState<{
     totalCards: number;
     reviewedToday: number;
     masteredCount: number;
@@ -253,15 +288,15 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   
   // Add state for AI flashcard generation
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
-  const [generatedFlashcardsCount, setGeneratedFlashcardsCount] = useState(0);
-  const [showGeneratedSuccess, setShowGeneratedSuccess] = useState(false);
+  const [_generatedFlashcardsCount, setGeneratedFlashcardsCount] = useState(0);
+  const [_showGeneratedSuccess, setShowGeneratedSuccess] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   
   // Add state for video finder functionality
   const [videoSearchQuery, setVideoSearchQuery] = useState('');
-  const [videos, setVideos] = useState<any[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [isSearchingVideos, setIsSearchingVideos] = useState(false);
-  const [savedVideos, setSavedVideos] = useState<any[]>([]);
+  const [savedVideos, setSavedVideos] = useState<Video[]>([]);
   
   // Add state for module editing
   const [isEditingModule, setIsEditingModule] = useState(false);
@@ -269,22 +304,22 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   const [isUpdatingModule, setIsUpdatingModule] = useState(false);
 
   // Add state for formulas functionality
-  const [formulas, setFormulas] = useState<any[]>([]);
+  const [formulas, setFormulas] = useState<Formula[]>([]);
   const [isLoadingFormulas, setIsLoadingFormulas] = useState(false);
   const [formulaCategories, setFormulaCategories] = useState<string[]>([]);
-  const [formulasByCategory, setFormulasByCategory] = useState<Record<string, any[]>>({});
+  const [formulasByCategory, setFormulasByCategory] = useState<Record<string, Formula[]>>({});
   const [activeFormulaTab, setActiveFormulaTab] = useState<'categorized' | 'all'>('all');
 
   // Add state for manual formula creation
   const [isAddFormulaModalOpen, setIsAddFormulaModalOpen] = useState(false);
-  const [newFormulaLatex, setNewFormulaLatex] = useState('');
-  const [newFormulaDescription, setNewFormulaDescription] = useState('');
-  const [newFormulaCategory, setNewFormulaCategory] = useState('General');
-  const [newFormulaIsBlock, setNewFormulaIsBlock] = useState(false);
-  const [isAddingFormula, setIsAddingFormula] = useState(false);
+  const [_newFormulaLatex, setNewFormulaLatex] = useState('');
+  const [_newFormulaDescription, setNewFormulaDescription] = useState('');
+  const [_newFormulaCategory, setNewFormulaCategory] = useState('General');
+  const [_newFormulaIsBlock, setNewFormulaIsBlock] = useState(false);
+  const [_isAddingFormula, setIsAddingFormula] = useState(false);
 
   // Update the state to track the formula being edited
-  const [editingFormula, setEditingFormula] = useState<any>(null);
+  const [editingFormula, setEditingFormula] = useState<Formula | null>(null);
 
   // Add the newFormula state
   const [newFormula, setNewFormula] = useState<{
@@ -308,7 +343,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   const [activeNoteFlashcards, setActiveNoteFlashcards] = useState<{
     noteId: string;
     noteTitle: string;
-    flashcards: any[];
+    flashcards: Flashcard[];
   } | null>(null);
   const [isLoadingNoteFlashcards, setIsLoadingNoteFlashcards] = useState(false);
 
@@ -568,6 +603,12 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Update handleActivateStudyTool to accept an optional noteId parameter
   const handleActivateStudyTool = (tool: 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos', noteId?: string) => {
+    // Check for premium access for formulas
+    if (tool === 'formulas' && !hasFormulaAccess()) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+    
     setActiveSection(tool);
     
     // If it's flashcards and a noteId is provided, set the filter
@@ -706,7 +747,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
   
   // New function to calculate flashcard statistics
-  const calculateFlashcardStats = (cards: any[]) => {
+  const calculateFlashcardStats = (cards: Flashcard[]) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -718,7 +759,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }).length;
     
     const masteredCount = cards.filter(card => 
-      card.last_recall_rating === 'easy' || card.repetitions >= 5
+      card.last_recall_rating === 'easy' || (card.repetitions !== undefined && card.repetitions >= 5)
     ).length;
     
     const difficultCount = cards.filter(card => 
@@ -1098,6 +1139,21 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   // This feature is available only to basic and pro tier users
   const canAccessAIFlashcards = () => {
     return subscriptionTier === 'basic' || subscriptionTier === 'pro';
+  };
+  
+  // Add function to check if user has access to create flashcards from notes
+  // This feature is available only to basic and pro tier users
+  const canCreateFlashcardsFromNotes = () => {
+    return subscriptionTier === 'basic' || subscriptionTier === 'pro';
+  };
+  
+  // Add function to handle creating flashcards from notes
+  const handleCreateFlashcardClick = () => {
+    if (!canCreateFlashcardsFromNotes()) {
+      setShowUpgradeDialog(true);
+    } else {
+      setIsCreateFlashcardModalOpen(true);
+    }
   };
   
   // Add function to prompt user to upgrade if they're not premium
@@ -2336,7 +2392,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                     variant="outline"
                     onClick={() => {
                       if (selectedNote && selectedNote.id === activeNoteFlashcards?.noteId) {
-                        generateAIFlashcards();
+                        handleAIFlashcardsClick();
                       }
                     }}
                     disabled={isGeneratingFlashcards || !selectedNote}
@@ -2353,7 +2409,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                   </Button>
                   <Button 
                     variant="outline" 
-                    onClick={() => setIsCreateFlashcardModalOpen(true)}
+                    onClick={handleCreateFlashcardClick}
                   >
                     <Plus className="h-4 w-4 mr-1" /> Create Card
                   </Button>
@@ -2461,7 +2517,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                         variant="outline"
                         onClick={() => {
                           if (selectedNote && selectedNote.id === activeNoteFlashcards?.noteId) {
-                            generateAIFlashcards();
+                            handleAIFlashcardsClick();
                           }
                         }}
                         disabled={isGeneratingFlashcards || !selectedNote}
@@ -2765,10 +2821,10 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                         </p>
                         <div className="mt-2 flex justify-between items-center">
                           <span className="text-xs text-muted-foreground">
-                            {video.channel}
+                            {video.channelTitle}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {new Date(video.publishedAt).toLocaleDateString()}
+                            {video.publishedAt ? new Date(video.publishedAt).toLocaleDateString() : 'Unknown date'}
                           </span>
                         </div>
                       </CardContent>
@@ -2835,10 +2891,10 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                           </p>
                           <div className="mt-2 flex justify-between items-center">
                             <span className="text-xs text-muted-foreground">
-                              {video.channel}
+                              {video.channelTitle}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(video.published_at).toLocaleDateString()}
+                              {video.published_at ? new Date(video.published_at).toLocaleDateString() : 'Unknown date'}
                             </span>
                           </div>
                         </CardContent>
@@ -2925,7 +2981,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                     variant="outline"
                     onClick={() => {
                       if (selectedNote && selectedNote.id === activeNoteFlashcards?.noteId) {
-                        generateAIFlashcards();
+                        handleAIFlashcardsClick();
                       }
                     }}
                     disabled={isGeneratingFlashcards || !selectedNote}
@@ -3055,7 +3111,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                         variant="outline"
                         onClick={() => {
                           if (selectedNote && activeNoteFlashcards) {
-                            generateAIFlashcards();
+                            handleAIFlashcardsClick();
                           }
                         }}
                         disabled={isGeneratingFlashcards || !selectedNote || !activeNoteFlashcards}
@@ -3217,11 +3273,44 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
           <DialogHeader>
             <DialogTitle>Upgrade to Premium</DialogTitle>
             <DialogDescription>
-              Enhance your learning experience with premium features that help you master your study material faster.
+              This feature is only available on Basic and Pro plans. Upgrade to access premium features that help you master your study material faster.
             </DialogDescription>
           </DialogHeader>
           
-          {/* Upgrade dialog content... */}
+          <div className="space-y-4 py-4">
+            <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-lg border border-amber-200 dark:border-amber-800/50">
+              <h3 className="font-medium text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4" /> Premium Features Include:
+              </h3>
+              <ul className="space-y-2 text-sm text-amber-700 dark:text-amber-400">
+                <li className="flex items-start gap-2">
+                  <div className="mt-0.5 flex-shrink-0">•</div>
+                  <div>AI-generated flashcards from your notes</div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="mt-0.5 flex-shrink-0">•</div>
+                  <div>Formula extraction and organization</div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="mt-0.5 flex-shrink-0">•</div>
+                  <div>More teach-back sessions per month</div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="mt-0.5 flex-shrink-0">•</div>
+                  <div>Enhanced YouTube video search</div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>
+              Maybe Later
+            </Button>
+            <Button onClick={() => router.push('/pricing')}>
+              View Pricing Plans
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

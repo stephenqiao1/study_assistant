@@ -126,8 +126,7 @@ export default function PricingTable() {
         <div className="flex flex-col items-center text-center">
           <h2 className="text-2xl font-bold mb-2">🎉 Special Launch Promotion! 🎉</h2>
           <p className="text-lg mb-1">Get <span className="font-bold text-xl">80% OFF</span> all plans for the first 100 users!</p>
-          <p className="text-sm opacity-90 mb-2">Limited time offer - Discount automatically applied at checkout</p>
-          <p className="text-xs opacity-80">Coupon code: <span className="font-mono font-bold bg-white/20 px-2 py-1 rounded">Rb1UQ59X</span> (already applied for you)</p>
+          <p className="text-sm opacity-90">Limited time offer - Discount automatically applied at checkout</p>
         </div>
       </div>
 
