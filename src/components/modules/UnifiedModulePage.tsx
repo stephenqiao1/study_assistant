@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback as _useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
@@ -312,11 +312,11 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Add state for manual formula creation
   const [isAddFormulaModalOpen, setIsAddFormulaModalOpen] = useState(false);
-  const [_newFormulaLatex, setNewFormulaLatex] = useState('');
-  const [_newFormulaDescription, setNewFormulaDescription] = useState('');
-  const [_newFormulaCategory, setNewFormulaCategory] = useState('General');
-  const [_newFormulaIsBlock, setNewFormulaIsBlock] = useState(false);
-  const [_isAddingFormula, setIsAddingFormula] = useState(false);
+  const [_newFormulaLatex, _setNewFormulaLatex] = useState('');
+  const [_newFormulaDescription, _setNewFormulaDescription] = useState('');
+  const [_newFormulaCategory, _setNewFormulaCategory] = useState('General');
+  const [_newFormulaIsBlock, _setNewFormulaIsBlock] = useState(false);
+  const [_isAddingFormula, _setIsAddingFormula] = useState(false);
 
   // Update the state to track the formula being edited
   const [editingFormula, setEditingFormula] = useState<Formula | null>(null);
@@ -399,10 +399,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         title: "Note saved successfully",
         variant: "default"
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
       toast({
         title: "Error saving note",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -437,10 +441,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         title: "New note created",
         variant: "default"
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
       toast({
         title: "Error creating note",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -492,10 +500,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         title: "Note deleted successfully",
         variant: "default"
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
       toast({
         title: "Error deleting note",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -542,10 +554,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         title: "Tag added successfully",
         variant: "default"
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
       toast({
         title: "Error adding tag",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -586,10 +602,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         title: "Tag removed successfully",
         variant: "default"
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
       toast({
         title: "Error removing tag",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -664,12 +684,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     } else if (activeSection === 'teachback') {
       fetchTeachbackCount();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection]);
 
   // Debug function to inspect flashcard table
   const inspectFlashcardTable = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: _data, error } = await supabase
         .from('flashcards')
         .select('*')
         .limit(1);
@@ -985,11 +1006,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         description: "Your new flashcard has been added to your deck.",
         variant: "default"
       });
-    } catch (error: any) {
-      console.error("Full error object:", error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
       toast({
         title: "Error creating flashcard",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -1012,7 +1036,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
 
   // New function to review only difficult cards
-  const reviewDifficultCards = () => {
+  const _reviewDifficultCards = () => {
     if (difficultCards.length > 0) {
       setFlashcards(difficultCards);
       setCurrentFlashcardIndex(0);
@@ -1071,6 +1095,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, currentFlashcardIndex, flashcards, showEndOfDeckDialog]);
 
   // Function to handle filter change with premium check
@@ -1166,7 +1191,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
   
   // Add function to handle upgrade navigation
-  const navigateToUpgrade = () => {
+  const _navigateToUpgrade = () => {
     router.push('/pricing');
   };
   
@@ -1277,10 +1302,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         title: "Module description updated",
         variant: "default"
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
       toast({
         title: "Error updating module",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -1289,13 +1318,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
 
   // Update the onNotesCreated function to handle new notes from PDF
-  const handleNotesCreated = (newNotes?: any[]) => {
+  const handleNotesCreated = (newNotes?: { title: string; content: string; tags: string[]; id?: string }[]) => {
     if (newNotes && newNotes.length > 0) {
       // Add the new notes to the state
-      setNotes(prev => [...newNotes, ...prev]);
+      setNotes(prev => [...newNotes as NoteType[], ...prev]);
       
       // Select the first new note
-      setSelectedNote(newNotes[0]);
+      setSelectedNote(newNotes[0] as NoteType);
       setEditedContent(newNotes[0].content);
       
       toast({
@@ -1317,7 +1346,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       document.head.removeChild(style);
     };
   }, []);
-
+  
   // Add this just before the return statement in your component
   useEffect(() => {
     // Function to add suppressHydrationWarning to all interactive elements
@@ -1332,8 +1361,15 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         }
         
         // For elements that already have React handlers, we can try to modify their props
-        if ((el as any).__REACT_DATA_ATTRIBUTES) {
-          (el as any).__REACT_DATA_ATTRIBUTES.suppressHydrationWarning = true;
+        interface ReactElement extends HTMLElement {
+          __REACT_DATA_ATTRIBUTES?: {
+            suppressHydrationWarning: boolean;
+          };
+        }
+        
+        const reactEl = el as ReactElement;
+        if (reactEl.__REACT_DATA_ATTRIBUTES) {
+          reactEl.__REACT_DATA_ATTRIBUTES.suppressHydrationWarning = true;
         }
         
         // Also add the attribute directly (this may not work for React-controlled elements)
@@ -1353,24 +1389,25 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   }, []);
 
   // Also create a React Context to automatically apply suppressHydrationWarning to children
-  const SuppressHydrationContext = React.createContext<null>(null);
+  const _SuppressHydrationContext = React.createContext<null>(null);
 
   // Define proper types for children
-  const WithSuppressHydration = ({ children }: { children: React.ReactNode }) => {
+  const _WithSuppressHydration = ({ children }: { children: React.ReactNode }) => {
     return React.Children.map(children, child => {
       // Only add props to valid elements that accept suppressHydrationWarning
       if (React.isValidElement(child) && typeof child.type !== 'string') {
-        // Use 'as any' to bypass TypeScript's strictness about unknown props
-        return React.cloneElement(child as React.ReactElement<any>, { 
-          suppressHydrationWarning: true 
-        });
+        // Use a more specific type that includes the suppressHydrationWarning property
+        return React.cloneElement(
+          child as React.ReactElement<React.JSX.IntrinsicAttributes & { suppressHydrationWarning?: boolean }>, 
+          { suppressHydrationWarning: true }
+        );
       }
       return child;
     });
   };
 
   // First, add a function to check for flashcard feature access
-  const hasFlashcardAccess = () => {
+  const _hasFlashcardAccess = () => {
     return true; // Basic flashcard functionality is available to all users
   };
 
@@ -1418,19 +1455,19 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       
       // Get unique formulas
       const uniqueFormulas = Array.from(
-        new Map(data.map((formula: any) => [formula.latex, formula])).values()
+        new Map(data.map((formula: Formula) => [formula.latex, formula])).values()
       );
       
-      setFormulas(uniqueFormulas as any[]);
+      setFormulas(uniqueFormulas);
       
       // Process categories
-      const categories = [...new Set(uniqueFormulas.map((f: any) => f.category))].sort();
+      const categories = [...new Set(uniqueFormulas.map((f: Formula) => f.category))].sort();
       setFormulaCategories(categories);
       
       // Group formulas by category
-      const categorized: Record<string, any[]> = {};
+      const categorized: Record<string, Formula[]> = {};
       categories.forEach(category => {
-        categorized[category] = uniqueFormulas.filter((f: any) => f.category === category);
+        categorized[category] = uniqueFormulas.filter((f: Formula) => f.category === category);
       });
       setFormulasByCategory(categorized);
       
@@ -1457,6 +1494,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     } else if (activeSection === 'formulas') {
       fetchFormulas();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection]);
 
   // Add function to generate formulas
@@ -1566,7 +1604,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
 
   // Add function to get notes content for formula generation
-  const getModuleNotes = async () => {
+  const _getModuleNotes = async () => {
     try {
       const { data, error } = await supabase
         .from('notes')
@@ -1575,17 +1613,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       
       if (error) {
         console.error('Error fetching module notes:', error);
-        return null;
+        return [];
       }
       
-      if (data && data.length > 0) {
-        return data.map(note => note.content).join('\n\n');
-      }
-      
-      return null;
+      return data || [];
     } catch (error) {
       console.error('Error in getModuleNotes:', error);
-      return null;
+      return [];
     }
   };
 
@@ -1729,7 +1763,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }
   }, [editingFormula]);
 
-  const handleFormulaAccess = () => {
+  const _handleFormulaAccess = () => {
     if (!hasFormulaAccess()) {
       setShowUpgradeDialog(true);
     }
@@ -1751,7 +1785,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       const data = await response.json();
       
       // Process videos and check if they're already saved
-      const processedVideos = data.videos.map((video: any) => ({
+      const processedVideos = data.videos.map((video: Video) => ({
         ...video,
         bookmarked: savedVideos.some(saved => saved.video_id === video.id)
       }));
@@ -1789,7 +1823,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       const data = await searchResponse.json();
       
       // Process videos and check if they're already saved
-      const processedVideos = data.videos.map((video: any) => ({
+      const processedVideos = data.videos.map((video: Video) => ({
         ...video,
         bookmarked: savedVideos.some(saved => saved.video_id === video.id)
       }));
@@ -1812,7 +1846,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }
   };
   
-  const handleSaveVideo = async (video: any) => {
+  const handleSaveVideo = async (video: Partial<Video> & { id: string; title: string }) => {
     if (!userId) return;
     
     const supabase = createClient();
@@ -2867,7 +2901,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                                 size="sm"
                                 className="h-8 w-8 p-0"
                                 onClick={() => handleSaveVideo({
-                                  id: video.video_id,
+                                  id: video.video_id || video.id || '',
                                   title: video.title,
                                   bookmarked: true
                                 })}
@@ -3271,18 +3305,18 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Upgrade to Premium</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-gray-900 dark:text-white">Upgrade to Premium</DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-300">
               This feature is only available on Basic and Pro plans. Upgrade to access premium features that help you master your study material faster.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-lg border border-amber-200 dark:border-amber-800/50">
+            <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-lg border border-amber-200 dark:border-amber-800/50">
               <h3 className="font-medium text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-2">
                 <Sparkles className="h-4 w-4" /> Premium Features Include:
               </h3>
-              <ul className="space-y-2 text-sm text-amber-700 dark:text-amber-400">
+              <ul className="space-y-2 text-sm text-amber-700 dark:text-amber-300">
                 <li className="flex items-start gap-2">
                   <div className="mt-0.5 flex-shrink-0">•</div>
                   <div>AI-generated flashcards from your notes</div>
@@ -3304,10 +3338,12 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
           </div>
           
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>
+            <Button variant="outline" onClick={() => setShowUpgradeDialog(false)} 
+                    className="border-gray-200 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
               Maybe Later
             </Button>
-            <Button onClick={() => router.push('/pricing')}>
+            <Button onClick={() => router.push('/pricing')}
+                    className="bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90">
               View Pricing Plans
             </Button>
           </DialogFooter>

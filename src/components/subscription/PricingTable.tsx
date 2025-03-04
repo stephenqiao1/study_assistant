@@ -124,9 +124,9 @@ export default function PricingTable() {
       {/* Special Promotion Banner */}
       <div className="w-full max-w-4xl mb-8 bg-gradient-to-r from-purple-600 to-blue-500 text-white p-4 rounded-lg shadow-md">
         <div className="flex flex-col items-center text-center">
-          <h2 className="text-2xl font-bold mb-2">🎉 Special Launch Promotion! 🎉</h2>
-          <p className="text-lg mb-1">Get <span className="font-bold text-xl">80% OFF</span> all plans for the first 100 users!</p>
-          <p className="text-sm opacity-90">Limited time offer - Discount automatically applied at checkout</p>
+          <h2 className="text-2xl font-bold mb-2">🎉 Limited Time Offer! 🎉</h2>
+          <p className="text-lg mb-1">Save <span className="font-bold text-xl">80%</span> on all plans - only for the first 100 users!</p>
+          <p className="text-sm opacity-90">Discount automatically applied at checkout</p>
         </div>
       </div>
 
@@ -194,18 +194,22 @@ export default function PricingTable() {
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-text dark:text-white">Basic</h3>
             <p className="mt-4 text-text-light dark:text-gray-300">Perfect for regular learners</p>
-            <p className="mt-6 flex items-center">
-              <span className="text-4xl font-bold text-text dark:text-white">
-                ${prices.basic[billingInterval]}
-              </span>
-              <span className="text-text-light dark:text-gray-300">/{billingInterval}</span>
-              <span className="ml-2 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
-                80% OFF
-              </span>
-            </p>
-            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-              You pay: ${(prices.basic[billingInterval] * 0.2).toFixed(2)}
-            </p>
+            <div className="mt-6">
+              <div className="flex items-center gap-2">
+                <span className="line-through text-gray-500 dark:text-gray-400 text-lg">
+                  ${prices.basic[billingInterval]}
+                </span>
+                <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  -80%
+                </span>
+              </div>
+              <div className="flex items-baseline">
+                <span className="text-4xl font-bold text-text dark:text-white">
+                  ${(prices.basic[billingInterval] * 0.2).toFixed(2)}
+                </span>
+                <span className="text-text-light dark:text-gray-300 ml-1">/{billingInterval}</span>
+              </div>
+            </div>
           </div>
           <ul className="mb-8 space-y-4 flex-1">
             {features.map((feature) => (
@@ -239,18 +243,22 @@ export default function PricingTable() {
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-text dark:text-white">Pro</h3>
             <p className="mt-4 text-text-light dark:text-gray-300">Perfect for power users</p>
-            <p className="mt-6 flex items-center">
-              <span className="text-4xl font-bold text-text dark:text-white">
-                ${prices.pro[billingInterval]}
-              </span>
-              <span className="text-text-light dark:text-gray-300">/{billingInterval}</span>
-              <span className="ml-2 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
-                80% OFF
-              </span>
-            </p>
-            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-              You pay: ${(prices.pro[billingInterval] * 0.2).toFixed(2)}
-            </p>
+            <div className="mt-6">
+              <div className="flex items-center gap-2">
+                <span className="line-through text-gray-500 dark:text-gray-400 text-lg">
+                  ${prices.pro[billingInterval]}
+                </span>
+                <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  -80%
+                </span>
+              </div>
+              <div className="flex items-baseline">
+                <span className="text-4xl font-bold text-text dark:text-white">
+                  ${(prices.pro[billingInterval] * 0.2).toFixed(2)}
+                </span>
+                <span className="text-text-light dark:text-gray-300 ml-1">/{billingInterval}</span>
+              </div>
+            </div>
           </div>
           <ul className="mb-8 space-y-4 flex-1">
             {features.map((feature) => (

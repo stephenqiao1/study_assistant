@@ -26,18 +26,18 @@
   .dark {
     --background: #121212;
     --background-card: #1E1E1E;
-    --text: #FFFFFF;
-    --text-light: #E0E0E0;
+    --text: #F0F0F0;
+    --text-light: #ADADAD;
     --border: #2C2C2C;
     
-    --primary: #6366F1;
+    --primary: #9B9DFF;
     --primary-foreground: #FFFFFF;
     --secondary: #2A2A2A;
     --secondary-foreground: #FFFFFF;
     
     /* Text editor colors */
     --editor-text: #E0E0E0;
-    --editor-text-highlight: #6366F1;
+    --editor-text-highlight: #9B9DFF;
   }
 }
 
