@@ -206,7 +206,7 @@ export async function POST(request: Request) {
       };
     }
 
-    const { error: insertError } = await supabase
+    const { error: _insertError } = await supabase
       .from('flashcards')
       .insert(
         flashcardsData.flashcards.map((card: { question: string; answer: string }) => {

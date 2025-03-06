@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback as _useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Layers as _Layers,
@@ -1437,7 +1438,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     };
     
     fetchSubscriptionTier();
-  }, [userId]);
+  }, [userId, supabase]);
 
   // Add fetchFormulas function to load formulas data
   const fetchFormulas = async () => {
@@ -1928,7 +1929,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }
   };
   
-  const fetchSavedVideos = async () => {
+  const fetchSavedVideos = _useCallback(async () => {
     if (!userId) return;
     
     try {
@@ -1945,11 +1946,11 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     } catch (error) {
       console.error('Error fetching saved videos:', error);
     }
-  };
+  }, [userId, module.id]);
 
   useEffect(() => {
     fetchSavedVideos();
-  }, [userId, module.id]);
+  }, [fetchSavedVideos]);
 
   // Add an effect to fetch flashcards when the note filter changes
   useEffect(() => {
@@ -2466,7 +2467,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <div className="flex space-x-2">
-                      <Select value={flashcardFilterType} onValueChange={(value) => handleFilterChange(value as any)}>
+                      <Select value={flashcardFilterType} onValueChange={(value) => handleFilterChange(value as 'all' | 'difficult' | 'easy' | 'new' | 'mastered')}>
                         <SelectTrigger className="w-[130px]">
                           <SelectValue placeholder="Filter cards" />
                         </SelectTrigger>
@@ -2478,7 +2479,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                         </SelectContent>
                       </Select>
                       
-                      <Select value={flashcardSortType} onValueChange={(value) => handleSortChange(value as any)}>
+                      <Select value={flashcardSortType} onValueChange={(value) => handleSortChange(value as 'default' | 'newest' | 'oldest' | 'difficulty')}>
                         <SelectTrigger className="w-[130px]">
                           <SelectValue placeholder="Sort cards" />
                         </SelectTrigger>
@@ -2818,10 +2819,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                   {videos.map((video) => (
                     <Card key={video.id} className="overflow-hidden">
                       <div className="aspect-video relative">
-                        <img 
+                        <Image 
                           src={video.thumbnail} 
                           alt={video.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-cover"
+                          priority={false}
                         />
                       </div>
                       <CardContent className="p-4">
@@ -2886,10 +2890,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                     {savedVideos.map((video) => (
                       <Card key={video.id} className="overflow-hidden">
                         <div className="aspect-video relative">
-                          <img 
+                          <Image 
                             src={video.thumbnail} 
                             alt={video.title}
-                            className="w-full h-full object-cover"
+                            fill
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            className="object-cover"
+                            priority={false}
                           />
                         </div>
                         <CardContent className="p-4">
@@ -3048,7 +3055,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <div className="flex space-x-2">
-                      <Select value={flashcardFilterType} onValueChange={(value) => handleFilterChange(value as any)}>
+                      <Select value={flashcardFilterType} onValueChange={(value) => handleFilterChange(value as 'all' | 'difficult' | 'easy' | 'new' | 'mastered')}>
                         <SelectTrigger className="w-[130px]">
                           <SelectValue placeholder="Filter cards" />
                         </SelectTrigger>
@@ -3060,7 +3067,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                         </SelectContent>
                       </Select>
                       
-                      <Select value={flashcardSortType} onValueChange={(value) => handleSortChange(value as any)}>
+                      <Select value={flashcardSortType} onValueChange={(value) => handleSortChange(value as 'default' | 'newest' | 'oldest' | 'difficulty')}>
                         <SelectTrigger className="w-[130px]">
                           <SelectValue placeholder="Sort cards" />
                         </SelectTrigger>

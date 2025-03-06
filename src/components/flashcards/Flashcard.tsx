@@ -72,20 +72,20 @@ export default function Flashcard({
           className="prose prose-black dark:prose-invert max-w-none !text-black"
           components={{
             // Override any elements to ensure they use black text
-            p: ({node, ...props}) => <p className="!text-black" {...props} />,
-            span: ({node, ...props}) => <span className="!text-black" {...props} />,
-            li: ({node, ...props}) => <li className="!text-black" {...props} />,
-            a: ({node, ...props}) => <a className="!text-black underline" {...props} />,
-            h1: ({node, ...props}) => <h1 className="!text-black" {...props} />,
-            h2: ({node, ...props}) => <h2 className="!text-black" {...props} />,
-            h3: ({node, ...props}) => <h3 className="!text-black" {...props} />,
-            h4: ({node, ...props}) => <h4 className="!text-black" {...props} />,
-            h5: ({node, ...props}) => <h5 className="!text-black" {...props} />,
-            h6: ({node, ...props}) => <h6 className="!text-black" {...props} />,
-            strong: ({node, ...props}) => <strong className="!text-black" {...props} />,
-            em: ({node, ...props}) => <em className="!text-black" {...props} />,
-            code: ({node, ...props}) => <code className="!text-black bg-gray-100 px-1 rounded" {...props} />,
-            pre: ({node, ...props}) => <pre className="!text-black bg-gray-100 p-2 rounded" {...props} />
+            p: ({node: _node, ...props}) => <p className="!text-black" {...props} />,
+            span: ({node: _node, ...props}) => <span className="!text-black" {...props} />,
+            li: ({node: _node, ...props}) => <li className="!text-black" {...props} />,
+            a: ({node: _node, ...props}) => <a className="!text-black underline" {...props} />,
+            h1: ({node: _node, ...props}) => <h1 className="!text-black" {...props} />,
+            h2: ({node: _node, ...props}) => <h2 className="!text-black" {...props} />,
+            h3: ({node: _node, ...props}) => <h3 className="!text-black" {...props} />,
+            h4: ({node: _node, ...props}) => <h4 className="!text-black" {...props} />,
+            h5: ({node: _node, ...props}) => <h5 className="!text-black" {...props} />,
+            h6: ({node: _node, ...props}) => <h6 className="!text-black" {...props} />,
+            strong: ({node: _node, ...props}) => <strong className="!text-black" {...props} />,
+            em: ({node: _node, ...props}) => <em className="!text-black" {...props} />,
+            code: ({node: _node, ...props}) => <code className="!text-black bg-gray-100 px-1 rounded" {...props} />,
+            pre: ({node: _node, ...props}) => <pre className="!text-black bg-gray-100 p-2 rounded" {...props} />
           }}
         >
           {processedContent}

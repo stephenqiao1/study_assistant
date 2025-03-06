@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Wand2, X, PenLine, FlipHorizontal, BookOpen, CheckCircle, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Wand2, X, PenLine as _PenLine, FlipHorizontal, BookOpen, CheckCircle, Pencil, Trash2 } from 'lucide-react'
 import Flashcard from '@/components/flashcards/Flashcard'
 import WriteMode from '@/components/flashcards/WriteMode'
 import Navbar from '@/components/layout/Navbar'
@@ -207,7 +207,7 @@ export default function FlashcardsPage({ params }: PageProps) {
     learningCards: 0,
     newCards: 0
   })
-  const [isWriteMode, setIsWriteMode] = useState(false)
+  const [isWriteMode, _setIsWriteMode] = useState(false)
   const [sourceNoteTitle, setSourceNoteTitle] = useState('')
   const [isAddSuccess, setIsAddSuccess] = useState(false)
   const [lastAddedCard, setLastAddedCard] = useState<{question: string, answer: string}>({question: '', answer: ''})
@@ -350,7 +350,7 @@ export default function FlashcardsPage({ params }: PageProps) {
   }
 
   // Update saveFlashcard function to handle both editing and creating
-  const saveFlashcard = async (flashcard: Partial<FlashcardType>) => {
+  const _saveFlashcard = async (flashcard: Partial<FlashcardType>) => {
     try {
       // Process LaTeX content if present
       if (flashcard.question) {
@@ -516,7 +516,7 @@ export default function FlashcardsPage({ params }: PageProps) {
         }));
         
         // Use the processed cards
-        for (const card of processedCards) {
+        for (const _card of processedCards) {
           // ... existing insertion code with processed cards
         }
       }

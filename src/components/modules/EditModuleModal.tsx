@@ -70,7 +70,7 @@ export default function EditModuleModal({ isOpen, onClose, onSuccess, module }: 
       }
 
       // Update the module
-      const { error: updateError, data: updatedData } = await supabase
+      const { error: updateError, data: _updatedData } = await supabase
         .from('study_sessions')
         .update({
           module_title: title.toLowerCase().replace(/\s+/g, '-'), // Update URL-friendly title

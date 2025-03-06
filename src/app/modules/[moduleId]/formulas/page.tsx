@@ -276,7 +276,7 @@ export default function FormulaSheetPage({ params }: PageProps) {
     
     setIsGenerating(true)
     try {
-      const supabase = await createClient();
+      const _supabase = await createClient();
       const moduleData = await getModuleData(stableModuleId)
       
       if (moduleData) {
@@ -365,7 +365,7 @@ export default function FormulaSheetPage({ params }: PageProps) {
     
     setIsRegenerating(true)
     try {
-      const supabase = await createClient();
+      const _supabase = await createClient();
       const response = await fetch('/api/ai/regenerate-descriptions', {
         method: 'POST',
         headers: {

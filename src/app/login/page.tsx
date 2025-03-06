@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { useRequireNoAuth } from '@/hooks/useRequireAuth'
 import { useSearchParams } from 'next/navigation'
 import { useToast } from '@/components/ui/use-toast'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 // Separate component that uses useSearchParams
 function LoginForm() {
@@ -23,10 +24,10 @@ function LoginForm() {
   const [unverifiedEmail, setUnverifiedEmail] = useState('')
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const searchParams = useSearchParams()
-  const { toast } = useToast()
+  const { toast: _toast } = useToast()
   
   // Get Supabase client
-  const [supabase, setSupabase] = useState<any>(null)
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
   
   useEffect(() => {
     const initSupabase = async () => {

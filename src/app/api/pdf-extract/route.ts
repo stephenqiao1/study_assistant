@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pdfParse from 'pdf-parse';
+import _pdfParse from 'pdf-parse';
 
 // Set maximum file size to 10MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const _MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // For Next.js 15+
 export const runtime = 'nodejs';
@@ -24,7 +24,7 @@ interface PdfMetadata {
 }
 
 // Enhanced helper function to split text into sections based on headings or patterns
-function splitIntoSections(text: string, fileName: string, metadata?: PdfMetadata): { title: string, content: string, tags: string[] }[] {
+function _splitIntoSections(text: string, fileName: string, metadata?: PdfMetadata): { title: string, content: string, tags: string[] }[] {
   // Clean up and normalize the text
   const cleanedText = text
     .replace(/\r\n/g, '\n')

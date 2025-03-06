@@ -218,7 +218,7 @@ export default function PDFWorker({ file, onExtracted, onProgress, onError }: PD
       {/* Load punycode polyfill first to fix Node.js v17+ compatibility issues */}
       <Script 
         src="https://cdn.jsdelivr.net/npm/punycode@2.3.1/punycode.min.js"
-        strategy="beforeInteractive"
+        strategy="afterInteractive"
         onError={(e) => {
           console.error('Failed to load punycode polyfill:', e);
         }}
