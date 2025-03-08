@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { createClient } from '@/utils/supabase/client'
+import { useRouter, usePathname } from 'next/navigation'
 
 type AuthContextType = {
   session: Session | null
@@ -23,6 +24,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   // Create supabase client for client-side usage
   const supabase = createClient();
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     let isMounted = true;
@@ -52,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
       // Prevent race conditions during auth state changes
@@ -62,6 +65,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session)
         setUser(session?.user || null)
         setIsEmailVerified(session?.user?.email_confirmed_at != null)
+        
+        // If the user signed out and they're on a protected page, redirect to login
+        if (event === 'SIGNED_OUT' && !session) {
+          const protectedRoutes = ['/modules', '/insights', '/modules/'];
+          if (protectedRoutes.some(route => pathname.startsWith(route))) {
+            router.push('/login?from=signout');
+          }
+        }
       } catch (error) {
         console.error('Error during auth state change:', error);
       } finally {
@@ -74,7 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isMounted = false;
       subscription.unsubscribe();
     }
-  }, [supabase.auth])
+  }, [supabase.auth, router, pathname])
 
   const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {

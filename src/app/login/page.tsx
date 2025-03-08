@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button'
 import { BookOpen, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { useRequireNoAuth } from '@/hooks/useRequireAuth'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/use-toast'
 import { SupabaseClient } from '@supabase/supabase-js'
 
 // Separate component that uses useSearchParams
 function LoginForm() {
-  const { session, isLoading: isLoadingAuth } = useRequireNoAuth('/')
+  const { session, isLoading: isLoadingAuth } = useRequireNoAuth('/modules')
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -25,6 +25,7 @@ function LoginForm() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const searchParams = useSearchParams()
   const { toast: _toast } = useToast()
+  const router = useRouter()
   
   // Get Supabase client
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
@@ -137,12 +138,10 @@ function LoginForm() {
       }
 
       if (data?.session) {
-        
-        // Add a small delay to ensure the cookie is set before redirecting
-        setTimeout(() => {
-          // Hard redirect to modules page to ensure fresh server component load
-          window.location.href = '/modules'
-        }, 500)
+        // Check if there's a next parameter in the URL that should override the default redirect
+        const nextUrl = searchParams.get('next') || '/modules';
+        // Redirect to the next URL or modules page
+        router.push(nextUrl);
       } else {
         console.warn('No session data received after successful login')
         setMessage({

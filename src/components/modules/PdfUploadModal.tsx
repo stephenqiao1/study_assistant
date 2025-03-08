@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect as _useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { 
   Dialog, 
   DialogContent, 
@@ -10,168 +10,15 @@ import {
   DialogTitle 
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
-import { X, Upload, FileText, AlertCircle, Check, Loader2 } from 'lucide-react'
+import { Upload, FileText, X, Plus, Loader2, Check, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { MathRenderer, processLatex } from '@/components/ui/latex'
-import { processWithAI as _processWithAI } from '@/utils/ai-helpers'
 
 // Define maximum file size to match server-side limit (10MB)
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
-
-// Function to provide compression suggestions based on file characteristics
-const _suggestCompressionAlternatives = (file: File): string => {
-  const _fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-  const suggestions = [
-    `\n\nTry these alternatives:`,
-    `- Use an online PDF compressor tool to reduce the file size`,
-    `- If the PDF contains many images, try saving it with lower image quality`,
-    `- Try extracting specific pages that you need instead of the entire document`
-  ];
-  
-  return suggestions.join('\n');
-}
-
-// Import PDFWorker component
-import dynamic from 'next/dynamic'
-
-// Dynamically import PDFWorker to avoid SSR issues
-const PDFWorker = dynamic(
-  () => import('@/components/pdf/PDFWorker'),
-  { ssr: false }
-)
-
-// Remove the local splitIntoSections function since we'll use the AI version instead
-// Start of function to remove
-function splitIntoSections(text: string, fileName: string, metadata?: Record<string, unknown>): { title: string, content: string, tags: string[] }[] {
-  // Clean up and normalize the text
-  const cleanedText = text
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n') // Normalize excessive line breaks
-    .trim();
-  
-  // Try to identify section headers using improved patterns
-  // This regex looks for potential headers: capitalized lines, numbered sections, etc.
-  const headerRegex = /\n(?=[A-Z0-9][A-Z0-9 \t.:]{0,50}(?:\n|\r\n))|(?:\n+(?:[0-9]+\.|\([0-9]+\)|\[[0-9]+\]|Chapter|Section|Part) )/g;
-  
-  // Split by potential headers
-  const sections = cleanedText.split(headerRegex);
-  
-  // Clean up sections and create notes array
-  const notes = [];
-  
-  // Use metadata if available for better sectioning
-  const pageCount = (metadata?.numPages as number) || 1;
-  const estimatedSectionCount = Math.max(3, Math.min(20, Math.ceil(pageCount / 2)));
-  
-  // If we couldn't split effectively (only one big section or too many tiny ones)
-  if (sections.length === 1 || sections.length > 50) {
-    // Try another approach: split by pages or by paragraphs
-    if (sections.length === 1) {
-      // If we have one large section, try splitting by paragraphs
-      const paragraphs = cleanedText.split(/\n\s*\n/);
-      
-      // Group paragraphs into reasonable chunks based on document size
-      const chunkSize = Math.max(3, Math.min(7, Math.ceil(paragraphs.length / estimatedSectionCount)));
-      
-      for (let i = 0; i < paragraphs.length; i += chunkSize) {
-        const chunk = paragraphs.slice(i, i + chunkSize);
-        const content = chunk.join('\n\n');
-        
-        // Try to extract a meaningful title from the first paragraph
-        let title = chunk[0].trim().split(/[.!?]/)[0];
-        if (title.length > 60 || title.length < 10) {
-          title = `${fileName} - Part ${Math.floor(i / chunkSize) + 1}`;
-        }
-        
-        notes.push({
-          title: title,
-          content: content.replace(/\n/g, '<br>'),
-          tags: ['pdf', 'imported']
-        });
-      }
-    } else {
-      // If we have too many small sections, merge them into reasonable chunks
-      const chunkSize = Math.ceil(sections.length / estimatedSectionCount);
-      
-      for (let i = 0; i < sections.length; i += chunkSize) {
-        const chunk = sections.slice(i, i + chunkSize);
-        const content = chunk.join('\n');
-        
-        // Try to extract a meaningful title from the first chunk
-        let title = chunk[0].trim().split(/[.!?]/)[0];
-        if (title.length > 60 || title.length < 10) {
-          title = `${fileName} - Part ${Math.floor(i / chunkSize) + 1}`;
-        }
-        
-        notes.push({
-          title: title,
-          content: content.replace(/\n/g, '<br>'),
-          tags: ['pdf', 'imported']
-        });
-      }
-    }
-  } else {
-    // Process each section into a note with improved title extraction
-    sections.forEach((section, index) => {
-      // Skip empty sections
-      if (!section.trim()) return;
-      
-      // Extract the first line as a potential title
-      const lines = section.split('\n');
-      let title = lines[0].trim();
-      let content = section.trim();
-      
-      // Improved title extraction logic
-      if (title.length > 60) {
-        // Try to extract a shorter title from the first sentence
-        const firstSentence = title.split(/[.!?]/)[0];
-        if (firstSentence.length <= 60 && firstSentence.length >= 3) {
-          title = firstSentence.trim();
-        } else {
-          title = `${fileName} - Section ${index + 1}`;
-        }
-      } else if (title.length < 3) {
-        title = `${fileName} - Section ${index + 1}`;
-      } else {
-        // Remove the title line from content if we're using it as the title
-        content = lines.slice(1).join('\n').trim();
-      }
-      
-      // Enhanced content processing to maintain structure better
-      const processedContent = content
-        .replace(/\n/g, '<br>')
-        .replace(/<br><br>/g, '</p><p>') // Convert double line breaks to paragraphs
-        .replace(/([.!?])<br>/g, '$1</p><p>'); // Try to break at sentences too
-      
-      const finalContent = `<p>${processedContent}</p>`;
-      
-      notes.push({
-        title: title,
-        content: finalContent,
-        tags: ['pdf', 'imported']
-      });
-    });
-  }
-  
-  // If we somehow ended up with no notes, create at least one
-  if (notes.length === 0) {
-    notes.push({
-      title: fileName,
-      content: `<p>${cleanedText.replace(/\n/g, '<br>')}</p>`,
-      tags: ['pdf', 'imported']
-    });
-  }
-  
-  return notes;
-}
-// End of function to remove
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 interface PdfUploadModalProps {
   isOpen: boolean
@@ -201,7 +48,7 @@ export default function PdfUploadModal({
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [useAI, setUseAI] = useState(true) // Default to using AI
+  const [useAI, _setUseAI] = useState(true) // Default to using AI
   
   // State for extracted notes
   const [extractedNotes, setExtractedNotes] = useState<ExtractedNote[]>([])
@@ -209,7 +56,7 @@ export default function PdfUploadModal({
   
   // State for client-side extraction - always enabled now
   const [clientSideExtractionProgress, setClientSideExtractionProgress] = useState(0)
-  const [clientSideExtractionError, setClientSideExtractionError] = useState<string | null>(null)
+  const [_clientSideExtractionError, setClientSideExtractionError] = useState<string | null>(null)
   const [_clientExtractedText, setClientExtractedText] = useState<string | null>(null)
   const [_pdfMetadata, setPdfMetadata] = useState<Record<string, unknown> | null>(null)
   
@@ -249,17 +96,27 @@ export default function PdfUploadModal({
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    
     if (!file) {
       setSelectedFile(null)
       setUploadError('No file selected')
       return
     }
     
-    // Check if file is a PDF
-    if (file.type !== 'application/pdf') {
-      setSelectedFile(null)
-      setUploadError('Please select a valid PDF file')
-      return
+    // Check file type
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff'];
+    const validOfficeTypes = [
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
+      'application/vnd.ms-powerpoint' // PPT
+    ];
+    const isPdf = file.type === 'application/pdf';
+    const isImage = validImageTypes.includes(file.type);
+    const isPowerPoint = validOfficeTypes.includes(file.type);
+    
+    if (!isPdf && !isImage && !isPowerPoint) {
+      setSelectedFile(null);
+      setUploadError('Please select a valid PDF, PowerPoint presentation, or image file (JPEG, PNG, GIF, BMP, TIFF)');
+      return;
     }
     
     // Check file size
@@ -282,17 +139,27 @@ export default function PdfUploadModal({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     const file = e.dataTransfer.files?.[0]
+    
     if (!file) {
       setSelectedFile(null)
       setUploadError('No file dropped')
       return
     }
     
-    // Check if file is a PDF
-    if (file.type !== 'application/pdf') {
-      setSelectedFile(null)
-      setUploadError('Please drop a valid PDF file')
-      return
+    // Check file type
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff'];
+    const validOfficeTypes = [
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
+      'application/vnd.ms-powerpoint' // PPT
+    ];
+    const isPdf = file.type === 'application/pdf';
+    const isImage = validImageTypes.includes(file.type);
+    const isPowerPoint = validOfficeTypes.includes(file.type);
+    
+    if (!isPdf && !isImage && !isPowerPoint) {
+      setSelectedFile(null);
+      setUploadError('Please drop a valid PDF, PowerPoint presentation, or image file (JPEG, PNG, GIF, BMP, TIFF)');
+      return;
     }
     
     // Check file size
@@ -308,7 +175,7 @@ export default function PdfUploadModal({
   }
   
   // Client-side extraction status messages
-  const getExtractionStatusMessage = () => {
+  const _getExtractionStatusMessage = () => {
     if (clientSideExtractionProgress === 0) return 'Preparing to extract text...';
     if (clientSideExtractionProgress < 25) return 'Loading PDF...';
     if (clientSideExtractionProgress < 50) return 'Processing document structure...';
@@ -318,286 +185,27 @@ export default function PdfUploadModal({
   }
 
   // Update the handleClientSideExtraction function to use the AI processing
-  const handleClientSideExtraction = async (result: string | { text: string; metadata?: Record<string, unknown> }) => {
-    // Handle both string and object responses for backward compatibility
-    let extractedText: string;
-    let metadata: Record<string, unknown> | undefined;
-    
-    if (typeof result === 'string') {
-      extractedText = result;
-    } else {
-      extractedText = result.text;
-      metadata = result.metadata;
-      if (metadata) {
-        setPdfMetadata(metadata);
-      }
-    }
-    
-    setClientExtractedText(extractedText);
-    setClientSideExtractionProgress(100);
+  const _handleClientSideExtraction = async (_result: string | { text: string; metadata?: Record<string, unknown> }) => {
+    console.warn('handleClientSideExtraction is deprecated - using direct server-side processing instead');
+  }
 
-    if (!selectedFile) return;
+  const _handleClientSideExtractionError = (_error: Error) => {
+    console.warn('handleClientSideExtractionError is deprecated - using direct server-side processing instead');
+  }
 
-    setCurrentStep('processing');
-    setUploadProgress(50);
-    
-    const fileName = selectedFile.name.replace(/\.pdf$/i, '');
-    
-    try {
-      // Get module type from study session ID if available
-      const moduleType = 'general'; // Default value - this could be dynamically fetched based on studySessionId
-
-      toast({
-        title: "AI Processing",
-        description: "ChatGPT is analyzing your PDF and creating structured notes...",
-        variant: "default"
-      });
-
-      // Call the AI to process the text
-      const aiProcessedNotes = await fetch('/api/ai/process-pdf', {
-            method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: extractedText,
-          fileName,
-          moduleType,
-          studySessionId
-        }),
-      }).then(res => {
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
-        return res.json();
-      });
-
-      
-      // Use the created notes - make sure they have the required fields for RLS
-      const notesWithRequiredFields = aiProcessedNotes.notes.map((note: ExtractedNote) => ({
-        ...note,
-        // Adding these fields here ensures they are available for preview
-        // They will be properly set when saving to the database by the bulk-create endpoint
-        study_session_id: studySessionId,
-        tags: note.tags || ['pdf', 'imported', 'ai-generated']
-      }));
-      
-      setExtractedNotes(notesWithRequiredFields);
-      setActiveNoteIndex(0);
-      setEditedTitle(notesWithRequiredFields[0].title);
-      setEditedContent(notesWithRequiredFields[0].content);
-      setEditedTags(notesWithRequiredFields[0].tags || []);
-      
-      // Move to review step
-      setCurrentStep('review');
-      setUploadProgress(100);
-      setIsUploading(false);
-      
-      // Show a toast to inform the user
-      toast({
-        title: "AI Processing Complete",
-        description: `Created ${notesWithRequiredFields.length} notes from your PDF using ChatGPT.`,
-        variant: "default"
-      });
-      
-    } catch (error) {
-      console.error("Error processing with AI:", error);
-      
-      // Use a fallback approach if AI processing fails
-      fallbackToLocalProcessing(extractedText, fileName);
-    }
+  const _handleClientSideExtractionProgress = (_progress: number) => {
+    console.warn('handleClientSideExtractionProgress is deprecated - using direct server-side processing instead');
   }
 
   // Add a fallback function for when AI processing fails
-  const fallbackToLocalProcessing = (text: string, fileName: string) => {
-    
-    // Basic text cleaning
-    const cleanedText = text
-      .replace(/\r\n/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-    
-    // Simple paragraph-based splitting
-    const paragraphs = cleanedText.split(/\n\s*\n/);
-    const chunkSize = Math.max(3, Math.min(7, Math.ceil(paragraphs.length / 10)));
-    const notes = [];
-    
-    for (let i = 0; i < paragraphs.length; i += chunkSize) {
-      const chunk = paragraphs.slice(i, i + chunkSize);
-      const content = chunk.join('\n\n');
-      
-      // Simple title extraction
-      let title = chunk[0].trim().split(/[.!?]/)[0];
-      if (title.length > 60 || title.length < 10) {
-        title = `${fileName} - Part ${Math.floor(i / chunkSize) + 1}`;
-      }
-      
-      notes.push({
-        title: title,
-        content: content.replace(/\n/g, '<br>'),
-        tags: ['pdf', 'imported', 'auto-processed'],
-        study_session_id: studySessionId // Add study session ID for RLS
-      });
-    }
-    
-    // If we somehow ended up with no notes, create at least one
-    if (notes.length === 0) {
-      notes.push({
-        title: fileName,
-        content: cleanedText.replace(/\n/g, '<br>'),
-        tags: ['pdf', 'imported', 'auto-processed'],
-        study_session_id: studySessionId // Add study session ID for RLS
-      });
-    }
-    
-    setExtractedNotes(notes);
-    setActiveNoteIndex(0);
-    setEditedTitle(notes[0].title);
-    setEditedContent(notes[0].content);
-    setEditedTags(notes[0].tags || []);
-    
-    setCurrentStep('review');
-          setUploadProgress(100);
-    setIsUploading(false);
-    
-    toast({
-      title: "Processing Complete",
-      description: `Created ${notes.length} notes from your PDF using basic processing.`,
-      variant: "default"
-    });
-  }
-
-  // Handle client-side extraction error
-  const handleClientSideExtractionError = (error: Error) => {
-    console.error('Extraction error:', error);
-    setClientSideExtractionError(error.message);
-    
-    // Show error message to user
-    toast({
-      title: "PDF extraction failed",
-      description: `Error: ${error.message}. Please try a different PDF file.`,
-      variant: "destructive"
-    });
-    
-    setIsUploading(false);
-  }
-
-  // Handle client-side extraction progress
-  const handleClientSideExtractionProgress = (progress: number) => {
-    setClientSideExtractionProgress(progress);
+  const _fallbackToLocalProcessing = (_text: string, _fileName: string) => {
+    console.warn('fallbackToLocalProcessing is deprecated - using direct server-side processing instead');
   }
 
   // Process PDF with client-extracted text
-  const _processWithClientExtractedText = async (text: string, metadata: Record<string, unknown>) => {
-    if (!selectedFile) return;
-    
-    setCurrentStep('processing');
-    setUploadError(null);
-    setIsUploading(true);
-    setUploadProgress(30); // Start at 30% since we already did client-side extraction
-    
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('studySessionId', studySessionId);
-    formData.append('useAI', useAI.toString());
-    formData.append('isClientExtracted', 'true');
-    formData.append('extractedText', text);
-    formData.append('metadata', JSON.stringify(metadata));
-    
-    try {
-      // Configure progress tracking
-      setUploadProgress(50);
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          const newProgress = prev + 5;
-          return newProgress >= 90 ? 90 : newProgress;
-        });
-      }, 200);
-      
-      // Try to send to server for processing
-      const response = await fetch('/api/pdf-extract', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      }).catch(error => {
-        console.error("Network error when calling API:", error);
-        throw new Error(`API connection error: ${error.message}`);
-      });
-      
-      clearInterval(progressInterval);
-      
-      if (!response.ok) {
-        console.error(`Server error: ${response.status} ${response.statusText}`);
-        
-        // If we get a 404, the API route doesn't exist
-        if (response.status === 404) {
-          throw new Error(`API endpoint not found (404). Using client-side fallback...`);
-        }
-        
-        throw new Error(`Server error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Set upload progress to 100%
-      setUploadProgress(100);
-      
-      // Process the response
-      if (data.notes && data.notes.length > 0) {
-        // Store the extracted notes for review
-        setExtractedNotes(data.notes);
-        
-        // Set up the first note for editing
-        setActiveNoteIndex(0);
-        setEditedTitle(data.notes[0].title);
-        setEditedContent(data.notes[0].content);
-        setEditedTags(data.notes[0].tags || []);
-        
-        // Move to review step
-        setCurrentStep('review');
-      } else {
-        throw new Error('No notes were extracted from the PDF');
-      }
-      } catch (error) {
-      console.error('Error processing PDF with client-extracted text:', error);
-      
-      // Client-side fallback if server API is not available
-      if (
-        error instanceof Error && 
-        (error.message.includes('404') || error.message.includes('API endpoint not found'))
-      ) {
-        
-        // Create fallback notes directly from the extracted text
-        const fileName = selectedFile.name.replace(/\.pdf$/i, '');
-        
-        // Use the same smart sectioning logic as the server
-        const fallbackNotes = splitIntoSections(text, fileName, {
-          numPages: metadata?.pages || Math.ceil(text.length / 2000), // Estimate page count if not provided
-          info: metadata || { Title: fileName }
-        });
-        
-        
-        // Use the fallback notes
-        setExtractedNotes(fallbackNotes);
-            setActiveNoteIndex(0);
-        setEditedTitle(fallbackNotes[0].title);
-        setEditedContent(fallbackNotes[0].content);
-        setEditedTags(fallbackNotes[0].tags || []);
-        
-        // Move to review step
-            setCurrentStep('review');
-        
-        // Show a toast to inform the user
-        toast({
-          title: "Using client-side processing",
-          description: `Created ${fallbackNotes.length} notes from your PDF. You can now review them.`,
-          variant: "default"
-        });
-        } else {
-        setUploadError(error instanceof Error ? error.message : 'Failed to process PDF');
-      }
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  const _processWithClientExtractedText = async (_text: string, _metadata: Record<string, unknown>) => {
+    console.warn('_processWithClientExtractedText is deprecated - using direct server-side processing instead');
+  }
   
   // Process with server-side extraction only
   const _processWithServerExtraction = async () => {
@@ -656,29 +264,97 @@ export default function PdfUploadModal({
       } else {
         throw new Error('No notes were extracted from the PDF');
       }
-    } catch (error) {
+      } catch (error) {
       console.error('Error processing PDF:', error);
-      setUploadError(error instanceof Error ? error.message : 'Failed to process PDF');
+        setUploadError(error instanceof Error ? error.message : 'Failed to process PDF');
     } finally {
       setIsUploading(false);
     }
   };
   
-  // Process the PDF file (updated to use client-side extraction)
+  // Process the PDF file (updated to use Azure Document Intelligence)
   const handleProcessPdf = async () => {
     if (!selectedFile) return;
     
-    // Always use client-side extraction now
+    // Set up processing state
     setCurrentStep('processing');
     setUploadError(null);
-    setClientSideExtractionProgress(0);
-    setClientSideExtractionError(null);
-    setClientExtractedText(null);
-    setPdfMetadata(null);
+    setIsUploading(true);
+    setUploadProgress(10);
     
-    // Let the PDFWorker component handle the extraction
-    // It will call handleClientSideExtraction when complete
-    // or handleClientSideExtractionError if there's an error
+    // Create form data for the file upload
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('studySessionId', studySessionId);
+    formData.append('useAI', 'false'); // We're using Azure Document Intelligence, not OpenAI
+    formData.append('useOpenAI', 'true'); // Always use OpenAI for clean notes
+    
+    try {
+      // Configure progress tracking
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          const newProgress = prev + 5;
+          return newProgress >= 90 ? 90 : newProgress;
+        });
+      }, 200);
+      
+      // Upload directly to the server for Azure Document Intelligence processing
+      const response = await fetch('/api/pdf-extract', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      }).catch(error => {
+        console.error("Network error when calling API:", error);
+        throw new Error(`API connection error: ${error.message}`);
+      });
+      
+      clearInterval(progressInterval);
+      
+      if (!response.ok) {
+        console.error(`Server error: ${response.status} ${response.statusText}`);
+        
+        // If we get a 404, the API route doesn't exist
+        if (response.status === 404) {
+          throw new Error(`API endpoint not found (404).`);
+        }
+        
+        throw new Error(`Server error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Set upload progress to 100%
+      setUploadProgress(100);
+      
+      // Process the response
+      if (data.notes && data.notes.length > 0) {
+        // Store the extracted notes for review
+        setExtractedNotes(data.notes);
+        
+        // Set up the first note for editing
+        setActiveNoteIndex(0);
+        setEditedTitle(data.notes[0].title);
+        setEditedContent(data.notes[0].content);
+        setEditedTags(data.notes[0].tags || []);
+        
+        // Move to review step
+        setCurrentStep('review');
+        
+        // Show success toast
+        toast({
+          title: "Document Processing Complete",
+          description: `Created ${data.notes.length} notes from your document using Azure Document Intelligence.`,
+          variant: "default"
+        });
+      } else {
+        throw new Error('No notes were extracted from the document');
+      }
+    } catch (error) {
+      console.error('Error processing document:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to process document');
+    } finally {
+      setIsUploading(false);
+    }
   };
   
   // Handle saving notes to the database
@@ -731,7 +407,18 @@ export default function PdfUploadModal({
       const responseData = await response.json();
       
       if (!response.ok) {
-        console.error("❌ PdfUploadModal: Error response from API:", responseData);
+        console.error('❌ PdfUploadModal: Error response from API:', responseData);
+        
+        // Check if error is related to subscription
+        if (responseData.error && responseData.error.includes('subscription')) {
+          toast({
+            title: "Subscription Required",
+            description: "PDF import requires a Basic or Pro subscription.",
+            variant: "destructive"
+          });
+          onClose();
+          return;
+        }
         
         // Check for specific database schema errors
         if (responseData.error && (
@@ -835,9 +522,9 @@ export default function PdfUploadModal({
     <Dialog open={isOpen} onOpenChange={isOpen => !isOpen && handleClose()}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Import Notes from PDF</DialogTitle>
+          <DialogTitle>Import Notes from Document</DialogTitle>
           <DialogDescription>
-            Upload a PDF document to extract content and create notes.
+            Upload a PDF, PowerPoint, or image file to extract content and create notes.
           </DialogDescription>
         </DialogHeader>
         
@@ -853,13 +540,13 @@ export default function PdfUploadModal({
                 type="file" 
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
-                accept=".pdf" 
+                accept=".pdf,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.bmp,.tiff" 
                 className="hidden" 
               />
               <Upload className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-1">Upload PDF</h3>
+              <h3 className="text-lg font-medium mb-1">Upload Document</h3>
               <p className="text-sm text-muted-foreground mb-2">
-                Drag and drop a PDF file here, or click to browse
+                Drag and drop a PDF, PowerPoint, or image file here, or click to browse
               </p>
               {selectedFile && (
                 <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-secondary-foreground">
@@ -867,19 +554,6 @@ export default function PdfUploadModal({
                   <span className="text-sm font-medium">{selectedFile.name}</span>
                 </div>
               )}
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="use-ai"
-                checked={useAI}
-                onChange={(e) => setUseAI(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <label htmlFor="use-ai" className="text-sm font-medium">
-                Use ChatGPT to intelligently organize and enhance notes (Recommended)
-              </label>
             </div>
             
             {uploadError && (
@@ -893,7 +567,7 @@ export default function PdfUploadModal({
             <div className="text-sm text-muted-foreground">
               <h4 className="font-medium mb-1">Notes:</h4>
               <ul className="list-disc pl-5 space-y-1">
-                <li>PDF files will be processed to extract text content</li>
+                <li>PDF, PowerPoint, and image files will be processed to extract text content</li>
                 <li>Maximum file size is 10MB</li>
                 <li>The content will be organized into individual notes</li>
                 <li>Each section or chapter may be converted to a separate note</li>
@@ -904,183 +578,113 @@ export default function PdfUploadModal({
         )}
         
         {currentStep === 'processing' && (
-          <div className="space-y-6 p-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-center py-8">
             <div className="text-center">
-              <h3 className="text-lg font-medium mb-2">Processing PDF</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {clientSideExtractionProgress < 100 
-                  ? getExtractionStatusMessage()
-                  : "ChatGPT is analyzing your document and creating structured notes..."}
-              </p>
-              
-              {/* Client-side extraction progress */}
-              <div className="mb-4">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                <h3 className="text-lg font-medium mb-1">Processing Document</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your document is being processed with Azure Document Intelligence...
+                </p>
+                <div className="mt-4">
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>Extracting text</span>
-                  <span>{Math.round(clientSideExtractionProgress)}%</span>
-                </div>
-                <Progress value={clientSideExtractionProgress} className="h-2" />
-              </div>
-              
-              {/* AI processing progress - shown after text extraction */}
-              {clientSideExtractionProgress === 100 && (
-                <div className="mb-2">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>ChatGPT processing</span>
+                    <span>Progress</span>
                     <span>{Math.round(uploadProgress)}%</span>
-                  </div>
-                <Progress value={uploadProgress} className="h-2" />
-              </div>
-              )}
-              
-              <p className="text-xs text-muted-foreground mt-3">
-                {clientSideExtractionProgress === 100
-                  ? "Text extraction complete. ChatGPT is analyzing and creating notes..."
-                  : clientSideExtractionProgress > 0
-                  ? "Extracting text from your PDF..."
-                  : "Starting extraction process..."}
-              </p>
-            </div>
-            
-            {/* Error messages */}
-            {uploadError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Processing Error</AlertTitle>
-                <AlertDescription>{uploadError}</AlertDescription>
-                  </Alert>
-            )}
-            
-            {clientSideExtractionError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Extraction Error</AlertTitle>
-                <AlertDescription>
-                  {clientSideExtractionError}
-                  <p className="text-sm mt-1">Please try a different PDF file.</p>
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {/* Hidden component that handles PDF extraction */}
-            {selectedFile && (
-              <div style={{ display: 'none' }}>
-                <PDFWorker
-                  file={selectedFile}
-                  onExtracted={handleClientSideExtraction}
-                  onProgress={handleClientSideExtractionProgress}
-                  onError={handleClientSideExtractionError}
-                />
                 </div>
-              )}
+                  <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-primary h-full rounded-full" 
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+              </div>
+                  </div>
+              </div>
+            </div>
           </div>
         )}
         
         {currentStep === 'review' && extractedNotes.length > 0 && (
           <div className="space-y-4">
-            <Tabs defaultValue="edit" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="edit">Edit Note</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="edit" className="space-y-4 py-2">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-3">
-                    <Label htmlFor="note-title">Title</Label>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium mb-2">Edit Note</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="note-title" className="block text-sm font-medium mb-1">Title</label>
                     <Input 
                       id="note-title" 
                       value={editedTitle}
                       onChange={e => setEditedTitle(e.target.value)}
-                      className="mt-1"
                     />
                   </div>
                   
-                  <div className="col-span-3">
-                    <Label htmlFor="note-content">Content</Label>
+                  <div>
+                    <label htmlFor="note-content" className="block text-sm font-medium mb-1">Content</label>
                     <Textarea
                       id="note-content"
                       value={editedContent}
                       onChange={e => setEditedContent(e.target.value)}
-                      className="mt-1 min-h-[200px]"
+                      className="min-h-[200px]"
                     />
                   </div>
                   
-                  <div className="col-span-3">
-                    <Label>Tags</Label>
-                    <div className="flex flex-wrap gap-2 mt-1 mb-2">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Tags</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
                       {editedTags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="gap-1 items-center dark:bg-slate-700 dark:text-slate-200">
+                        <Badge key={tag} variant="default" className="flex items-center gap-1">
                           {tag}
                           <button 
+                            type="button" 
                             onClick={() => handleRemoveTag(tag)}
-                            className="text-muted-foreground hover:text-foreground ml-1"
+                            className="text-xs"
                           >
                             <X className="h-3 w-3" />
                           </button>
                         </Badge>
                       ))}
-                    </div>
-                    <div className="flex gap-2">
+                      <div className="flex items-center gap-1">
                       <Input
-                        placeholder="Add a tag..."
+                          placeholder="Add tag..." 
+                          className="w-24 h-7 text-xs"
                         value={newTag}
                         onChange={e => setNewTag(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleAddTag()
-                          }
-                        }}
+                          onKeyDown={e => e.key === 'Enter' && handleAddTag()}
                       />
                       <Button 
-                        type="button" 
-                        variant="outline" 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0" 
                         onClick={handleAddTag}
-                        disabled={!newTag.trim()}
                       >
-                        Add
+                          <Plus className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="preview">
-                <div className="border rounded-md p-4 min-h-[350px] prose dark:prose-invert max-w-none">
-                  <h2>{editedTitle}</h2>
-                  <MathRenderer htmlContent={processLatex(editedContent)} />
-                  
-                  {editedTags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-4 not-prose">
-                      {editedTags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="dark:bg-slate-700 dark:text-slate-200">
-                          {tag}
-                        </Badge>
-                      ))}
                     </div>
-                  )}
                 </div>
-              </TabsContent>
-            </Tabs>
             
             {extractedNotes.length > 1 && (
               <div>
-                <h4 className="text-sm font-medium mb-2">Notes ({extractedNotes.length})</h4>
-                <div className="flex flex-wrap gap-2">
+                  <h4 className="text-sm font-medium mb-2">All Notes ({extractedNotes.length})</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {extractedNotes.map((note, index) => (
                     <Button
                       key={index}
                       variant={index === activeNoteIndex ? "default" : "outline"}
-                      size="sm"
+                        className="justify-start overflow-hidden h-auto py-2"
                       onClick={() => handleChangeNote(index)}
                     >
-                      {index + 1}. {note.title.slice(0, 15)}{note.title.length > 15 ? '...' : ''}
+                        <div className="truncate text-left">
+                          <span className="font-medium">{note.title}</span>
+                        </div>
                     </Button>
                   ))}
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
         
@@ -1143,7 +747,9 @@ export default function PdfUploadModal({
                     Processing...
                   </>
                 ) : (
-                  <>Process PDF</>
+                  <>
+                    Process Document
+                  </>
                 )}
               </Button>
             </>

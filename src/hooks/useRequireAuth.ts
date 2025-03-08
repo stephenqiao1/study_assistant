@@ -21,19 +21,14 @@ export const useRequireAuth = (redirectTo = '/login') => {
 export const useRequireNoAuth = (redirectTo = '/modules') => {
   const { session, user, isLoading, isEmailVerified } = useAuth()
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const _searchParams = useSearchParams()
   
   useEffect(() => {
     if (!isLoading && session) {
-      // Get the 'from' query parameter to avoid redirect loops
-      const from = searchParams.get('from')
-      
-      // Only redirect if we're not coming from a protected page
-      if (from !== 'modules' && from !== 'protected') {
-        router.push(redirectTo)
-      }
+      // Always redirect authenticated users to the modules page (or specified redirectTo)
+      router.push(redirectTo)
     }
-  }, [session, isLoading, router, redirectTo, searchParams])
+  }, [session, isLoading, router, redirectTo])
 
   return { session, user, isLoading, isEmailVerified }
 } 

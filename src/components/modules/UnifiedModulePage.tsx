@@ -1412,6 +1412,11 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     return true; // Basic flashcard functionality is available to all users
   };
 
+  // Add function to check for PDF import access
+  const _hasPdfAccess = () => {
+    return subscriptionTier === 'basic' || subscriptionTier === 'pro';
+  };
+
   // Add useEffect to fetch subscription tier
   useEffect(() => {
     const fetchSubscriptionTier = async () => {
@@ -2024,6 +2029,15 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }
   };
 
+  // Add function to handle PDF import click
+  const handlePdfImportClick = () => {
+    if (_hasPdfAccess()) {
+      setIsPdfModalOpen(true);
+    } else {
+      setShowUpgradeDialog(true);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen" suppressHydrationWarning>
       <Navbar />
@@ -2057,12 +2071,12 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
             <Button 
               size="sm"
               variant="outline"
-              onClick={() => setIsPdfModalOpen(true)}
-              title="Import notes from PDF"
+              onClick={handlePdfImportClick}
+              title="Import notes from PDF or image"
               suppressHydrationWarning
               className="px-2 py-1 h-8 text-xs"
             >
-              <FileText className="h-3 w-3 mr-1" /> Import PDF
+              <FileText className="h-3 w-3 mr-1" /> Import Document
             </Button>
             <Button 
               size="sm" 
@@ -3326,6 +3340,10 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               <ul className="space-y-2 text-sm text-amber-700 dark:text-amber-300">
                 <li className="flex items-start gap-2">
                   <div className="mt-0.5 flex-shrink-0">•</div>
+                  <div>PDF import for easy note creation</div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="mt-0.5 flex-shrink-0">•</div>
                   <div>AI-generated flashcards from your notes</div>
                 </li>
                 <li className="flex items-start gap-2">
@@ -3349,9 +3367,8 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                     className="border-gray-200 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
               Maybe Later
             </Button>
-            <Button onClick={() => router.push('/pricing')}
-                    className="bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90">
-              View Pricing Plans
+            <Button onClick={_navigateToUpgrade} className="bg-amber-600 hover:bg-amber-700 text-white">
+              View Pricing
             </Button>
           </DialogFooter>
         </DialogContent>

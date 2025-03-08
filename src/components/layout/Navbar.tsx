@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
 
 interface NavbarProps {
   showSignOut?: boolean;
@@ -13,12 +14,16 @@ interface NavbarProps {
 
 export default function Navbar({ showSignOut = true }: NavbarProps) {
   const { session } = useAuth()
+  const router = useRouter()
 
   const handleSignOut = async () => {
     const supabase = createClient()
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Error signing out:', error)
+    } else {
+      // Redirect to login page after successful sign out
+      router.push('/login?from=signout')
     }
   }
 

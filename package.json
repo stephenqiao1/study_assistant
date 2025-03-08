@@ -10,6 +10,7 @@
     "seed": "node scripts/seed.js"
   },
   "dependencies": {
+    "@azure/ai-form-recognizer": "^5.0.0",
     "@headlessui/react": "^2.2.0",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -45,6 +46,7 @@
     "next": "15.1.7",
     "next-themes": "^0.4.4",
     "openai": "^4.85.0",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
     "punycode": "^2.3.1",
     "react": "^18.3.1",
@@ -57,6 +59,7 @@
     "recharts": "^2.15.1",
     "rehype-katex": "^7.0.1",
     "remark-math": "^5.1.1",
+    "sharp": "^0.33.5",
     "string-similarity": "^4.0.4",
     "stripe": "^17.6.0",
     "tailwind-merge": "^3.0.2",

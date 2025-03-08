@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import _pdfParse from 'pdf-parse';
+import { extractDocumentLayout, extractTextFromDocument } from '@/utils/azure-document-intelligence';
+import { processDocumentWithOpenAI } from '@/utils/ai-helpers';
 
 // Set maximum file size to 10MB
 const _MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -68,7 +70,7 @@ function _splitIntoSections(text: string, fileName: string, metadata?: PdfMetada
         notes.push({
           title: title,
           content: content.replace(/\n/g, '<br>'),
-          tags: ['pdf', 'imported']
+          tags: ['pdf', 'imported', 'azure-ai']
         });
       }
     } else {
@@ -88,7 +90,7 @@ function _splitIntoSections(text: string, fileName: string, metadata?: PdfMetada
         notes.push({
           title: title,
           content: content.replace(/\n/g, '<br>'),
-          tags: ['pdf', 'imported']
+          tags: ['pdf', 'imported', 'azure-ai']
         });
       }
     }
@@ -130,7 +132,7 @@ function _splitIntoSections(text: string, fileName: string, metadata?: PdfMetada
       notes.push({
         title: title,
         content: finalContent,
-        tags: ['pdf', 'imported']
+        tags: ['pdf', 'imported', 'azure-ai']
       });
     });
   }
@@ -140,29 +142,119 @@ function _splitIntoSections(text: string, fileName: string, metadata?: PdfMetada
     notes.push({
       title: fileName,
       content: `<p>${cleanedText.replace(/\n/g, '<br>')}</p>`,
-      tags: ['pdf', 'imported']
+      tags: ['pdf', 'imported', 'azure-ai']
     });
   }
   
   return notes;
 }
 
-// Updated to use the new App Router API route format for Next.js 15+
+// Updated to use Azure Document Intelligence for PDF extraction
 export async function POST(request: NextRequest) {
   try {
-    // Only import pdf-parse at runtime, not during build
-    if (typeof window === 'undefined' && request?.body) {
-      // Dynamically import the actual implementation
-      const { processPostRequest } = await import('@/utils/pdf-processing');
-      return processPostRequest(request);
+    // Parse the form data
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const studySessionId = formData.get('studySessionId') as string;
+    const _useAI = formData.get('useAI') === 'true'; // Renamed to _useAI to indicate it's intentionally unused
+    const useOpenAI = formData.get('useOpenAI') !== 'false'; // Default to true unless explicitly set to false
+    
+    if (!file) {
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
     }
     
-    // Return a simple response during build time
-    return NextResponse.json({ message: 'PDF processing is only available at runtime' });
+    if (!studySessionId) {
+      return NextResponse.json(
+        { error: 'No study session ID provided' },
+        { status: 400 }
+      );
+    }
+    
+    // Check file type - support PDFs, PowerPoint, and images
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff'];
+    const validOfficeTypes = [
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
+      'application/vnd.ms-powerpoint' // PPT
+    ];
+    
+    const isPdf = file.type === 'application/pdf';
+    const isImage = validImageTypes.includes(file.type);
+    const isPowerPoint = validOfficeTypes.includes(file.type);
+    
+    if (!isPdf && !isImage && !isPowerPoint) {
+      return NextResponse.json(
+        { error: 'File must be a PDF, PowerPoint presentation, or supported image format (JPEG, PNG, GIF, BMP, TIFF)' },
+        { status: 400 }
+      );
+    }
+    
+    // Convert file to buffer
+    const buffer = await file.arrayBuffer();
+    const fileBuffer = Buffer.from(buffer);
+    const fileName = file.name.replace(/\.(pdf|pptx?|jpe?g|png|gif|bmp|tiff)$/i, '');
+    
+    try {
+      // Extract text using Azure Document Intelligence
+      let result;
+      
+      if (isImage || isPowerPoint || fileName.toLowerCase().includes('scan')) {
+        // Use layout analysis for images, PowerPoint, and scanned documents
+        // This handles both printed and handwritten text
+        result = await extractDocumentLayout(fileBuffer, file.name);
+      } else {
+        // Use standard text extraction for regular PDFs
+        // This also handles both printed and handwritten text
+        result = await extractTextFromDocument(fileBuffer, file.name);
+      }
+      
+      // Process the extracted text into notes
+      let notes;
+      
+      // If useOpenAI is true, use OpenAI to process the document
+      if (useOpenAI) {
+        notes = await processDocumentWithOpenAI(result.text, fileName, {
+          pageCount: result.metadata.pageCount,
+          documentType: result.metadata.documentType,
+          fileType: isPdf ? 'pdf' : (isPowerPoint ? 'powerpoint' : 'image'),
+          ...result.metadata
+        });
+      } else {
+        // Otherwise use the traditional section splitting
+        notes = _splitIntoSections(result.text, fileName, {
+          numPages: result.metadata.pageCount as number,
+          ...result.metadata
+        });
+      }
+      
+      return NextResponse.json({
+        success: true,
+        notes,
+        metadata: {
+          pageCount: result.metadata.pageCount,
+          documentType: result.metadata.documentType,
+          fileType: isPdf ? 'pdf' : (isPowerPoint ? 'powerpoint' : 'image'),
+          ...result.metadata
+        }
+      });
+    } catch (error) {
+      console.error('Error processing document with Azure:', error);
+      
+      // Fall back to the original PDF processing implementation
+      return NextResponse.json(
+        { 
+          error: 'Error processing document with Azure Document Intelligence',
+          details: error instanceof Error ? error.message : String(error)
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Error in PDF extract route:', error);
     return NextResponse.json(
-      { error: 'Server error processing PDF' },
+      { error: 'Server error processing document' },
       { status: 500 }
     );
   }

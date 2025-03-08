@@ -42,7 +42,7 @@ interface ExtendedTeachBackMetrics {
 }
 
 export default function LearningInsights() {
-  const router = useRouter()
+  const _router = useRouter()
   const { session, isLoading: isLoadingAuth } = useRequireAuth()
   const [period, setPeriod] = useState<TimePeriod>('week')
   const [sessions, setSessions] = useState<SessionWithDurations[]>([])
@@ -51,12 +51,8 @@ export default function LearningInsights() {
   const [isLoading, setIsLoading] = useState(true)
   const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'basic' | 'pro'>('free')
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoadingAuth && !session) {
-      router.push('/login')
-    }
-  }, [session, isLoadingAuth, router])
+  // The useRequireAuth hook already handles redirection to login if not authenticated
+  // No need for additional redirect logic here
 
   useEffect(() => {
     // Fetch data when component mounts
