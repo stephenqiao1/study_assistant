@@ -168,6 +168,53 @@ export interface Database {
           details?: Json
         }
       }
+      practice_questions: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string
+          study_session_id: string
+          question_text: string
+          answer_text: string
+          source: string
+          tags: string[]
+          difficulty: 'easy' | 'medium' | 'hard'
+          last_practiced_at: string | null
+          times_practiced: number
+          confidence_level: number
+          notes: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id: string
+          study_session_id: string
+          question_text: string
+          answer_text: string
+          source?: string
+          tags?: string[]
+          difficulty?: 'easy' | 'medium' | 'hard'
+          last_practiced_at?: string | null
+          times_practiced?: number
+          confidence_level?: number
+          notes?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          user_id?: string
+          study_session_id?: string
+          question_text?: string
+          answer_text?: string
+          source?: string
+          tags?: string[]
+          difficulty?: 'easy' | 'medium' | 'hard'
+          last_practiced_at?: string | null
+          times_practiced?: number
+          confidence_level?: number
+          notes?: string | null
+        }
+      }
     }
     Views: {
       [_ in never]: never

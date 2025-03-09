@@ -1,172 +1,217 @@
-import { NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import { v4 as uuidv4 } from 'uuid'
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
+import { createClient } from '@/utils/supabase/server';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
-// Define the expected structure for the formula response
+// Define types for formula data
 interface Formula {
-  formula: string
-  latex: string
-  description: string
-  category: string
-  is_block: boolean
+  formula: string;
+  latex: string;
+  description?: string | null;
+  category?: string;
+  is_block?: boolean;
 }
 
-interface FormulasResponse {
-  formulas: Formula[]
-}
+// Configure OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-export async function POST(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
-  
-  // Check if user is authenticated
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  // Only enforce authentication in production
-  if (!session?.user && process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
-  
-  const userId = session?.user?.id
-  
+export async function POST(request: NextRequest) {
   try {
-    const { study_session_id, moduleContent } = await request.json()
+    // Use the modern createClient approach that properly handles Next.js 15 cookies
+    const supabase = await createClient();
     
-    if (!moduleContent) {
+    // Use getUser for authentication
+    const { data, error } = await supabase.auth.getUser();
+    
+    // Check if in development mode
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    // If not in development and no user, return unauthorized
+    if (!isDevelopment && (error || !data.user)) {
+      console.error('Auth error:', error);
       return NextResponse.json(
-        { error: 'Missing required content' },
-        { status: 400 }
-      )
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
-    if (!study_session_id) {
+    // Parse request body
+    const { study_session_id, moduleContent } = await request.json();
+    
+    // Validate input
+    if (!study_session_id || !moduleContent) {
       return NextResponse.json(
-        { error: 'Missing study session ID' },
+        { error: 'Missing required parameters' },
         { status: 400 }
-      )
+      );
     }
     
-    // Retrieve module title for this study session
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('study_sessions')
-      .select('module_title')
-      .eq('id', study_session_id)
-      .single()
-    
-    if (sessionError || !sessionData?.module_title) {
-      return NextResponse.json(
-        { error: 'Failed to retrieve module information' },
-        { status: 400 }
-      )
+    // Check if user has access to this study session (skip in dev mode)
+    if (!isDevelopment) {
+      const { data: studySession, error: sessionError } = await supabase
+        .from('study_sessions')
+        .select('id')
+        .eq('id', study_session_id)
+        .eq('user_id', data.user?.id)
+        .single();
+        
+      if (sessionError || !studySession) {
+        return NextResponse.json(
+          { error: 'You do not have access to this study session' },
+          { status: 403 }
+        );
+      }
     }
-    
-    const moduleTitle = sessionData.module_title
     
     // Extract formulas using OpenAI
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-2024-08-06',
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: `You are a specialized mathematical formula extraction assistant. Extract all mathematical formulas, equations, and expressions from the provided text. Convert them to proper LaTeX format.
-          
-          For each formula:
-          1. Extract the raw formula as it appears in the text
-          2. Convert it to proper LaTeX syntax
-          3. Write a brief description explaining what the formula represents
-          4. Categorize it (e.g., Algebra, Calculus, Statistics, Physics, etc.)
-          5. Determine if it should be rendered as a block (display mode) or inline
-          
-          Respond with a JSON object containing an array of formulas.`
-        },
-        {
-          role: 'user',
-          content: moduleContent
-        }
-      ]
-    })
+    const formulas = await extractFormulasWithAI(moduleContent);
     
-    const responseContent = completion.choices[0].message.content
     
-    if (!responseContent) {
+    if (!formulas || formulas.length === 0) {
       return NextResponse.json(
-        { error: 'Failed to generate formulas' },
-        { status: 500 }
-      )
+        { message: 'No formulas found in the content' },
+        { status: 200 }
+      );
     }
     
-    let formulasResponse: FormulasResponse
+    // Save formulas to database
+    const formulaInserts = formulas.map((formula: Formula) => ({
+      study_session_id,
+      formula: formula.formula,
+      latex: formula.latex,
+      description: formula.description || null,
+      category: formula.category || 'General',
+      is_block: formula.is_block || false,
+      // User ID is now implemented in the table
+      user_id: data.user?.id || (isDevelopment ? process.env.NEXT_PUBLIC_DEV_USER_ID : undefined)
+    }));
     
-    try {
-      formulasResponse = JSON.parse(responseContent) as FormulasResponse
-    } catch {
-      return NextResponse.json(
-        { error: 'Failed to parse formulas response' },
-        { status: 500 }
-      )
-    }
     
-    // Insert formulas into the database
-    const { data: notesData, error: _notesError } = await supabase
-      .from('notes')
-      .select('id, title')
-      .eq('study_session_id', study_session_id)
-      .limit(1)
-    
-    // Get the first note as the source
-    const sourceNote = notesData && notesData.length > 0 ? notesData[0] : null
-    
-    if (formulasResponse.formulas && formulasResponse.formulas.length > 0) {
-      // Insert formulas into the database
-      const formulasToInsert = formulasResponse.formulas.map(formula => ({
-        id: uuidv4(),
-        formula: formula.formula,
-        latex: formula.latex,
-        description: formula.description,
-        category: formula.category,
-        is_block: formula.is_block,
-        source_note_id: sourceNote?.id || null,
-        study_session_id: study_session_id,
-        module_title: moduleTitle,
-        user_id: userId
-      }))
+    // Try inserting formulas
+    const { data: insertedData, error: insertError } = await supabase
+      .from('formulas')
+      .insert(formulaInserts)
+      .select();
       
-      const { error: insertError } = await supabase
+    if (insertError) {
+      console.error('Error inserting formulas:', insertError);
+      
+      // Log table schema to debug column mismatch
+      const { data: _tableInfo, error: tableError } = await supabase
         .from('formulas')
-        .insert(formulasToInsert)
-      
-      if (insertError) {
-        console.error('Error inserting formulas:', insertError)
-        return NextResponse.json(
-          { error: 'Failed to save formulas' },
-          { status: 500 }
-        )
+        .select('*')
+        .limit(1);
+        
+      if (tableError) {
+        console.error('Error checking table schema:', tableError);
+      } else {
       }
       
-      return NextResponse.json({
-        success: true,
-        message: `${formulasToInsert.length} formulas extracted and saved`
-      })
-    } else {
-      return NextResponse.json({
-        success: false,
-        message: 'No formulas found in the content'
-      })
+      return NextResponse.json(
+        { error: 'Failed to save formulas', details: insertError.message },
+        { status: 500 }
+      );
     }
+    
+    // Log the inserted data for debugging
+    
+    // Check if formulas were actually added by querying the database
+    const { data: _verifyData, error: verifyError } = await supabase
+      .from('formulas')
+      .select('*')
+      .eq('study_session_id', study_session_id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+      
+    if (verifyError) {
+      console.error('Error verifying formulas were inserted:', verifyError);
+    } else {
+    }
+    
+    return NextResponse.json({ 
+      success: true,
+      count: formulas.length,
+      formulas: insertedData || []
+    });
+    
   } catch (error) {
-    console.error('Error in extract-formulas API:', error)
+    console.error('Formula extraction error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'An unexpected error occurred', 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
-    )
+    );
+  }
+}
+
+async function extractFormulasWithAI(content: string): Promise<Formula[]> {
+  try {
+    // Show a sample of the content for debugging
+    
+    const systemPrompt = `
+      You are a mathematical formula extraction expert. Your task is to find ALL mathematical formulas, equations, 
+      or expressions present in the provided content, even if they're not in LaTeX format.
+      
+      For each formula you find:
+      - Convert it to proper LaTeX notation
+      - If formulas are already in LaTeX (e.g., $e=mc^2$ or $$\\int f(x) dx$$), extract the formula without the delimiters
+      - Add a brief description explaining what the formula represents
+      - Categorize it (Algebra, Calculus, Statistics, Physics, etc.)
+      - Set is_block to true for complex formulas that should be displayed on their own line
+      
+      Even extract simple mathematical expressions like "x = 5", "a + b = c", or "f(x) = x²"
+      
+      Be thorough - extract ALL mathematical content, even if it seems trivial.
+      
+      Return your response as a JSON object with a "formulas" array containing objects with these properties:
+      - formula: The formula text without LaTeX delimiters
+      - latex: The LaTeX representation without delimiters
+      - description: A brief description of what the formula represents
+      - category: A category for the formula
+      - is_block: Boolean indicating if it should be displayed as a block equation
+      
+      If no formulas are found, return an empty array.
+    `;
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: content }
+      ],
+      response_format: { type: "json_object" }
+    });
+    
+    // Log the raw response from OpenAI
+    
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content || '{"formulas":[]}');
+    } catch (parseError) {
+      console.error("Error parsing OpenAI response:", parseError);
+      // Try to extract any JSON-like structure from the response
+      const jsonMatch = response.choices[0].message.content?.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          result = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          console.error("Failed to extract JSON from response:", e);
+          result = { formulas: [] };
+        }
+      } else {
+        result = { formulas: [] };
+      }
+    }
+    
+    // Ensure formulas is defined
+    const formulas = result.formulas || [];
+    
+    return formulas;
+    
+  } catch (error) {
+    console.error('OpenAI formula extraction error:', error);
+    return [];
   }
 } 

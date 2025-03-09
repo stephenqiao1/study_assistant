@@ -262,7 +262,7 @@ export default function VideosPage({ params }: PageProps) {
           
           // Generate keywords from notes using AI
           try {
-            const response = await fetch('/api/openai/generate', {
+            const response = await fetch('/api/openai/generate-search-query', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -412,7 +412,7 @@ export default function VideosPage({ params }: PageProps) {
     
     try {
       // Make API call to generate a search query
-      const response = await fetch('/api/openai/generate', {
+      const response = await fetch('/api/openai/generate-search-query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

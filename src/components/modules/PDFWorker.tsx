@@ -8,6 +8,10 @@ import Script from 'next/script';
 interface PdfTextItem {
   str: string;
   transform: number[];
+  width: number;
+  height: number;
+  dir: string;
+  fontName?: string;
 }
 
 interface PdfTextContent {
@@ -25,10 +29,11 @@ interface PdfMetadata {
   };
 }
 
-interface PdfDocument {
+// Rename the unused interface
+interface _PdfDocument {
   numPages: number;
-  getMetadata: () => Promise<PdfMetadata>;
   getPage: (pageNum: number) => Promise<PdfPage>;
+  getMetadata?: () => Promise<PdfMetadata>;
 }
 
 interface PdfPage {
@@ -36,23 +41,7 @@ interface PdfPage {
   getViewport: (params: { scale: number }) => { width: number; height: number };
 }
 
-interface _PdfjsLib {
-  getDocument: (source: Uint8Array) => { promise: Promise<PdfDocument> };
-  GlobalWorkerOptions: {
-    workerSrc: string;
-  };
-}
-
-// Define the props for the PDF Worker component
-interface PDFWorkerProps {
-  file: File | null;
-  onExtracted: (result: { text: string; metadata: Record<string, unknown> }) => void;
-  onProgress: (progress: number) => void;
-  onError: (error: Error) => void;
-}
-
-// Since we can't properly declare the global pdfjsLib due to conflicts,
-// we'll use a type assertion when we access it
+// Define the PDF.js document type
 type PdfjsDocument = {
   numPages: number;
   getMetadata: () => Promise<{ info?: Record<string, unknown> }>;
@@ -61,6 +50,29 @@ type PdfjsDocument = {
     getViewport: (params: { scale: number }) => Record<string, number>;
   }>;
 };
+
+// Define an interface for the PDF.js library
+interface PdfjsLib {
+  getDocument: (source: Uint8Array) => { promise: Promise<PdfjsDocument> };
+  GlobalWorkerOptions: {
+    workerSrc: string;
+  };
+}
+
+// Add a type declaration at the top of the file to extend the Window interface
+declare global {
+  interface Window {
+    pdfjsLib: PdfjsLib;
+  }
+}
+
+// Define the props for the PDF Worker component
+interface PDFWorkerProps {
+  file: File;
+  onExtracted: (text: string, numPages: number, metadata?: Record<string, unknown>) => void;
+  onProgress: (percent: number) => void;
+  onError: (error: Error) => void;
+}
 
 /**
  * PDF Worker component that handles client-side PDF text extraction using PDF.js
@@ -194,10 +206,7 @@ export default function PDFWorker({ file, onExtracted, onProgress, onError }: PD
       onProgress(100); // Done!
       
       // Call the onExtracted callback with the results
-      onExtracted({ 
-        text: extractedText,
-        metadata: metadataObject
-      });
+      onExtracted(extractedText, numPages, metadataObject);
     } catch (error) {
       console.error('Error extracting PDF text:', error);
       onError(error instanceof Error ? error : new Error('Failed to extract text from PDF'));

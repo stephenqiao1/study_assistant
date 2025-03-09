@@ -34,7 +34,8 @@ import {
   CircleSlash,
   ExternalLink,
   Bookmark,
-  Video
+  Video,
+  PenLine
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription as _CardDescription, CardHeader, CardTitle, CardFooter as _CardFooter } from "@/components/ui/card";
@@ -95,6 +96,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import FormulaStyles from '@/components/modules/FormulaStyles';
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cn } from "@/lib/utils";
+import PracticeQuestions from './PracticeQuestions';
 
 interface Module {
   id: string;
@@ -241,7 +244,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<'notes' | 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'noteFlashcards'>('notes');
+  const [activeSection, setActiveSection] = useState<'notes' | 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'noteFlashcards'>('notes');
   const [filteredNotes, setFilteredNotes] = useState<NoteType[]>(notes);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   // Add subscription tier state
@@ -623,7 +626,21 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
 
   // Update handleActivateStudyTool to accept an optional noteId parameter
-  const handleActivateStudyTool = (tool: 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos', noteId?: string) => {
+  const handleActivateStudyTool = (tool: 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'notes', noteId?: string) => {
+    // The 'notes' tool type can be handled just like 'module', as it refers to returning to the notes view
+    if (tool === 'notes') {
+      // If a noteId is provided, set it as the selected note
+      if (noteId) {
+        const note = notes.find(n => n.id === noteId);
+        if (note) {
+          setSelectedNote(note);
+        }
+      }
+      // Set the active section to 'notes' to show the notes view
+      setActiveSection('notes');
+      return;
+    }
+    
     // Check for premium access for formulas
     if (tool === 'formulas' && !hasFormulaAccess()) {
       setShowUpgradeDialog(true);
@@ -1555,15 +1572,15 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         variant: "default"
       });
       
-      const response = await fetch('/api/ai/extract-formulas-fixed', {
+      // Extract formulas using AI
+      const response = await fetch('/api/ai/extract-formulas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          study_session_id: module.id, 
-          moduleContent: contentToAnalyze 
+        body: JSON.stringify({
+          study_session_id: module.id,
+          moduleContent: contentToAnalyze
         }),
       });
       
@@ -2067,6 +2084,15 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               className="px-2 py-1 h-8 text-xs"
             >
               <FileText className="h-3 w-3 mr-1" /> Formula
+            </Button>
+            <Button 
+              size="sm"
+              variant="outline"
+              onClick={() => handleActivateStudyTool('practice')}
+              suppressHydrationWarning
+              className="px-2 py-1 h-8 text-xs"
+            >
+              <PenLine className="h-3 w-3 mr-1" /> Practice
             </Button>
             <Button 
               size="sm"
@@ -3183,6 +3209,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                 </div>
               )}
             </div>
+          ) : activeSection === 'practice' ? (
+            <PracticeQuestions 
+              moduleId={module.id}
+              userId={userId}
+              isPremiumUser={isPremiumUser}
+              selectedNoteId={selectedNote?.id}
+              onNavigateToSection={handleActivateStudyTool}
+            />
           ) : (
             <div className="flex items-center justify-center h-full">
               <p>Select a note or study tool to get started</p>
