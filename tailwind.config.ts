@@ -6,57 +6,82 @@ export default {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  darkMode: 'class',
+  darkMode: ["class"],
   theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
     extend: {
       colors: {
-        // Light mode colors
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        
         primary: {
-          DEFAULT: '#3A8FB7',
-          light: '#4BA3CC',
-          dark: '#2E7A9E'
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+          muted: "hsl(var(--primary-muted))",
+          border: "hsl(var(--primary-border))",
         },
+        
         secondary: {
-          DEFAULT: '#F9F9F9',
-          dark: '#EFEFEF'
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+          muted: "hsl(var(--secondary-muted))",
+          border: "hsl(var(--secondary-border))",
         },
+        
         accent: {
-          orange: '#F2994A',
-          teal: '#4DB6AC'
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+          muted: "hsl(var(--accent-muted))",
+          border: "hsl(var(--accent-border))",
         },
-        text: {
-          DEFAULT: '#333333',
-          light: '#666666'
+        
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+          hovered: "hsl(var(--card-hovered))",
+          border: "hsl(var(--card-border))",
         },
-        // Dark mode specific colors
-        dark: {
-          bg: {
-            DEFAULT: '#121212',
-            secondary: '#1F1F1F',
-            card: '#1E1E1E'
-          },
-          text: {
-            DEFAULT: '#FFFFFF',
-            light: '#E0E0E0'
-          },
-          border: '#2C2C2C'
-        }
+        
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          muted: "hsl(var(--success) / 0.2)",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          muted: "hsl(var(--warning) / 0.2)",
+        },
+        error: {
+          DEFAULT: "hsl(var(--error))",
+          muted: "hsl(var(--error) / 0.2)",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          muted: "hsl(var(--info) / 0.2)",
+        },
       },
-      backgroundColor: {
-        DEFAULT: 'var(--background)',
-        card: 'var(--background-card)'
-      },
-      textColor: {
-        DEFAULT: 'var(--text)',
-        light: 'var(--text-light)'
-      },
-      borderColor: {
-        DEFAULT: 'var(--border)'
-      },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic':
-          'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 0.25rem)",
+        sm: "calc(var(--radius) - 0.5rem)",
       },
       keyframes: {
         "accordion-down": {
@@ -74,5 +99,5 @@ export default {
       },
     },
   },
-  plugins: [require('@tailwindcss/typography')],
+  plugins: [require("@tailwindcss/typography"), require("tailwindcss-animate")],
 } satisfies Config;

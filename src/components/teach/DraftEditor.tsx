@@ -1,8 +1,12 @@
 import dynamic from 'next/dynamic'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import '@uiw/react-md-editor/markdown-editor.css'
 import '@uiw/react-markdown-preview/markdown.css'
 import 'katex/dist/katex.min.css'
+import { SupabaseClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
+import { Loader2 } from 'lucide-react'
+import rehypeSanitize from 'rehype-sanitize'
 
 // Dynamically import the Editor to disable SSR
 const MDEditor = dynamic(
@@ -20,14 +24,20 @@ interface DraftEditorProps {
   initialContent?: string
   readOnly?: boolean
   onChange?: (content: string) => void
+  onImageUpload?: (imageData: { url: string; name: string; size: number; type: string }) => void
+  supabase?: SupabaseClient
 }
 
 export default function DraftEditor({ 
   initialContent = '', 
   readOnly = false, 
-  onChange 
+  onChange,
+  onImageUpload,
+  supabase
 }: DraftEditorProps) {
   const [content, setContent] = useState(initialContent)
+  const [isUploading, setIsUploading] = useState(false)
+  const editorRef = useRef<HTMLDivElement>(null)
   
   useEffect(() => {
     setContent(initialContent)
@@ -43,6 +53,127 @@ export default function DraftEditor({
       document.documentElement.classList.remove('custom-md-editor')
     }
   }, [])
+
+  // Handle image paste
+  useEffect(() => {
+    if (readOnly || !editorRef.current || !supabase) return
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') === 0) {
+          e.preventDefault()
+          const blob = items[i].getAsFile()
+          if (blob) {
+            await uploadImage(blob)
+          }
+          break
+        }
+      }
+    }
+
+    // Add paste event listener to the editor
+    const editorElement = editorRef.current
+    editorElement.addEventListener('paste', handlePaste)
+
+    return () => {
+      editorElement.removeEventListener('paste', handlePaste)
+    }
+  }, [readOnly, editorRef.current, supabase])
+
+  // Handle image upload
+  const uploadImage = async (file: File) => {
+    if (!file || !supabase) return
+    
+    setIsUploading(true)
+    try {
+      // Generate a unique file name
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${uuidv4()}.${fileExt}`
+      const filePath = `${fileName}`
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('note_images')
+        .upload(filePath, file)
+
+      if (error) {
+        throw error
+      }
+
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('note_images')
+        .getPublicUrl(filePath)
+
+      if (!urlData.publicUrl) {
+        throw new Error('Failed to get public URL')
+      }
+
+      // Insert the image markdown into the editor
+      const imageMarkdown = `![${file.name}](${urlData.publicUrl})`
+      
+      // Insert at cursor position or append to the end
+      let newContent = content;
+      const textarea = editorRef.current?.querySelector('textarea');
+      if (textarea) {
+        const { selectionStart, selectionEnd } = textarea;
+        newContent = content.substring(0, selectionStart) + 
+                    imageMarkdown + 
+                    content.substring(selectionEnd);
+      } else {
+        newContent = content ? `${content}\n${imageMarkdown}` : imageMarkdown;
+      }
+      
+      setContent(newContent)
+      
+      if (onChange) {
+        onChange(newContent)
+      }
+
+      // Notify parent component about the uploaded image
+      if (onImageUpload) {
+        onImageUpload({
+          url: urlData.publicUrl,
+          name: file.name,
+          size: file.size,
+          type: file.type
+        })
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('Error uploading image. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  // Handle file input change
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      await uploadImage(file)
+      // Reset the input value so the same file can be selected again
+      e.target.value = ''
+    }
+  }
+
+  // Handle drag and drop
+  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    if (readOnly || !supabase) return
+    
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      const file = files[0]
+      if (file.type.startsWith('image/')) {
+        await uploadImage(file)
+      }
+    }
+  }, [readOnly, supabase, uploadImage])
 
   const handleEditorChange = (value?: string) => {
     if (value !== undefined) {
@@ -64,19 +195,63 @@ export default function DraftEditor({
 
   // Otherwise render the editor
   return (
-    <div className="min-h-[400px] md-editor-wrapper">
+    <div 
+      className="min-h-[400px] md-editor-wrapper relative"
+      ref={editorRef}
+      onDrop={handleDrop}
+      onDragOver={(e) => e.preventDefault()}
+    >
+      {isUploading && (
+        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50">
+          <div className="flex flex-col items-center gap-2 p-4 bg-background-card rounded-md shadow-md">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm font-medium">Uploading image...</p>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex items-center gap-2 mb-2">
+        <label 
+          htmlFor="image-upload" 
+          className="px-3 py-1 text-sm bg-background-card hover:bg-muted border border-border rounded-md cursor-pointer flex items-center gap-1"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          Add Image
+        </label>
+        <input 
+          id="image-upload" 
+          type="file" 
+          accept="image/*" 
+          className="hidden" 
+          onChange={handleFileInputChange}
+        />
+        <p className="text-xs text-muted-foreground">
+          Tip: You can also paste images directly or drag & drop them here
+        </p>
+      </div>
+      
       <MDEditor
         value={content}
         onChange={handleEditorChange}
         height={400}
-        preview="edit"
+        preview="live"
         className="bg-background-card border-border high-contrast-editor"
         previewOptions={{
           className: "bg-background-card",
           style: {
             backgroundColor: 'transparent',
             borderColor: 'var(--border)'
-          }
+          },
+          rehypePlugins: [[rehypeSanitize, {
+            attributes: {
+              '*': ['className', 'style'],
+              'img': ['src', 'alt', 'title', 'width', 'height']
+            }
+          }]]
         }}
         textareaProps={{
           style: {
@@ -197,6 +372,16 @@ export default function DraftEditor({
         .CodeMirror-line, 
         .CodeMirror-code * {
           color: var(--text) !important;
+        }
+        
+        /* Image styling in preview */
+        .wmde-markdown img, 
+        .markdown-preview-wrapper img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 0.375rem;
+          margin: 0.5rem 0;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
         /* KaTeX styles to ensure proper display */

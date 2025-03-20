@@ -12,16 +12,8 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   
   // Get the current user using getUser
-  const { data, error: userError } = await supabase.auth.getUser()
+  const { data, error: _userError } = await supabase.auth.getUser()
   const user = data.user
-  
-  // Log authentication status for debugging
-  console.log({
-    hasUser: !!user, 
-    userId: user?.id, 
-    errorMessage: userError?.message,
-    isDev: process.env.NODE_ENV === 'development'
-  });
   
   // Determine user ID
   let userId: string;

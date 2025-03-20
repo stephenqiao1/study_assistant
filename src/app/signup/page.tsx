@@ -7,6 +7,7 @@ import { BookOpen, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRequireNoAuth } from '@/hooks/useRequireAuth'
+import GoogleLoginButton from '@/components/GoogleLoginButton'
 
 // Separate component that uses useRequireNoAuth
 function SignUpContent() {
@@ -277,6 +278,17 @@ function SignUpContent() {
               >
                 {isLoading ? 'Creating account...' : 'Create Account'}
               </Button>
+
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-background-card text-text-light">Or continue with</span>
+                </div>
+              </div>
+              
+              <GoogleLoginButton />
 
               <p className="text-xs text-center text-text-light">
                 By signing up, you agree to our{' '}

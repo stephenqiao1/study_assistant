@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import Link from 'next/link'
 
 interface PricingFeature {
   name: string
@@ -120,174 +121,218 @@ export default function PricingTable() {
   }
 
   return (
-    <div className="mt-16 flex flex-col items-center">
-      {/* Special Promotion Banner */}
-      <div className="w-full max-w-4xl mb-8 bg-gradient-to-r from-purple-600 to-blue-500 text-white p-4 rounded-lg shadow-md">
-        <div className="flex flex-col items-center text-center">
-          <h2 className="text-2xl font-bold mb-2">🎉 Limited Time Offer! 🎉</h2>
-          <p className="text-lg mb-1">Save <span className="font-bold text-xl">80%</span> on all plans - only for the first 100 users!</p>
-          <p className="text-sm opacity-90">Discount automatically applied at checkout</p>
+    <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      {/* Free Plan */}
+      <div className="relative p-6 bg-[#12141f] rounded-2xl border border-[#2d2b55] hover:border-[#6366F1]/50 transition-all">
+        <div className="mb-4">
+          <h3 className="text-2xl font-bold text-gray-100">Free</h3>
+          <p className="text-gray-400 mt-2">Perfect for trying out our features</p>
+        </div>
+        
+        <div className="flex items-baseline gap-1 mb-6">
+          <span className="text-4xl font-bold text-gray-100">$0</span>
+          <span className="text-gray-400">/mo</span>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium">10</span>
+            </div>
+            <span className="text-gray-300 text-sm">Teach-back sessions per month</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium">10</span>
+            </div>
+            <span className="text-gray-300 text-sm">Virtual student chat messages</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium">Basic</span>
+            </div>
+            <span className="text-gray-300 text-sm">YouTube video search</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
+              <X className="w-5 h-5 text-gray-500" />
+            </div>
+            <span className="text-gray-500 text-sm">Auto-generate flashcards</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
+              <X className="w-5 h-5 text-gray-500" />
+            </div>
+            <span className="text-gray-500 text-sm">Formula sheet extraction</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
+              <Check className="w-5 h-5 text-[#8B5CF6]" />
+            </div>
+            <span className="text-gray-300 text-sm">Spaced repetition system</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
+              <Check className="w-5 h-5 text-[#8B5CF6]" />
+            </div>
+            <span className="text-gray-300 text-sm">Voice recording & transcription</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
+              <X className="w-5 h-5 text-gray-500" />
+            </div>
+            <span className="text-gray-500 text-sm">Priority support</span>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <Link href="/login" className="w-full">
+            <Button variant="outline" className="w-full border-[#2d2b55] hover:border-[#6366F1] hover:bg-[#1a1c2e] text-gray-100">
+              Current Plan
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* Billing interval toggle */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant={billingInterval === 'month' ? 'default' : 'outline'}
-          onClick={() => setBillingInterval('month')}
-        >
-          Monthly
-        </Button>
-        <Button
-          variant={billingInterval === 'year' ? 'default' : 'outline'}
-          onClick={() => setBillingInterval('year')}
-        >
-          Yearly
-          <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-600">
-            Save 17%
-          </span>
-        </Button>
+      {/* Basic Plan */}
+      <div className="relative p-6 bg-[#12141f] rounded-2xl border border-[#6366F1] hover:border-[#8B5CF6] transition-all">
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+          <div className="bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] text-white text-sm font-medium px-3 py-1 rounded-full whitespace-nowrap">
+            Most Popular
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <h3 className="text-2xl font-bold text-gray-100">Basic</h3>
+          <p className="text-gray-400 mt-2">Perfect for regular learners</p>
+        </div>
+        
+        <div className="flex items-baseline gap-1 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-4xl font-bold text-gray-100">$2.00</span>
+            <div className="px-2 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-medium">
+              -80%
+            </div>
+          </div>
+          <span className="text-gray-400">/month</span>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium">50</span>
+            </div>
+            <span className="text-gray-300 text-sm">Teach-back sessions per month</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium">50</span>
+            </div>
+            <span className="text-gray-300 text-sm">Virtual student chat messages</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium text-sm">Enhanced</span>
+            </div>
+            <span className="text-gray-300 text-sm">YouTube video search</span>
+          </div>
+          
+          {features.slice(3).map((feature, index) => (
+            <div key={index} className="flex items-start gap-3">
+              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+                {feature.basic ? (
+                  <Check className="w-5 h-5 text-[#8B5CF6]" />
+                ) : (
+                  <X className="w-5 h-5 text-gray-500" />
+                )}
+              </div>
+              <span className={`text-sm ${feature.basic ? 'text-gray-300' : 'text-gray-500'}`}>
+                {feature.name}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8">
+          <Link href="/login" className="w-full">
+            <Button className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] hover:opacity-90 transition-opacity text-white">
+              Get Basic Plan
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Pricing cards */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Free tier */}
-        <Card className="flex flex-col p-8">
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold text-text dark:text-white">Free</h3>
-            <p className="mt-4 text-text-light dark:text-gray-300">Perfect for trying out our features</p>
-            <p className="mt-6">
-              <span className="text-4xl font-bold text-text dark:text-white">$0</span>
-              <span className="text-text-light dark:text-gray-300">/mo</span>
-            </p>
-          </div>
-          <ul className="mb-8 space-y-4 flex-1">
-            {features.map((feature) => (
-              <li key={feature.name} className="flex items-center gap-3">
-                {typeof feature.free === 'boolean' ? (
-                  feature.free ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <X className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-                  )
-                ) : (
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                    {feature.free}
-                  </span>
-                )}
-                <span className="text-text-light dark:text-gray-300">{feature.name}</span>
-              </li>
-            ))}
-          </ul>
-          <Button variant="outline" className="w-full" disabled>
-            Current Plan
-          </Button>
-        </Card>
-
-        {/* Basic tier */}
-        <Card className="flex flex-col p-8 relative border-blue-200 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-900/30">
-          <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-            <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-              Most Popular
-            </span>
-          </div>
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold text-text dark:text-white">Basic</h3>
-            <p className="mt-4 text-text-light dark:text-gray-300">Perfect for regular learners</p>
-            <div className="mt-6">
-              <div className="flex items-center gap-2">
-                <span className="line-through text-gray-500 dark:text-gray-400 text-lg">
-                  ${prices.basic[billingInterval]}
-                </span>
-                <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold px-2 py-0.5 rounded-full">
-                  -80%
-                </span>
-              </div>
-              <div className="flex items-baseline">
-                <span className="text-4xl font-bold text-text dark:text-white">
-                  ${(prices.basic[billingInterval] * 0.2).toFixed(2)}
-                </span>
-                <span className="text-text-light dark:text-gray-300 ml-1">/{billingInterval}</span>
-              </div>
+      {/* Pro Plan */}
+      <div className="relative p-6 bg-[#12141f] rounded-2xl border border-[#2d2b55] hover:border-[#6366F1]/50 transition-all">
+        <div className="mb-4">
+          <h3 className="text-2xl font-bold text-gray-100">Pro</h3>
+          <p className="text-gray-400 mt-2">Perfect for power users</p>
+        </div>
+        
+        <div className="flex items-baseline gap-1 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-4xl font-bold text-gray-100">$4.00</span>
+            <div className="px-2 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-medium">
+              -80%
             </div>
           </div>
-          <ul className="mb-8 space-y-4 flex-1">
-            {features.map((feature) => (
-              <li key={feature.name} className="flex items-center gap-3">
-                {typeof feature.basic === 'boolean' ? (
-                  feature.basic ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <X className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-                  )
-                ) : (
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                    {feature.basic}
-                  </span>
-                )}
-                <span className="text-text-light dark:text-gray-300">{feature.name}</span>
-              </li>
-            ))}
-          </ul>
-          <Button 
-            className="w-full" 
-            onClick={() => handleUpgrade('basic')}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Get Basic Plan'}
-          </Button>
-        </Card>
+          <span className="text-gray-400">/month</span>
+        </div>
 
-        {/* Pro tier */}
-        <Card className="flex flex-col p-8 border-purple-200 bg-purple-50/50 dark:bg-purple-900/20 dark:border-purple-900/30">
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold text-text dark:text-white">Pro</h3>
-            <p className="mt-4 text-text-light dark:text-gray-300">Perfect for power users</p>
-            <div className="mt-6">
-              <div className="flex items-center gap-2">
-                <span className="line-through text-gray-500 dark:text-gray-400 text-lg">
-                  ${prices.pro[billingInterval]}
-                </span>
-                <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold px-2 py-0.5 rounded-full">
-                  -80%
-                </span>
-              </div>
-              <div className="flex items-baseline">
-                <span className="text-4xl font-bold text-text dark:text-white">
-                  ${(prices.pro[billingInterval] * 0.2).toFixed(2)}
-                </span>
-                <span className="text-text-light dark:text-gray-300 ml-1">/{billingInterval}</span>
-              </div>
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium text-sm">Unlimited</span>
             </div>
+            <span className="text-gray-300 text-sm">Teach-back sessions per month</span>
           </div>
-          <ul className="mb-8 space-y-4 flex-1">
-            {features.map((feature) => (
-              <li key={feature.name} className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-1">
-                  {typeof feature.pro === 'boolean' ? (
-                    feature.pro ? (
-                      <Check className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <X className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-                    )
-                  ) : (
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                      {feature.pro}
-                    </span>
-                  )}
-                </div>
-                <span className="text-text-light dark:text-gray-300 text-sm">{feature.name}</span>
-              </li>
-            ))}
-          </ul>
-          <Button 
-            className="w-full" 
-            onClick={() => handleUpgrade('pro')}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Get Pro Plan'}
-          </Button>
-        </Card>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium text-sm">Unlimited</span>
+            </div>
+            <span className="text-gray-300 text-sm">Virtual student chat messages</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
+              <span className="font-medium text-sm">AI</span>
+            </div>
+            <span className="text-gray-300 text-sm">YouTube video search</span>
+          </div>
+          
+          {features.slice(3).map((feature, index) => (
+            <div key={index} className="flex items-start gap-3">
+              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+                {feature.pro ? (
+                  <Check className="w-5 h-5 text-[#8B5CF6]" />
+                ) : (
+                  <X className="w-5 h-5 text-gray-500" />
+                )}
+              </div>
+              <span className={`text-sm ${feature.pro ? 'text-gray-300' : 'text-gray-500'}`}>
+                {feature.name}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8">
+          <Link href="/login" className="w-full">
+            <Button className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] hover:opacity-90 transition-opacity text-white">
+              Get Pro Plan
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   )

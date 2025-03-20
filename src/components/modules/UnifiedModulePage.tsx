@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback as _useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -35,7 +35,17 @@ import {
   ExternalLink,
   Bookmark,
   Video,
-  PenLine
+  PenLine,
+  Youtube,
+  Lightbulb,
+  Upload,
+  PanelLeftClose,
+  PanelLeftOpen,
+  MoreHorizontal,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription as _CardDescription, CardHeader, CardTitle, CardFooter as _CardFooter } from "@/components/ui/card";
@@ -67,6 +77,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import {
   Tabs,
@@ -96,8 +107,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import FormulaStyles from '@/components/modules/FormulaStyles';
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cn } from "@/lib/utils";
+import { cn as _cn } from "@/lib/utils";
 import PracticeQuestions from './PracticeQuestions';
+import MathPreview from '@/components/formulas/MathPreview';
+import GradeTracker from '@/components/grades/GradeTracker';
+import FlashcardModule from "@/components/flashcards/FlashcardModule";
+import ReminderList from '@/components/reminders/ReminderList';
 
 interface Module {
   id: string;
@@ -118,6 +133,15 @@ interface NoteType {
   tags: string[];
   created_at: string;
   updated_at: string;
+  images?: NoteImageType[];
+}
+
+interface NoteImageType {
+  url: string;
+  name: string;
+  size: number;
+  type: string;
+  created_at: string;
 }
 
 interface UnifiedModulePageProps {
@@ -244,7 +268,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<'notes' | 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'noteFlashcards'>('notes');
+  const [activeSection, setActiveSection] = useState<'notes' | 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'noteFlashcards' | 'grades' | 'reminders'>('notes');
   const [filteredNotes, setFilteredNotes] = useState<NoteType[]>(notes);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   // Add subscription tier state
@@ -351,6 +375,12 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   } | null>(null);
   const [isLoadingNoteFlashcards, setIsLoadingNoteFlashcards] = useState(false);
 
+  const [uploadedImages, setUploadedImages] = useState<NoteImageType[]>([]);
+
+  // State for sidebar minimization
+  const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
   // Keep filteredNotes in sync with notes
   useEffect(() => {
     // Make sure notes are valid before filtering
@@ -383,7 +413,8 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         .from('notes')
         .update({
           content: editedContent,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          images: uploadedImages.length > 0 ? uploadedImages : selectedNote.images || []
         })
         .eq('id', selectedNote.id);
 
@@ -392,11 +423,24 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       // Update local state
       setNotes(prev => prev.map(note => 
         note.id === selectedNote.id 
-          ? { ...note, content: editedContent, updated_at: new Date().toISOString() } 
+          ? { 
+              ...note, 
+              content: editedContent, 
+              updated_at: new Date().toISOString(),
+              images: uploadedImages.length > 0 ? uploadedImages : note.images || []
+            } 
           : note
       ));
       
-      setSelectedNote(prev => prev ? { ...prev, content: editedContent, updated_at: new Date().toISOString() } : null);
+      setSelectedNote(prev => prev ? { 
+        ...prev, 
+        content: editedContent, 
+        updated_at: new Date().toISOString(),
+        images: uploadedImages.length > 0 ? uploadedImages : prev.images || []
+      } : null);
+      
+      // Reset uploaded images after saving
+      setUploadedImages([]);
       setEditMode(false);
       
       toast({
@@ -428,7 +472,8 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
           title: `New Note ${notes.length + 1}`,
           content: '',
           tags: [],
-          user_id: userId
+          user_id: userId,
+          images: []
         })
         .select()
         .single();
@@ -626,7 +671,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
 
   // Update handleActivateStudyTool to accept an optional noteId parameter
-  const handleActivateStudyTool = (tool: 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'notes', noteId?: string) => {
+  const handleActivateStudyTool = (tool: 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'notes' | 'grades' | 'noteFlashcards' | 'reminders', noteId?: string) => {
     // The 'notes' tool type can be handled just like 'module', as it refers to returning to the notes view
     if (tool === 'notes') {
       // If a noteId is provided, set it as the selected note
@@ -656,15 +701,33 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       // Clear the filter when viewing all flashcards
       setFilterFlashcardsByNoteId(null);
     }
+
+    // If it's videos and a noteId is provided, search for videos
+    if (tool === 'videos' && noteId) {
+      const note = notes.find(n => n.id === noteId);
+      if (note) {
+        generateSearchFromNote(note);
+      }
+    }
   };
 
   const renderLatex = (content: string) => {
     if (!content) return '';
     
+    // First convert markdown to HTML (including images)
+    let html = '';
+    try {
+      // Use a simple regex to handle image markdown
+      html = content.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-md my-2" />');
+    } catch (err: unknown) {
+      console.error('Markdown parsing error:', err);
+      html = content;
+    }
+    
     // Regular expression to find LaTeX expressions between $$ or $ symbols
     const latexRegex = /\$\$(.*?)\$\$|\$(.*?)\$/g;
     
-    return content.replace(latexRegex, (match, group1, group2) => {
+    return html.replace(latexRegex, (match, group1, group2) => {
       const formula = group1 || group2; // group1 for $$, group2 for $
       const displayMode = !!group1; // true for $$, false for $
       
@@ -676,8 +739,8 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         
         // Wrap the rendered LaTeX in a div with a class for dark mode styling
         return `<div class="katex-wrapper dark:text-white">${renderedLatex}</div>`;
-      } catch (error) {
-        console.error('LaTeX rendering error:', error);
+      } catch (err: unknown) {
+        console.error('LaTeX rendering error:', err);
         return match; // Return the original match if rendering fails
       }
     });
@@ -1230,14 +1293,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }
     
     setIsGeneratingFlashcards(true);
-    setGeneratedFlashcardsCount(0);
     
     try {
       const requestBody = {
         moduleId: module.id,
         moduleTitle: module.module_title,
         content: selectedNote.content,
-        noteId: selectedNote.id  // Explicitly include the note ID
+        noteId: selectedNote.id
       };
       
       const response = await fetch('/api/flashcards/generate', {
@@ -1250,31 +1312,10 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       
       if (!response.ok) {
         const errorData = await response.json();
-        
-        // Handle subscription-related errors specifically
-        if (response.status === 403 || response.status === 402) {
-          setShowUpgradeDialog(true);
-          return;
-        }
-        
         throw new Error(errorData.error || 'Failed to generate flashcards');
       }
       
       const data = await response.json();
-      setGeneratedFlashcardsCount(data.count || 0);
-      
-      // Show success message
-      setShowGeneratedSuccess(true);
-      setTimeout(() => setShowGeneratedSuccess(false), 5000);
-      
-      // Refresh flashcards based on current view
-      if (activeSection === 'noteFlashcards' && selectedNote) {
-        // If we're in the note-specific flashcards view, refresh those flashcards
-        handleNoteFlashcardsClick(selectedNote);
-      } else {
-        // Otherwise refresh the general flashcards
-        fetchFlashcards();
-      }
       
       toast({
         title: "Flashcards Generated",
@@ -1951,7 +1992,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }
   };
   
-  const fetchSavedVideos = _useCallback(async () => {
+  const fetchSavedVideos = useCallback(async () => {
     if (!userId) return;
     
     try {
@@ -2055,171 +2096,395 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }
   };
 
+  const handleImageUpload = (imageData: { url: string; name: string; size: number; type: string }) => {
+    const newImage: NoteImageType = {
+      url: imageData.url,
+      name: imageData.name,
+      size: imageData.size,
+      type: imageData.type,
+      created_at: new Date().toISOString()
+    };
+    
+    setUploadedImages(prev => [...prev, newImage]);
+  };
+
   return (
     <div className="flex flex-col min-h-screen" suppressHydrationWarning>
       <Navbar />
       
       <div className="flex flex-1 overflow-hidden pt-16">
         {/* Sidebar with note cards */}
-        <div className="w-1/4 border-r p-4 flex flex-col h-[calc(100vh-4rem)]" suppressHydrationWarning>
-          <div className="mb-2">
-            <h2 className="text-xl font-bold">{module.details?.title || module.module_title || 'Untitled Module'}</h2>
-          </div>
-          
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => handleActivateStudyTool('module')}
-              suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs"
-            >
-              <BookOpen className="h-3 w-3 mr-1" /> Module
-            </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              onClick={() => handleActivateStudyTool('formulas')}
-              suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs"
-            >
-              <FileText className="h-3 w-3 mr-1" /> Formula
-            </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              onClick={() => handleActivateStudyTool('practice')}
-              suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs"
-            >
-              <PenLine className="h-3 w-3 mr-1" /> Practice
-            </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              onClick={handlePdfImportClick}
-              title="Import notes from PDF or image"
-              suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs"
-            >
-              <FileText className="h-3 w-3 mr-1" /> Import Document
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleCreateNewNote} 
-              suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs"
-            >
-              <Plus className="h-3 w-3 mr-1" /> New
-            </Button>
-          </div>
-          
-          {/* Tag filters - Replace with dropdown */}
-          {notes.length > 0 && (
-            <div className="mb-4">
-              <Select
-                value={selectedTag || "all_tags"}
-                onValueChange={(value) => handleFilterByTag(value === "all_tags" ? null : value)}
-              >
-                <SelectTrigger className="w-full" suppressHydrationWarning>
-                  <SelectValue placeholder="Filter by tag" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all_tags">All tags</SelectItem>
-                  {Array.from(new Set(notes.flatMap(note => note.tags))).map(tag => (
-                    <SelectItem key={tag} value={tag}>
-                      {tag}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          {/* Note cards */}
-          <div className="space-y-3 flex-1 overflow-y-auto pr-1">
-            {filteredNotes.length > 0 ? (
-              filteredNotes.map(note => (
-                <Card 
-                  key={note.id} 
-                  className={`cursor-pointer hover:shadow-md transition-shadow ${selectedNote?.id === note.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''}`}
-                  onClick={() => handleSelectNote(note)}
+        <div 
+          className={`${isSidebarMinimized ? 'w-16' : 'w-1/4'} border-r border-border bg-card/50 backdrop-blur-sm p-4 flex flex-col h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out relative`} 
+          suppressHydrationWarning
+        >
+          {/* Toggle button for sidebar */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute -right-3 top-4 h-6 w-6 rounded-full border bg-background shadow-md hover:bg-accent"
+            onClick={() => setIsSidebarMinimized(!isSidebarMinimized)}
+            title={isSidebarMinimized ? "Expand sidebar" : "Minimize sidebar"}
+          >
+            {isSidebarMinimized ? <PanelLeftOpen className="h-3 w-3" /> : <PanelLeftClose className="h-3 w-3" />}
+          </Button>
+
+          {!isSidebarMinimized && (
+            <>
+              <div className="mb-4">
+                <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  {module.details?.title || module.module_title || 'Untitled Module'}
+                </h2>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => handleActivateStudyTool('module')}
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
                 >
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-medium text-gray-900 dark:text-white">{note.title}</h3>
-                      <div className="flex flex-wrap justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 px-2 text-xs text-gray-700 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white"
+                  <BookOpen className="h-3 w-3 mr-1" /> Module
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleActivateStudyTool('formulas')}
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <FileText className="h-3 w-3 mr-1" /> Formula
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleActivateStudyTool('practice')}
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <PenLine className="h-3 w-3 mr-1" /> Practice
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleActivateStudyTool('grades')}
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <BarChart className="h-3 w-3 mr-1" /> Grades
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePdfImportClick}
+                  title="Import notes from PDF or image"
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <FileText className="h-3 w-3 mr-1" /> Import Document
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleCreateNewNote} 
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <Plus className="h-3 w-3 mr-1" /> New
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleActivateStudyTool('reminders')}
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <Bell className="h-3 w-3 mr-1" /> Reminders
+                </Button>
+              </div>
+              
+              {/* Tag filters */}
+              {notes.length > 0 && (
+                <div className="mb-4">
+                  <Select
+                    value={selectedTag || "all_tags"}
+                    onValueChange={(value) => handleFilterByTag(value === "all_tags" ? null : value)}
+                  >
+                    <SelectTrigger className="w-full bg-background/50 border-border/50" suppressHydrationWarning>
+                      <SelectValue placeholder="Filter by tag" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_tags">All tags</SelectItem>
+                      {Array.from(new Set(notes.flatMap(note => note.tags))).map(tag => (
+                        <SelectItem key={tag} value={tag}>
+                          {tag}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {/* Note cards */}
+              <div className="space-y-3 flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                {filteredNotes.length > 0 ? (
+                  filteredNotes.map(note => (
+                    <Card 
+                      key={note.id} 
+                      className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
+                        selectedNote?.id === note.id 
+                          ? 'border-primary/50 bg-primary/5 shadow-md ring-1 ring-primary/20' 
+                          : 'border-border/50 hover:border-border bg-card/50 backdrop-blur-sm'
+                      }`}
+                      onClick={() => handleSelectNote(note)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <h3 className="font-medium text-foreground/90 line-clamp-1">{note.title}</h3>
+                            <div className="flex flex-wrap justify-end gap-1 max-w-[40%]">
+                              {note.tags.map(tag => (
+                                <span 
+                                  key={tag} 
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer whitespace-nowrap"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFilterByTag(tag);
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+                            {stripLatex(note.content)}
+                          </p>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center pt-2 border-t border-border/30">
+                            <div className="flex flex-wrap gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-7 px-2 text-xs hover:bg-primary/10 hover:text-primary transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedNote(note);
+                                  handleActivateStudyTool('flashcards', note.id);
+                                }}
+                              >
+                                <Brain className="h-3 w-3 mr-1" />
+                                <span className="whitespace-nowrap">Flashcards</span>
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-7 px-2 text-xs hover:bg-primary/10 hover:text-primary transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedNote(note);
+                                  handleActivateStudyTool('teachback', note.id);
+                                }}
+                              >
+                                <ScrollText className="h-3 w-3 mr-1" />
+                                <span className="whitespace-nowrap">Teach</span>
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-7 px-2 text-xs hover:bg-primary/10 hover:text-primary transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedNote(note);
+                                  handleActivateStudyTool('videos', note.id);
+                                }}
+                              >
+                                <Video className="h-3 w-3 mr-1" />
+                                <span className="whitespace-nowrap">Videos</span>
+                              </Button>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3">
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {new Date(note.updated_at).toLocaleDateString()}
+                              </span>
+                              <div className="flex gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedNote(note);
+                                    setEditMode(true);
+                                    setEditedContent(note.content);
+                                  }}
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedNote(note);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {selectedTag ? 'No notes with this tag' : 'No notes yet'}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Minimized sidebar view */}
+          {isSidebarMinimized && (
+            <div className="flex flex-col items-center space-y-4 mt-8">
+              <Button 
+                size="icon" 
+                variant="ghost"
+                onClick={() => handleActivateStudyTool('module')}
+                title="Module"
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <BookOpen className="h-5 w-5" />
+              </Button>
+              <Button 
+                size="icon"
+                variant="ghost"
+                onClick={() => handleActivateStudyTool('formulas')}
+                title="Formulas"
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <FileText className="h-5 w-5" />
+              </Button>
+              <Button 
+                size="icon"
+                variant="ghost"
+                onClick={() => handleActivateStudyTool('practice')}
+                title="Practice"
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <PenLine className="h-5 w-5" />
+              </Button>
+              <Button 
+                size="icon"
+                variant="ghost"
+                onClick={() => handleActivateStudyTool('grades')}
+                title="Grades"
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <BarChart className="h-5 w-5" />
+              </Button>
+              <Button 
+                size="icon"
+                variant="ghost"
+                onClick={handlePdfImportClick}
+                title="Import Document"
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Upload className="h-5 w-5" />
+              </Button>
+              <Button 
+                size="icon"
+                variant="ghost"
+                onClick={handleCreateNewNote}
+                title="New Note"
+                className="hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+              
+              <div className="border-t border-border/50 w-8 my-2"></div>
+              
+              {filteredNotes.length > 0 && (
+                <div className="flex flex-col items-center space-y-2 overflow-y-auto max-h-[50vh]">
+                  {filteredNotes.slice(0, 5).map(note => (
+                    <div key={note.id} className="relative group">
+                      <Button
+                        size="icon"
+                        variant={selectedNote?.id === note.id ? "default" : "ghost"}
+                        onClick={() => handleSelectNote(note)}
+                        title={note.title}
+                        className={`relative transition-all ${
+                          selectedNote?.id === note.id 
+                            ? 'bg-primary/10 text-primary hover:bg-primary/20' 
+                            : 'hover:bg-primary/10 hover:text-primary'
+                        }`}
+                      >
+                        <FileText className="h-5 w-5" />
+                        {note.tags.length > 0 && (
+                          <span className="absolute top-0 right-0 h-2 w-2 bg-primary rounded-full"></span>
+                        )}
+                      </Button>
+                      <div className="absolute left-full ml-2 bg-card rounded-lg shadow-lg p-2 invisible group-hover:visible flex flex-col gap-1 z-50 border border-border/50 backdrop-blur-sm">
+                        <Button
+                          size="icon"
+                          variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Show only flashcards for this specific note
-                            handleNoteFlashcardsClick(note);
+                            setSelectedNote(note);
+                            handleActivateStudyTool('flashcards', note.id);
                           }}
+                          title="Flashcards"
+                          className="hover:bg-primary/10 hover:text-primary transition-colors"
                         >
-                          <ScrollText className="h-3 w-3 mr-1" /> Cards
+                          <Brain className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 px-2 text-xs text-gray-700 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white"
+                        <Button
+                          size="icon"
+                          variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleActivateStudyTool('teachback');
+                            setSelectedNote(note);
+                            handleActivateStudyTool('teachback', note.id);
                           }}
+                          title="Teach"
+                          className="hover:bg-primary/10 hover:text-primary transition-colors"
                         >
-                          <Brain className="h-3 w-3 mr-1" /> Teach
+                          <ScrollText className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 px-2 text-xs text-gray-700 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white"
+                        <Button
+                          size="icon"
+                          variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleSelectNote(note);
-                            handleActivateStudyTool('videos');
-                            generateSearchFromNote(note);
+                            setSelectedNote(note);
+                            handleActivateStudyTool('videos', note.id);
                           }}
+                          title="Videos"
+                          className="hover:bg-primary/10 hover:text-primary transition-colors"
                         >
-                          <Video className="h-3 w-3 mr-1" /> Videos
+                          <Video className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-100 line-clamp-2">
-                      {stripLatex(note.content || '')}
-                    </p>
-                    {note.tags && note.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {note.tags.map(tag => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="text-center py-10">
-                <p className="text-gray-500">No notes found</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4" 
-                  onClick={handleCreateNewNote}
-                  suppressHydrationWarning
-                >
-                  Create your first note
-                </Button>
-              </div>
-            )}
-          </div>
+                  ))}
+                  {filteredNotes.length > 5 && (
+                    <span className="text-xs text-muted-foreground">+{filteredNotes.length - 5} more</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         {/* Main content area */}
-        <div className="w-3/4 overflow-auto" suppressHydrationWarning>
+        <div 
+          className={`${isSidebarMinimized ? 'w-[calc(100%-4rem)]' : 'w-3/4'} overflow-auto transition-all duration-300 ease-in-out`}
+          suppressHydrationWarning
+        >
           {selectedNote && activeSection === 'notes' ? (
             <>
               <div className="p-4 border-b">
@@ -2285,13 +2550,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                   <DraftEditor
                     initialContent={editedContent}
                     onChange={setEditedContent}
+                    onImageUpload={handleImageUpload}
+                    supabase={supabase}
                   />
                 ) : (
-                  <div 
-                    dangerouslySetInnerHTML={{ 
-                      __html: renderLatex(selectedNote.content || '') 
-                    }} 
-                  />
+                  <div className="markdown-preview-wrapper">
+                    <MathPreview content={selectedNote.content || ''} />
+                  </div>
                 )}
               </div>
             </>
@@ -3021,6 +3286,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                   <DraftEditor
                     initialContent={editedModuleContent}
                     onChange={setEditedModuleContent}
+                    supabase={supabase}
                   />
                   <div className="flex justify-end">
                     <Button
@@ -3217,6 +3483,45 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               selectedNoteId={selectedNote?.id}
               onNavigateToSection={handleActivateStudyTool}
             />
+          ) : activeSection === 'grades' ? (
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold">Grade Tracker</h1>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setActiveSection('notes')}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Close
+                  </Button>
+                </div>
+              </div>
+              
+              <GradeTracker 
+                studySessionId={module.id}
+                userId={userId}
+              />
+            </div>
+          ) : activeSection === 'reminders' ? (
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold">Reminders</h1>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setActiveSection('notes')}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Close
+                  </Button>
+                </div>
+              </div>
+              
+              <ReminderList />
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full">
               <p>Select a note or study tool to get started</p>
@@ -3537,6 +3842,32 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         </DialogContent>
       </Dialog>
       <FormulaStyles />
+      {/* Delete Note Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Note</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this note? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteNote}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {activeSection === 'flashcards' && (
+        <FlashcardModule
+          moduleId={module.id}
+          userId={userId}
+          isPremiumUser={isPremiumUser}
+          selectedNote={selectedNote}
+          isNoteSpecific={!!selectedNote}
+          onGenerateAIFlashcards={generateAIFlashcards}
+          isGeneratingFlashcards={isGeneratingFlashcards}
+        />
+      )}
     </div>
-  );
+);
 } 

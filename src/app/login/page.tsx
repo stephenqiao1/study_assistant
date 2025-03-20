@@ -9,6 +9,7 @@ import { useRequireNoAuth } from '@/hooks/useRequireAuth'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/use-toast'
 import { SupabaseClient } from '@supabase/supabase-js'
+import GoogleLoginButton from '@/components/GoogleLoginButton'
 
 // Separate component that uses useSearchParams
 function LoginForm() {
@@ -47,9 +48,59 @@ function LoginForm() {
         type: 'error',
         text: 'Authentication session expired. Please sign in again.'
       })
+    } else if (errorParam === 'oauth_canceled') {
+      setMessage({
+        type: 'error',
+        text: 'Google sign in was canceled.'
+      })
+    } else if (errorParam === 'oauth_callback') {
+      const errorMessage = searchParams.get('message') || 'Authentication failed'
+      console.error('OAuth callback error:', errorMessage)
+      setMessage({
+        type: 'error',
+        text: errorMessage
+      })
     }
     
-  }, [searchParams])
+    // Check for refresh token errors
+    if (window.location.href.includes('error=unauthorized') || 
+        window.location.href.includes('error=invalid_grant') ||
+        window.location.href.includes('Refresh Token Not Found')) {
+      console.error('Refresh token error detected in URL')
+      // Clear any problematic session data
+      const clearSession = async () => {
+        try {
+          if (supabase) {
+            console.log('Clearing session due to refresh token error')
+            await supabase.auth.signOut({ scope: 'global' })
+            console.log('Session cleared successfully')
+            
+            // Clear any local storage or cookies that might be causing issues
+            localStorage.clear()
+            sessionStorage.clear()
+            
+            // Force reload the page to ensure a clean state
+            if (!window.location.href.includes('?error=')) {
+              window.location.href = '/login?error=token_cleared'
+            }
+          }
+        } catch (e) {
+          console.error('Error clearing session:', e)
+        }
+      }
+      clearSession()
+      
+      setMessage({
+        type: 'error',
+        text: 'Authentication error with refresh token. Please try signing in again.'
+      })
+    } else if (errorParam === 'token_cleared') {
+      setMessage({
+        type: 'error',
+        text: 'Your previous session had issues and has been cleared. Please sign in again.'
+      })
+    }
+  }, [searchParams, supabase])
 
   const handleResendVerificationEmail = async () => {
     if (!supabase) return
@@ -322,6 +373,17 @@ function LoginForm() {
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
+              
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-background-card text-text-light">Or continue with</span>
+                </div>
+              </div>
+              
+              <GoogleLoginButton />
             </form>
           </div>
         )}

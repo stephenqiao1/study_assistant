@@ -7,7 +7,9 @@ export interface PracticeQuestion {
   user_id: string;
   study_session_id: string;
   question_text: string;
+  question_image_url?: string; // URL to the question image
   answer_text: string;
+  answer_image_url?: string; // URL to the answer image
   source: string;
   tags: string[];
   difficulty: 'easy' | 'medium' | 'hard';
@@ -15,22 +17,28 @@ export interface PracticeQuestion {
   times_practiced: number;
   confidence_level: number;
   notes: string | null;
+  parent_question_id?: string; // Reference to the original question if this is a variant
 }
 
 export interface CreatePracticeQuestionParams {
   study_session_id: string;
   question_text: string;
+  question_image_url?: string;
   answer_text: string;
+  answer_image_url?: string;
   source?: string;
   tags?: string[];
   difficulty?: 'easy' | 'medium' | 'hard';
   notes?: string | null;
+  parent_question_id?: string; // Reference to the original question if this is a variant
 }
 
 export interface UpdatePracticeQuestionParams {
   id: string;
   question_text?: string;
+  question_image_url?: string;
   answer_text?: string;
+  answer_image_url?: string;
   source?: string;
   tags?: string[];
   difficulty?: 'easy' | 'medium' | 'hard';
@@ -46,6 +54,8 @@ export interface PracticeSessionResult {
 
 // Define a type for the update data object based on the UpdatePracticeQuestionParams interface
 type PracticeQuestionUpdateData = Omit<UpdatePracticeQuestionParams, 'id'> & {
+  question_image_url?: string;
+  answer_image_url?: string;
   last_practiced_at?: string | null;
   times_practiced?: number;
   confidence_level?: number;
@@ -70,7 +80,9 @@ export async function createPracticeQuestion(params: CreatePracticeQuestionParam
       user_id: user.id,
       study_session_id: params.study_session_id,
       question_text: params.question_text,
+      question_image_url: params.question_image_url,
       answer_text: params.answer_text,
+      answer_image_url: params.answer_image_url,
       source: params.source || '',
       tags: params.tags || [],
       difficulty: params.difficulty || 'medium',
@@ -78,6 +90,7 @@ export async function createPracticeQuestion(params: CreatePracticeQuestionParam
       times_practiced: 0,
       confidence_level: 0,
       notes: params.notes || null,
+      parent_question_id: params.parent_question_id || null,
     };
 
     const { data, error } = await supabase
@@ -181,7 +194,9 @@ export async function updatePracticeQuestion(params: UpdatePracticeQuestionParam
     // Create an object with only the fields to update
     const updateData: PracticeQuestionUpdateData = {};
     if (params.question_text !== undefined) updateData.question_text = params.question_text;
+    if (params.question_image_url !== undefined) updateData.question_image_url = params.question_image_url;
     if (params.answer_text !== undefined) updateData.answer_text = params.answer_text;
+    if (params.answer_image_url !== undefined) updateData.answer_image_url = params.answer_image_url;
     if (params.source !== undefined) updateData.source = params.source;
     if (params.tags !== undefined) updateData.tags = params.tags;
     if (params.difficulty !== undefined) updateData.difficulty = params.difficulty;

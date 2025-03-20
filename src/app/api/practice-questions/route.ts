@@ -10,7 +10,9 @@ export const fetchCache = 'force-no-store';
 // Define a proper type for the updateData object
 interface PracticeQuestionUpdateData {
   question_text?: string;
+  question_image_url?: string | null;
   answer_text?: string;
+  answer_image_url?: string | null;
   source?: string;
   tags?: string[];
   difficulty?: 'easy' | 'medium' | 'hard';
@@ -129,7 +131,9 @@ export async function POST(request: NextRequest) {
     const {
       study_session_id,
       question_text,
+      question_image_url,
       answer_text,
+      answer_image_url,
       source,
       tags,
       difficulty,
@@ -150,7 +154,9 @@ export async function POST(request: NextRequest) {
       user_id: user?.id || process.env.NEXT_PUBLIC_DEMO_USER_ID!,
       study_session_id,
       question_text,
+      question_image_url: question_image_url || null,
       answer_text,
+      answer_image_url: answer_image_url || null,
       source: source || '',
       tags: tags || [],
       difficulty: difficulty || 'medium',
@@ -206,7 +212,9 @@ export async function PUT(request: NextRequest) {
     const {
       id,
       question_text,
+      question_image_url,
       answer_text,
+      answer_image_url,
       source,
       tags,
       difficulty,
@@ -227,7 +235,9 @@ export async function PUT(request: NextRequest) {
     // Create an object with only the fields to update
     const updateData: PracticeQuestionUpdateData = {};
     if (question_text !== undefined) updateData.question_text = question_text;
+    if (question_image_url !== undefined) updateData.question_image_url = question_image_url;
     if (answer_text !== undefined) updateData.answer_text = answer_text;
+    if (answer_image_url !== undefined) updateData.answer_image_url = answer_image_url;
     if (source !== undefined) updateData.source = source;
     if (tags !== undefined) updateData.tags = tags;
     if (difficulty !== undefined) updateData.difficulty = difficulty;

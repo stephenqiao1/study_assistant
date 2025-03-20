@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
-import UnifiedModulePage from '@/components/modules/UnifiedModulePage'
+import UnifiedModulePageWrapper from '@/components/modules/UnifiedModulePageWrapper'
 
 interface PageProps {
   params: Promise<{ moduleId: string }>
@@ -37,13 +37,29 @@ export default async function ModuleDetailPage({ params }: PageProps) {
     redirect('/modules')
   }
   
-  // Get study sessions
-  const { data: allSessions } = await supabase
-    .from('study_sessions')
+  // We don't need to query for additional sessions since moduleId is the study session ID
+  const allSessions = [moduleData]
+  
+  // Check if a grading system exists for this study session
+  const { data: gradingSystem } = await supabase
+    .from('grading_systems')
     .select('*')
-    .eq('module_id', moduleId)
+    .eq('study_session_id', moduleId)
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+    .single()
+  
+  // If no grading system exists, create a default one
+  if (!gradingSystem && moduleId) {
+    await supabase
+      .from('grading_systems')
+      .insert({
+        user_id: user.id,
+        study_session_id: moduleId,
+        target_grade: 80, // Default target grade of 80%
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+  }
   
   // Get notes
   const { data: notes, error: notesError } = await supabase
@@ -69,9 +85,9 @@ export default async function ModuleDetailPage({ params }: PageProps) {
   
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <UnifiedModulePage
+      <UnifiedModulePageWrapper
         module={moduleData}
-        _allSessions={allSessions || []}
+        allSessions={allSessions || []}
         notes={notes || []}
         isPremiumUser={isPremiumUser}
         userId={user.id}

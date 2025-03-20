@@ -7,37 +7,118 @@
 
 @layer base {
   :root {
-    --background: #F9F9F9;
+    /* Light Mode - Background Colors */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    
+    /* Card Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --card-hovered: 220 13% 97%;
+    --card-border: 220 13% 91%;
+    
+    /* Primary Colors */
+    --primary: 246 83% 63%;
+    --primary-foreground: 210 40% 98%;
+    --primary-muted: 246 83% 88%;
+    --primary-border: 246 83% 70%;
+    
+    /* Secondary Colors */
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+    --secondary-muted: 210 40% 90%;
+    --secondary-border: 214 32% 91%;
+    
+    /* Accent Colors */
+    --accent: 246 83% 63%;
+    --accent-foreground: 222 47% 11%;
+    --accent-muted: 246 83% 88%;
+    --accent-border: 246 83% 70%;
+    
+    /* Muted Colors */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    
+    /* Destructive Colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    
+    /* Border & Input Colors */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 246 83% 63%;
+    
+    /* Status Colors */
+    --success: 142 72% 29%;
+    --warning: 38 92% 50%;
+    --error: 0 84% 60%;
+    --info: 199 89% 48%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Editor specific colors */
+    --editor-text: #333333;
+    --editor-text-highlight: #4F46E5;
     --background-card: #FFFFFF;
     --text: #333333;
     --text-light: #666666;
-    --border: #E5E7EB;
-    
-    --primary: #4F46E5;
-    --primary-foreground: #FFFFFF;
-    --secondary: #F3F4F6;
-    --secondary-foreground: #111827;
-    
-    /* Text editor colors */
-    --editor-text: #333333;
-    --editor-text-highlight: #4F46E5;
   }
 
   .dark {
-    --background: #121212;
-    --background-card: #1E1E1E;
-    --text: #F0F0F0;
-    --text-light: #ADADAD;
-    --border: #2C2C2C;
+    /* Dark Mode - Background Colors */
+    --background: 222 47% 4%;
+    --foreground: 210 40% 98%;
     
-    --primary: #9B9DFF;
-    --primary-foreground: #FFFFFF;
-    --secondary: #2A2A2A;
-    --secondary-foreground: #FFFFFF;
+    /* Card Colors */
+    --card: 222 47% 6%;
+    --card-foreground: 210 40% 98%;
+    --card-hovered: 222 47% 8%;
+    --card-border: 222 47% 12%;
     
-    /* Text editor colors */
+    /* Primary Colors */
+    --primary: 246 83% 63%;
+    --primary-foreground: 210 40% 98%;
+    --primary-muted: 246 83% 20%;
+    --primary-border: 246 83% 30%;
+    
+    /* Secondary Colors */
+    --secondary: 222 47% 8%;
+    --secondary-foreground: 210 40% 98%;
+    --secondary-muted: 222 47% 12%;
+    --secondary-border: 222 47% 16%;
+    
+    /* Accent Colors */
+    --accent: 246 83% 63%;
+    --accent-foreground: 210 40% 98%;
+    --accent-muted: 246 83% 20%;
+    --accent-border: 246 83% 30%;
+    
+    /* Muted Colors */
+    --muted: 223 47% 11%;
+    --muted-foreground: 215 20.2% 65.1%;
+    
+    /* Destructive Colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    
+    /* Border & Input Colors */
+    --border: 222 47% 12%;
+    --input: 222 47% 12%;
+    --ring: 246 83% 63%;
+    
+    /* Status Colors */
+    --success: 142 72% 29%;
+    --warning: 38 92% 50%;
+    --error: 0 84% 60%;
+    --info: 199 89% 48%;
+
+    /* Editor specific colors */
     --editor-text: #E0E0E0;
     --editor-text-highlight: #9B9DFF;
+    --background-card: #1E1E1E;
+    --text: #E0E0E0;
+    --text-light: #A0A0A0;
   }
 }
 
@@ -50,22 +131,22 @@
 
 /* Typography adjustments for dark mode */
 .dark .prose {
-  --tw-prose-body: #FFFFFF;
+  --tw-prose-body: #E0E0E0;
   --tw-prose-headings: #FFFFFF;
-  --tw-prose-lead: #E0E0E0;
-  --tw-prose-links: #4BA3CC;
+  --tw-prose-lead: #A0A0A0;
+  --tw-prose-links: #60A5FA;
   --tw-prose-bold: #FFFFFF;
-  --tw-prose-counters: #E0E0E0;
-  --tw-prose-bullets: #E0E0E0;
-  --tw-prose-hr: #2C2C2C;
-  --tw-prose-quotes: #FFFFFF;
-  --tw-prose-quote-borders: #2C2C2C;
-  --tw-prose-captions: #E0E0E0;
-  --tw-prose-code: #FFFFFF;
-  --tw-prose-pre-code: #FFFFFF;
+  --tw-prose-counters: #A0A0A0;
+  --tw-prose-bullets: #A0A0A0;
+  --tw-prose-hr: #374151;
+  --tw-prose-quotes: #E0E0E0;
+  --tw-prose-quote-borders: #374151;
+  --tw-prose-captions: #A0A0A0;
+  --tw-prose-code: #E0E0E0;
+  --tw-prose-pre-code: #E0E0E0;
   --tw-prose-pre-bg: #1E1E1E;
-  --tw-prose-th-borders: #2C2C2C;
-  --tw-prose-td-borders: #2C2C2C;
+  --tw-prose-th-borders: #374151;
+  --tw-prose-td-borders: #374151;
 }
 
 /* Markdown editor styling */
@@ -190,8 +271,6 @@
 
 body {
   color: var(--text);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
 }
 
 /* Add specific styling for math elements */
@@ -202,4 +281,33 @@ body {
 
 .math-display {
   margin: 1rem 0;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground font-semibold tracking-tight;
+  }
+  
+  p {
+    @apply text-muted-foreground;
+  }
+  
+  /* Links */
+  a {
+    @apply text-primary hover:text-primary/90 transition-colors;
+  }
+  
+  /* Focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
 }

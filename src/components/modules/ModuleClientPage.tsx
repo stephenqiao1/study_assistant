@@ -40,7 +40,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input'
-import PdfUploadModal from '@/components/modules/PdfUploadModal'
 
 interface Module {
   id: string
@@ -75,38 +74,28 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
   const router = useRouter();
   const { toast } = useToast();
   const supabase = createClient();
+  useStudyDuration(module.id, 'module');
   
   // State variables
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(module.details?.title || module.module_title);
   const [isLoading, setIsLoading] = useState(false);
-  const [_editMode, setEditMode] = useState(false);
-  const [_editedContent, _setEditedContent] = useState(module.details.content);
-  const [editedDescription, setEditedDescription] = useState(module.details.description || '');
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [activeNote, setActiveNote] = useState<NoteType | null>(null);
-  const [noteTitle, setNoteTitle] = useState('');
-  const [noteContent, setNoteContent] = useState('');
-  const [noteTags, setNoteTags] = useState<string[]>([]);
-  const [isEditingNote, setIsEditingNote] = useState(false);
-  const [tagInput, setTagInput] = useState('');
-  const [allNotes, setAllNotes] = useState<NoteType[]>(notes || []);
-  const [filteredNotes, setFilteredNotes] = useState<NoteType[]>(notes || []);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [showDeleteNoteConfirm, setShowDeleteNoteConfirm] = useState(false);
-  const [showPdfUploadModal, setShowPdfUploadModal] = useState(false);
-  const [isPreviewMode, setIsPreviewMode] = useState(true);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(module.details?.description || '');
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   
-  // Track study time with the correct activity type
-  useStudyDuration(module.id, 'module');
-
+  // Note state
+  const [selectedNote, setSelectedNote] = useState<NoteType | null>(notes.length > 0 ? notes[0] : null);
+  const [editMode, setEditMode] = useState(false);
+  const [editedContent, setEditedContent] = useState(selectedNote?.content || '');
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  
   // Handler functions
   const handleDelete = async () => {
     if (!module.module_title) return;
 
-    setIsDeleting(true);
+    setIsLoading(true);
     try {
       // Delete all study sessions with this module title
       const { error } = await supabase
@@ -133,7 +122,7 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
         variant: "destructive"
       });
     } finally {
-      setIsDeleting(false);
+      setIsLoading(false);
       setShowDeleteConfirm(false);
     }
   };
@@ -148,7 +137,7 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
         .update({
           details: {
             ...module.details,
-            content: _editedContent
+            content: editedContent
           }
         })
         .eq('id', module.id);
@@ -162,7 +151,7 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
         description: "Your changes have been successfully saved.",
       });
       
-      setEditMode(false);
+      setIsEditing(false);
     } catch (error) {
       console.error('Error saving changes:', error);
       toast({
@@ -222,7 +211,7 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
       return;
     }
 
-    setIsGenerating(true);
+    setIsGeneratingDescription(true);
     try {
       const response = await fetch('/api/modules/generate-description', {
         method: 'POST',
@@ -255,175 +244,7 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
         variant: "destructive"
       });
     } finally {
-      setIsGenerating(false);
-      setShowGenerateConfirm(false);
-    }
-  };
-
-  const handleSaveNote = async () => {
-    if (!noteTitle.trim()) {
-      toast({
-        title: "Note title required",
-        description: "Please enter a title for your note.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      if (isEditingNote && activeNote?.id) {
-        // Update existing note
-        const { error } = await supabase
-          .from('notes')
-          .update({
-            title: noteTitle,
-            content: noteContent,
-            tags: noteTags,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', activeNote.id);
-
-        if (error) throw error;
-
-        // Update local state
-        const updatedNotes = allNotes.map(note => 
-          note.id === activeNote.id 
-            ? { ...note, title: noteTitle, content: noteContent, tags: noteTags, updated_at: new Date().toISOString() }
-            : note
-        );
-        
-        setAllNotes(updatedNotes);
-        setFilteredNotes(activeTag ? updatedNotes.filter(note => note.tags.includes(activeTag)) : updatedNotes);
-        
-        toast({
-          title: "Note updated",
-          description: "Your note has been successfully updated.",
-        });
-      } else {
-        // Create new note
-        const { data, error } = await supabase
-          .from('notes')
-          .insert({
-            study_session_id: module.id,
-            title: noteTitle,
-            content: noteContent,
-            tags: noteTags,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select();
-
-        if (error) throw error;
-
-        const newNote = data[0] as NoteType;
-        
-        // Update local state
-        const updatedNotes = [newNote, ...allNotes];
-        setAllNotes(updatedNotes);
-        setFilteredNotes(activeTag ? updatedNotes.filter(note => note.tags.includes(activeTag)) : updatedNotes);
-        
-        toast({
-          title: "Note created",
-          description: "Your note has been successfully created.",
-        });
-      }
-
-      // Reset form
-      setNoteTitle('');
-      setNoteContent('');
-      setNoteTags([]);
-      setIsEditingNote(false);
-      setActiveNote(null);
-    } catch (error) {
-      console.error('Error saving note:', error);
-      toast({
-        title: "Error saving note",
-        description: "Could not save the note. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateNewNote = () => {
-    setActiveNote(null);
-    setNoteTitle('');
-    setNoteContent('');
-    setNoteTags([]);
-    setIsEditingNote(false);
-    setIsPreviewMode(false);
-  };
-
-  const handleSelectNote = (note: NoteType) => {
-    setActiveNote(note);
-    setNoteTitle(note.title);
-    setNoteContent(note.content);
-    setNoteTags(note.tags || []);
-    setIsEditingNote(true);
-    setIsPreviewMode(true);
-  };
-
-  const handleDeleteNote = async () => {
-    if (!activeNote?.id) return;
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', activeNote.id);
-
-      if (error) throw error;
-
-      // Update local state
-      const updatedNotes = allNotes.filter(note => note.id !== activeNote.id);
-      setAllNotes(updatedNotes);
-      setFilteredNotes(activeTag ? updatedNotes.filter(note => note.tags.includes(activeTag)) : updatedNotes);
-      
-      toast({
-        title: "Note deleted",
-        description: "Your note has been successfully deleted.",
-      });
-
-      // Reset form
-      setNoteTitle('');
-      setNoteContent('');
-      setNoteTags([]);
-      setIsEditingNote(false);
-      setActiveNote(null);
-    } catch (error) {
-      console.error('Error deleting note:', error);
-      toast({
-        title: "Error deleting note",
-        description: "Could not delete the note. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-      setShowDeleteNoteConfirm(false);
-    }
-  };
-
-  const handleAddTag = () => {
-    if (tagInput.trim() && !noteTags.includes(tagInput.trim())) {
-      setNoteTags([...noteTags, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setNoteTags(noteTags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleFilterByTag = (tag: string) => {
-    if (activeTag === tag) {
-      setActiveTag(null);
-      setFilteredNotes(allNotes);
-    } else {
-      setActiveTag(tag);
-      setFilteredNotes(allNotes.filter(note => note.tags.includes(tag)));
+      setIsGeneratingDescription(false);
     }
   };
 
@@ -441,69 +262,110 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
             <div className="bg-background-card rounded-xl shadow-sm border border-border p-6 mb-8">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
                 <div className="flex-1">
-                  <h1 className="text-3xl font-bold tracking-tight mb-3">{module.details.title}</h1>
-                  
-                  {isEditingDescription ? (
-                    <div className="space-y-3">
-                      <textarea
-                        value={editedDescription}
-                        onChange={(e) => setEditedDescription(e.target.value)}
-                        className="w-full p-3 border rounded-md bg-input text-text focus:border-primary"
-                        rows={3}
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editedTitle}
+                        onChange={(e) => setEditedTitle(e.target.value)}
+                        className="text-2xl font-bold h-auto py-1 max-w-md"
+                        placeholder="Module title"
                       />
-                      <div className="flex gap-3">
-                        <Button 
-                          onClick={handleSaveDescription}
-                          disabled={isLoading}
-                          className="gap-2"
-                        >
-                          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                          Save Description
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            setIsEditingDescription(false);
-                            setEditedDescription(module.details.description || '');
-                          }}
-                          className="gap-2"
-                        >
-                          <X className="h-4 w-4" /> Cancel
-                        </Button>
-                      </div>
+                      <Button 
+                        onClick={_handleSave}
+                        disabled={isLoading}
+                        size="sm"
+                      >
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      </Button>
+                      <Button 
+                        onClick={() => setIsEditing(false)}
+                        variant="ghost"
+                        size="sm"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   ) : (
-                    <div className="group relative">
-                      <p className="text-muted-foreground text-lg mb-2">
-                        {module.details.description || 'No description provided. Click to add one.'}
-                      </p>
-                      <div className="absolute top-0 right-0 hidden group-hover:flex space-x-1">
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-3xl font-bold tracking-tight mb-3">{module.details.title}</h1>
+                      <Button 
+                        onClick={() => setIsEditing(true)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <div className="mt-2">
+                    {isEditingDescription ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Input
+                            value={editedDescription}
+                            onChange={(e) => setEditedDescription(e.target.value)}
+                            className="text-sm text-gray-600 max-w-md"
+                            placeholder="Add a description..."
+                          />
+                          <Button 
+                            onClick={handleSaveDescription}
+                            disabled={isLoading}
+                            size="sm"
+                          >
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                          </Button>
+                          <Button 
+                            onClick={() => setIsEditingDescription(false)}
+                            variant="ghost"
+                            size="sm"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
                         <Button 
-                          variant="ghost" 
-                          size="sm" 
+                          onClick={handleGenerateDescription}
+                          variant="outline"
+                          size="sm"
+                          className="w-fit"
+                          disabled={isGeneratingDescription}
+                        >
+                          {isGeneratingDescription ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Brain className="h-4 w-4 mr-2" />
+                              Generate Description
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-muted-foreground text-lg mb-2">
+                          {module.details.description || 'No description provided. Click to add one.'}
+                        </p>
+                        <Button 
                           onClick={() => setIsEditingDescription(true)}
-                          className="rounded-full h-8 w-8 p-0"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setShowGenerateConfirm(true)}
-                          className="rounded-full h-8 w-8 p-0"
-                        >
-                          <Brain className="h-4 w-4" />
-                        </Button>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
                     className="gap-2"
-                    onClick={() => setShowPdfUploadModal(true)}
                   >
                     <FileUp className="h-4 w-4" /> Upload PDF
                   </Button>
@@ -527,7 +389,6 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                   <h2 className="text-2xl font-semibold">Notes</h2>
                 </div>
                 <Button 
-                  onClick={handleCreateNewNote} 
                   className="gap-2"
                 >
                   <Plus className="h-4 w-4" /> New Note
@@ -548,45 +409,34 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                     </div>
                   
                     {/* Tag filtering */}
-                    {Array.from(new Set(allNotes.flatMap(note => note.tags || []))).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-4">
-                        {Array.from(new Set(allNotes.flatMap(note => note.tags || []))).map(tag => (
-                          <Badge
-                            key={tag}
-                            variant={activeTag === tag ? "default" : "outline"}
-                            className="cursor-pointer text-xs"
-                            onClick={() => handleFilterByTag(tag)}
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                        {activeTag && (
-                          <Badge
-                            variant="outline"
-                            className="cursor-pointer text-xs"
-                            onClick={() => {
-                              setActiveTag(null);
-                              setFilteredNotes(allNotes);
-                            }}
-                          >
-                            <X className="mr-1 h-3 w-3" /> Clear
-                          </Badge>
-                        )}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {Array.from(new Set(notes.flatMap(note => note.tags || []))).map(tag => (
+                        <Badge
+                          key={tag}
+                          variant={selectedNote?.tags?.includes(tag) ? "default" : "outline"}
+                          className="cursor-pointer text-xs"
+                          onClick={() => setSelectedNote(notes.find(note => note.tags?.includes(tag)) || null)}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                      {selectedNote && (!selectedNote.tags || selectedNote.tags.length === 0) && (
+                        <span className="text-sm text-muted-foreground">No tags added yet</span>
+                      )}
+                    </div>
                     
                     {/* Note list */}
                     <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
-                      {filteredNotes.length > 0 ? (
-                        filteredNotes.map(note => (
+                      {notes.length > 0 ? (
+                        notes.map(note => (
                           <div
                             key={note.id}
                             className={`p-3 mb-2 rounded-md cursor-pointer transition-colors ${
-                              activeNote?.id === note.id
+                              selectedNote?.id === note.id
                                 ? 'bg-primary/10 border-l-2 border-l-primary'
                                 : 'hover:bg-background border border-border'
                             }`}
-                            onClick={() => handleSelectNote(note)}
+                            onClick={() => setSelectedNote(note)}
                           >
                             <div className="font-medium line-clamp-1">{note.title}</div>
                             <div className="text-sm text-muted-foreground line-clamp-2 mt-1">{note.content}</div>
@@ -615,13 +465,13 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                       <Input
                         id="note-title"
                         placeholder="Note title"
-                        value={noteTitle}
-                        onChange={(e) => setNoteTitle(e.target.value)}
+                        value={selectedNote?.title || ''}
+                        onChange={(e) => setSelectedNote(prev => prev ? { ...prev, title: e.target.value } : null)}
                         className="w-full text-lg font-medium border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
-                        disabled={isPreviewMode && activeNote !== null}
+                        disabled={isPreviewMode && selectedNote !== null}
                       />
                       
-                      {activeNote !== null && (
+                      {selectedNote !== null && (
                         <Button 
                           variant="ghost" 
                           size="sm" 
@@ -637,10 +487,10 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                       )}
                     </div>
                     
-                    {isPreviewMode && activeNote !== null ? (
+                    {isPreviewMode && selectedNote !== null ? (
                       // Preview mode
                       <div className="prose prose-sm dark:prose-invert max-w-none min-h-[calc(100vh-400px)] p-3 border rounded-md bg-background/50 overflow-auto">
-                        {noteContent.split('\n').map((paragraph, idx) => (
+                        {selectedNote.content.split('\n').map((paragraph, idx) => (
                           paragraph.trim() === '' ? 
                             <br key={idx} /> : 
                             <p key={idx}>{paragraph}</p>
@@ -652,39 +502,22 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                         <textarea
                           id="note-content"
                           placeholder="Start typing your note here..."
-                          value={noteContent}
-                          onChange={(e) => setNoteContent(e.target.value)}
+                          value={selectedNote?.content || ''}
+                          onChange={(e) => setSelectedNote(prev => prev ? { ...prev, content: e.target.value } : null)}
                           className="w-full h-[calc(100vh-400px)] p-3 border rounded-md bg-background/50 text-text focus:border-primary resize-none"
                         />
                         
                         <div className="absolute bottom-4 right-4 flex gap-2">
-                          {isEditingNote ? (
+                          {selectedNote && (
                             <>
                               <Button
-                                onClick={handleSaveNote}
-                                disabled={isLoading}
-                                className="gap-2"
-                              >
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                Update Note
-                              </Button>
-                              <Button
+                                onClick={() => setSelectedNote(null)}
                                 variant="destructive"
-                                onClick={() => setShowDeleteNoteConfirm(true)}
                                 size="icon"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
-                          ) : (
-                            <Button
-                              onClick={handleSaveNote}
-                              disabled={isLoading || !noteTitle.trim()}
-                              className="gap-2"
-                            >
-                              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                              Save Note
-                            </Button>
                           )}
                         </div>
                       </div>
@@ -698,48 +531,34 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-2">Tags</h3>
                       <div className="flex gap-2 flex-wrap mb-3">
-                        {noteTags.map(tag => (
+                        {selectedNote?.tags.map(tag => (
                           <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                             {tag}
                             <button 
-                              onClick={() => handleRemoveTag(tag)}
+                              onClick={() => setSelectedNote(prev => prev ? { ...prev, tags: prev.tags.filter(t => t !== tag) } : null)}
                               className="rounded-full w-4 h-4 flex items-center justify-center bg-secondary-foreground/10 hover:bg-secondary-foreground/20"
                             >
                               <X className="h-3 w-3" />
                             </button>
                           </Badge>
                         ))}
-                        {noteTags.length === 0 && (
+                        {selectedNote?.tags.length === 0 && (
                           <span className="text-sm text-muted-foreground">No tags added yet</span>
                         )}
                       </div>
-                      
-                      <div className="flex gap-2">
-                        <Input
-                          id="note-tags"
-                          placeholder="Add tag and press Enter"
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-                          className="flex-1 text-sm"
-                        />
-                        <Button onClick={handleAddTag} variant="outline" size="sm" className="shrink-0">
-                          <Tag className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </div>
                     
-                    {activeNote && (
+                    {selectedNote && (
                       <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Metadata</h3>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between text-muted-foreground">
                             <span>Created:</span>
-                            <span>{new Date(activeNote.created_at).toLocaleDateString()}</span>
+                            <span>{new Date(selectedNote.created_at).toLocaleDateString()}</span>
                           </div>
                           <div className="flex justify-between text-muted-foreground">
                             <span>Updated:</span>
-                            <span>{new Date(activeNote.updated_at).toLocaleDateString()}</span>
+                            <span>{new Date(selectedNote.updated_at).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
@@ -864,72 +683,20 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete module?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the module and all associated data. This action cannot be undone.
+              Are you sure you want to delete this module? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Delete note confirmation */}
-      <AlertDialog open={showDeleteNoteConfirm} onOpenChange={setShowDeleteNoteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete note?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this note? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteNote} disabled={isLoading}>
+            <AlertDialogAction onClick={handleDelete} disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      {/* Generate description confirmation */}
-      <AlertDialog open={showGenerateConfirm} onOpenChange={setShowGenerateConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Generate Description</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will generate a description based on your module content. Continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleGenerateDescription} disabled={isGenerating}>
-              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* PDF Upload Modal */}
-      {showPdfUploadModal && (
-        <PdfUploadModal
-          isOpen={showPdfUploadModal}
-          onClose={() => setShowPdfUploadModal(false)}
-          studySessionId={module.id}
-          onNotesCreated={() => {
-            setShowPdfUploadModal(false);
-            // Refresh the module data
-            router.refresh();
-          }}
-        />
-      )}
     </div>
   );
 } 
