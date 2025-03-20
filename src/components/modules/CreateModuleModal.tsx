@@ -11,9 +11,11 @@ import {
   DialogFooter,
   DialogPortal,
   DialogOverlay,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useRouter } from 'next/navigation'
 
 interface CreateModuleModalProps {
   isOpen: boolean
@@ -25,6 +27,7 @@ export default function CreateModuleModal({ isOpen, onClose, onSuccess }: Create
   const [title, setTitle] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const supabase = createClient()
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,7 +41,7 @@ export default function CreateModuleModal({ isOpen, onClose, onSuccess }: Create
         throw new Error('No authenticated user')
       }
 
-      const { error: sessionError } = await supabase
+      const { data, error: sessionError } = await supabase
         .from('study_sessions')
         .insert({
           user_id: user.id,
@@ -94,10 +97,20 @@ Summarize the main points covered in this module.
 
       if (sessionError) throw sessionError
 
-      // Reset form and close modal
-      setTitle('')
-      onSuccess()
-      onClose()
+      if (data) {
+        // Reset form
+        setTitle('')
+        
+        // Close modal and refresh the modules list
+        onClose()
+        onSuccess()
+        
+        // Wait a bit to ensure the modal is closed and list is refreshed
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Then redirect to the new module's page
+        router.push(`/modules/${data.id}`)
+      }
     } catch (error) {
       console.error('Error creating module:', error)
     } finally {
@@ -112,6 +125,9 @@ Summarize the main points covered in this module.
         <DialogContent className="bg-background border border-border">
           <DialogHeader>
             <DialogTitle>Create New Module</DialogTitle>
+            <DialogDescription>
+              Enter a title for your new study module. You can add content and organize your materials after creation.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
