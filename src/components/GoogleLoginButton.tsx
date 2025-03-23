@@ -21,10 +21,7 @@ export default function GoogleLoginButton() {
       const origin = window.location.origin
       
       // Clear any existing session data to prevent conflicts
-      console.log('Signing out any existing session before Google login')
       await supabase.auth.signOut({ scope: 'local' })
-      
-      console.log('Starting Google OAuth flow with redirectTo:', `${origin}/auth/callback`)
       
       // Sign in with Google OAuth
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -49,7 +46,6 @@ export default function GoogleLoginButton() {
       
       // If successful, data.url will contain the URL to redirect to
       if (data?.url) {
-        console.log('Redirecting to Google consent screen:', data.url)
         // Redirect to the Google OAuth consent screen
         window.location.href = data.url
       } else {

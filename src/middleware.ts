@@ -42,7 +42,6 @@ export async function middleware(request: NextRequest) {
       if (error.message.includes('Refresh Token') || 
           error.message.includes('invalid_grant') ||
           error.message.includes('unauthorized')) {
-        console.log('Refresh token error detected in middleware, redirecting to login');
         
         // Sign out the user to clear any problematic session data
         await supabase.auth.signOut({ scope: 'global' });

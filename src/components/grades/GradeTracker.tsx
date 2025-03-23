@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   GradingSystemWithComponents, 
-  GradingComponentWithEntries,
-  GradeStatus
+  GradingComponentWithEntries
 } from '@/types/grading';
 import { 
   calculateOverallGrade, 
@@ -22,7 +21,6 @@ import {
   AlertCircle, 
   CheckCircle2, 
   PlusCircle, 
-  MoreVertical, 
   Edit, 
   Trash2,
   Settings
@@ -34,54 +32,81 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from '@/components/ui/use-toast';
+
+interface GradingComponent {
+  id: string;
+  name: string;
+  weight: number;
+  score?: number | null;
+  max_score: number;
+  created_at?: string;
+}
+
+interface _GradingSystem {
+  id: string;
+  target_grade: number;
+  components: GradingComponent[];
+}
 
 interface GradeTrackerProps {
   studySessionId: string;
-  userId: string;
+  _userId: string;
 }
 
-export default function GradeTracker({ studySessionId, userId }: GradeTrackerProps) {
+export default function GradeTracker({ studySessionId, _userId }: GradeTrackerProps) {
   const router = useRouter();
   const [gradingSystem, setGradingSystem] = useState<GradingSystemWithComponents | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showGradingSystemForm, setShowGradingSystemForm] = useState(false);
-  const [showComponentForm, setShowComponentForm] = useState(false);
+  const [_showComponentForm, _setShowComponentForm] = useState(false);
   const [editingComponent, setEditingComponent] = useState<GradingComponentWithEntries | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [_showCreateModal, _setShowCreateModal] = useState(false);
+  const [showAddComponentModal, setShowAddComponentModal] = useState(false);
+  const { toast } = useToast();
+
+  const handleError = useCallback((error: Error | unknown) => {
+    console.error('Error:', error);
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "An unexpected error occurred",
+      variant: "destructive",
+    });
+  }, [toast]);
 
   // Fetch the grading system for this study session
-  useEffect(() => {
-    const fetchGradingSystem = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const response = await fetch(`/api/grading-systems?study_session_id=${studySessionId}`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch grading system');
-        }
-        
-        const data = await response.json();
-        
-        if (data.data && data.data.length > 0) {
-          setGradingSystem(data.data[0]);
-        } else {
-          setGradingSystem(null);
-        }
-      } catch (err) {
-        console.error('Error fetching grading system:', err);
-        setError('Failed to load grade information. Please try again later.');
-      } finally {
-        setIsLoading(false);
+  const fetchGradingSystem = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/grading-systems?study_session_id=${studySessionId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch grading system');
       }
-    };
-    
+      
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        setGradingSystem(data.data[0]);
+      } else {
+        setGradingSystem(null);
+      }
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [studySessionId, handleError]);
+
+  useEffect(() => {
     if (studySessionId) {
       fetchGradingSystem();
     }
-  }, [studySessionId]);
+  }, [studySessionId, fetchGradingSystem]);
 
   // Calculate the overall grade
   const gradeInfo = gradingSystem ? calculateOverallGrade(gradingSystem) : null;
@@ -91,8 +116,6 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
   // Handle creating a new grading system
   const handleCreateGradingSystem = async (targetGrade: number) => {
     try {
-      setIsLoading(true);
-      
       const response = await fetch('/api/grading-systems', {
         method: 'POST',
         headers: {
@@ -103,31 +126,19 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
           target_grade: targetGrade,
         }),
       });
-      
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create grading system');
+        throw new Error('Failed to create grading system');
       }
-      
+
       const data = await response.json();
-      
-      // Create a new grading system
-      const newGradingSystem = {
-        ...data.data,
-        components: [],
-      };
-      
-      setGradingSystem(newGradingSystem);
-      setShowGradingSystemForm(false);
+      setGradingSystem(data.data);
       setStatusMessage({ type: 'success', message: 'Grading system created successfully! Now add your grading components.' });
       
       // Refresh the page to update the UI
       router.refresh();
-    } catch (err: any) {
-      console.error('Error creating grading system:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to create grading system' });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      handleError(error);
     }
   };
 
@@ -136,8 +147,6 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
     if (!gradingSystem) return;
     
     try {
-      setIsLoading(true);
-      
       const response = await fetch('/api/grading-systems', {
         method: 'PATCH',
         headers: {
@@ -150,8 +159,7 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update target grade');
+        throw new Error('Failed to update target grade');
       }
       
       const data = await response.json();
@@ -162,21 +170,16 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
       });
       
       setStatusMessage({ type: 'success', message: 'Target grade updated successfully!' });
-    } catch (err: any) {
-      console.error('Error updating target grade:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to update target grade' });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      handleError(error);
     }
   };
 
   // Handle creating a new grading component
-  const handleCreateComponent = async (name: string, weight: number) => {
+  const handleAddComponent = async (name: string, weight: number, maxScore: number = 100) => {
     if (!gradingSystem) return;
     
     try {
-      setIsLoading(true);
-      
       const response = await fetch('/api/grading-components', {
         method: 'POST',
         headers: {
@@ -186,111 +189,62 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
           grading_system_id: gradingSystem.id,
           name,
           weight,
+          max_score: maxScore,
         }),
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create component');
+        throw new Error('Failed to add component');
       }
       
-      const data = await response.json();
-      
-      // Update the local state with the new component
-      setGradingSystem({
-        ...gradingSystem,
-        components: [
-          ...gradingSystem.components,
-          {
-            ...data.data,
-            entries: [],
-          },
-        ],
-      });
-      
-      // Close the component form
-      setShowComponentForm(false);
+      await fetchGradingSystem();
+      setShowAddComponentModal(false);
       setStatusMessage({ type: 'success', message: 'Component created successfully!' });
-    } catch (err: any) {
-      console.error('Error creating component:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to create component' });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      handleError(error);
     }
   };
 
   // Handle updating a grading component
-  const handleUpdateComponent = async (id: string, name: string, weight: number) => {
+  const _handleUpdateComponent = async (componentId: string, updates: Partial<GradingComponent>) => {
     if (!gradingSystem) return;
     
     try {
-      setIsLoading(true);
-      
-      const response = await fetch('/api/grading-components', {
+      const response = await fetch(`/api/grading-components/${componentId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          id,
-          name,
-          weight,
-        }),
+        body: JSON.stringify(updates),
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update component');
+        throw new Error('Failed to update component');
       }
       
-      const data = await response.json();
-      
-      setGradingSystem({
-        ...gradingSystem,
-        components: gradingSystem.components.map(component => 
-          component.id === id 
-            ? { ...component, name: data.data.name, weight: data.data.weight } 
-            : component
-        ),
-      });
-      
-      setEditingComponent(null);
-      setStatusMessage({ type: 'success', message: 'Component updated successfully!' });
-    } catch (err: any) {
-      console.error('Error updating component:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to update component' });
-    } finally {
-      setIsLoading(false);
+      await fetchGradingSystem();
+    } catch (error) {
+      handleError(error);
     }
   };
 
   // Handle deleting a grading component
-  const handleDeleteComponent = async (id: string) => {
+  const handleDeleteComponent = async (componentId: string) => {
     if (!gradingSystem) return;
     
     try {
-      setIsLoading(true);
-      
-      const response = await fetch(`/api/grading-components?id=${id}`, {
+      const response = await fetch(`/api/grading-components/${componentId}`, {
         method: 'DELETE',
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete component');
+        throw new Error('Failed to delete component');
       }
       
-      setGradingSystem({
-        ...gradingSystem,
-        components: gradingSystem.components.filter(component => component.id !== id),
-      });
-      
+      await fetchGradingSystem();
       setStatusMessage({ type: 'success', message: 'Component deleted successfully!' });
-    } catch (err: any) {
-      console.error('Error deleting component:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to delete component' });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      handleError(error);
     }
   };
 
@@ -304,15 +258,12 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
     }
     
     try {
-      setIsLoading(true);
-      
       const response = await fetch(`/api/grading-systems?id=${gradingSystem.id}`, {
         method: 'DELETE',
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete grading system');
+        throw new Error('Failed to delete grading system');
       }
       
       // Reset the state
@@ -321,11 +272,8 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
       
       // Refresh the page to update the UI
       router.refresh();
-    } catch (err: any) {
-      console.error('Error deleting grading system:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to delete grading system' });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      handleError(error);
     }
   };
 
@@ -475,9 +423,8 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
         {/* Progress bar */}
         {gradeInfo && (
           <GradeProgressBar 
-            currentGrade={gradeInfo.currentGrade}
+            grade={gradeInfo.currentGrade}
             targetGrade={gradeInfo.targetGrade}
-            status={gradeStatus as GradeStatus}
           />
         )}
         
@@ -500,7 +447,7 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Grading Components</h2>
           <button
-            onClick={() => setShowComponentForm(true)}
+            onClick={() => setShowAddComponentModal(true)}
             className="py-2 px-4 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors flex items-center"
             disabled={remainingWeight <= 0}
           >
@@ -528,37 +475,31 @@ export default function GradeTracker({ studySessionId, userId }: GradeTrackerPro
         </div>
         
         {/* Component form - always rendered but visibility toggled */}
-        {showComponentForm && (
+        {showAddComponentModal && (
           <div className="mb-6 border p-4 rounded-md bg-gray-50 dark:bg-gray-700/30 dark:border-gray-700">
             <h3 className="text-lg font-semibold mb-2 dark:text-white">
-              {editingComponent ? 'Edit Grading Component' : 'Add Grading Component'}
+              Add Grading Component
             </h3>
             <GradingComponentForm 
-              onSubmit={editingComponent 
-                ? (name: string, weight: number) => handleUpdateComponent(editingComponent.id, name, weight)
-                : handleCreateComponent
-              }
-              onCancel={() => {
-                setShowComponentForm(false);
-                if (editingComponent) setEditingComponent(null);
-              }}
+              onSubmit={handleAddComponent}
+              onCancel={() => setShowAddComponentModal(false)}
               availableWeight={100 - (remainingWeight + (editingComponent?.weight || 0))}
-              initialName={editingComponent?.name || ''}
-              initialWeight={editingComponent?.weight || 10}
-              isUpdate={!!editingComponent}
+              initialName={''}
+              initialWeight={10}
+              isUpdate={false}
             />
           </div>
         )}
         
         {/* Component list */}
-        <GradingComponentList 
+        <GradingComponentList
           components={gradingSystem.components}
           onEdit={(component: GradingComponentWithEntries) => {
             setEditingComponent(component);
-            setShowComponentForm(true);
+            setShowAddComponentModal(true);
           }}
           onDelete={handleDeleteComponent}
-          gradingSystemId={gradingSystem.id}
+          _gradingSystemId={studySessionId}
         />
       </div>
     </div>

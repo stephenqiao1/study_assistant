@@ -311,3 +311,37 @@ body {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
+
+/* Markdown Editor Styles */
+.custom-md-editor {
+  --md-editor-selection-bg: rgba(var(--primary) / 0.2);
+}
+
+.w-md-editor {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.w-md-editor ::selection {
+  background-color: var(--md-editor-selection-bg);
+}
+
+.w-md-editor ::-moz-selection {
+  background-color: var(--md-editor-selection-bg);
+}
+
+.w-md-editor-text-pre > textarea::selection {
+  background-color: var(--md-editor-selection-bg) !important;
+}
+
+.w-md-editor-text-pre > textarea::-moz-selection {
+  background-color: var(--md-editor-selection-bg) !important;
+}
+
+.w-md-editor-text-pre > code::selection {
+  background-color: var(--md-editor-selection-bg) !important;
+}
+
+.w-md-editor-text-pre > code::-moz-selection {
+  background-color: var(--md-editor-selection-bg) !important;
+}

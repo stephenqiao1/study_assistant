@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, LogOut, LineChart } from 'lucide-react'
+import Image from 'next/image'
+import { LogOut, LineChart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { createClient } from '@/utils/supabase/client'
@@ -32,7 +33,13 @@ export default function Navbar({ showSignOut = true }: NavbarProps) {
       <div className="flex h-14 items-center px-4 lg:px-6">
         {/* Logo & Brand */}
         <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity mr-6">
-          <BookOpen className="h-6 w-6 text-primary" />
+          <Image
+            src="/logo.png"
+            alt="Academiq Logo"
+            width={48}
+            height={48}
+            className="w-10 h-10"
+          />
           <span className="text-lg font-bold text-primary">
             Academiq
           </span>

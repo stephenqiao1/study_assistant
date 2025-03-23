@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BookOpen, Mail } from 'lucide-react'
+import Image from 'next/image'
+import { Mail, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 export default function Footer() {
@@ -54,7 +54,13 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Link href="/" className="flex items-center space-x-2">
-              <BookOpen className="h-6 w-6 text-primary" />
+              <Image
+                src="/logo.png"
+                alt="Academiq Logo"
+                width={48}
+                height={48}
+                className="w-8 h-8"
+              />
               <span className="font-bold text-text">Academiq</span>
             </Link>
             <p className="mt-2 text-sm text-text-light dark:text-gray-300">

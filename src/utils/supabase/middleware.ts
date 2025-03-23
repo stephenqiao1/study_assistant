@@ -40,7 +40,7 @@ export function createClient(request: NextRequest) {
             console.error('Error setting cookie in middleware:', e)
           }
         },
-        remove(name: string, options: CookieOptions) {
+        remove(name: string, _options: CookieOptions) {
           // If the cookie is removed, update the response headers
           try {
             request.cookies.delete(name)
@@ -98,7 +98,7 @@ export async function updateSession(request: NextRequest) {
             ...options,
           })
         },
-        remove(name: string, options: CookieOptions) {
+        remove(name: string, _options: CookieOptions) {
           // Delete cookie from the request
           request.cookies.delete(name)
           // Update request headers

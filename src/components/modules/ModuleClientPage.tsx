@@ -14,7 +14,6 @@ import {
   Save,
   X,
   Trash2,
-  Tag,
   Search,
   FileUp,
   Loader2,
@@ -40,32 +39,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input'
-
-interface Module {
-  id: string
-  module_title: string
-  started_at: string
-  details: {
-    title: string
-    content: string
-    description?: string
-    available_tools?: string[]
-  }
-}
-
-interface NoteType {
-  id: string
-  title: string
-  content: string
-  tags: string[]
-  created_at: string
-  updated_at: string
-}
+import {
+  Module,
+  Note
+} from '@/types/study';
 
 interface ModuleClientPageProps {
   module: Module
   allSessions: Module[]
-  notes: NoteType[]
+  notes: Note[]
   _isPremiumUser: boolean
   userId: string
 }
@@ -86,9 +68,9 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   
   // Note state
-  const [selectedNote, setSelectedNote] = useState<NoteType | null>(notes.length > 0 ? notes[0] : null);
-  const [editMode, setEditMode] = useState(false);
-  const [editedContent, setEditedContent] = useState(selectedNote?.content || '');
+  const [selectedNote, setSelectedNote] = useState<Note | null>(notes.length > 0 ? notes[0] : null);
+  const [_editMode, _setEditMode] = useState(false);
+  const [editedContent, _setEditedContent] = useState('');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   
   // Handler functions
@@ -412,12 +394,12 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {Array.from(new Set(notes.flatMap(note => note.tags || []))).map(tag => (
                         <Badge
-                          key={tag}
-                          variant={selectedNote?.tags?.includes(tag) ? "default" : "outline"}
+                          key={tag.id}
+                          variant={selectedNote?.tags?.some(t => t.id === tag.id) ? "default" : "outline"}
                           className="cursor-pointer text-xs"
-                          onClick={() => setSelectedNote(notes.find(note => note.tags?.includes(tag)) || null)}
+                          onClick={() => setSelectedNote(notes.find(note => note.tags?.some(t => t.id === tag.id)) || null)}
                         >
-                          {tag}
+                          {tag.name}
                         </Badge>
                       ))}
                       {selectedNote && (!selectedNote.tags || selectedNote.tags.length === 0) && (
@@ -532,10 +514,10 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                       <h3 className="text-sm font-medium text-muted-foreground mb-2">Tags</h3>
                       <div className="flex gap-2 flex-wrap mb-3">
                         {selectedNote?.tags.map(tag => (
-                          <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                            {tag}
+                          <Badge key={tag.id} variant="secondary" className="flex items-center gap-1">
+                            {tag.name}
                             <button 
-                              onClick={() => setSelectedNote(prev => prev ? { ...prev, tags: prev.tags.filter(t => t !== tag) } : null)}
+                              onClick={() => setSelectedNote(prev => prev ? { ...prev, tags: prev.tags.filter(t => t.id !== tag.id) } : null)}
                               className="rounded-full w-4 h-4 flex items-center justify-center bg-secondary-foreground/10 hover:bg-secondary-foreground/20"
                             >
                               <X className="h-3 w-3" />

@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
@@ -67,23 +66,20 @@ const features: PricingFeature[] = [
 ]
 
 export default function PricingTable() {
-  const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month')
-  const [isLoading, setIsLoading] = useState(false)
+  const [_billingInterval, _setBillingInterval] = useState<'monthly' | 'yearly'>('monthly')
+  const [_isLoading, setIsLoading] = useState(false)
   const _router = useRouter()
   const { session: _session } = useAuth()
 
-  const prices = {
-    basic: {
-      month: 9.99,
-      year: 99.99
-    },
-    pro: {
-      month: 19.99,
-      year: 199.99
-    }
-  }
+  const [_prices, _setPrices] = useState<{
+    monthly: number;
+    yearly: number;
+  }>({
+    monthly: 9.99,
+    yearly: 99.99
+  });
 
-  const handleUpgrade = async (tier: 'basic' | 'pro') => {
+  const _handleUpgrade = async (tier: 'basic' | 'pro') => {
     setIsLoading(true)
 
     try {
@@ -95,7 +91,7 @@ export default function PricingTable() {
         },
         body: JSON.stringify({
           tier,
-          interval: billingInterval,
+          interval: _billingInterval,
           returnUrl: `${window.location.origin}/pricing`
         })
       })
@@ -175,15 +171,15 @@ export default function PricingTable() {
               <Check className="w-5 h-5 text-[#8B5CF6]" />
             </div>
             <span className="text-gray-300 text-sm">Spaced repetition system</span>
-          </div>
-          
+      </div>
+
           <div className="flex items-start gap-3">
             <div className="w-12 flex-shrink-0 flex items-center justify-center">
               <Check className="w-5 h-5 text-[#8B5CF6]" />
             </div>
             <span className="text-gray-300 text-sm">Voice recording & transcription</span>
-          </div>
-          
+      </div>
+
           <div className="flex items-start gap-3">
             <div className="w-12 flex-shrink-0 flex items-center justify-center">
               <X className="w-5 h-5 text-gray-500" />
@@ -195,8 +191,8 @@ export default function PricingTable() {
         <div className="mt-8">
           <Link href="/login" className="w-full">
             <Button variant="outline" className="w-full border-[#2d2b55] hover:border-[#6366F1] hover:bg-[#1a1c2e] text-gray-100">
-              Current Plan
-            </Button>
+            Current Plan
+          </Button>
           </Link>
         </div>
       </div>
@@ -205,7 +201,7 @@ export default function PricingTable() {
       <div className="relative p-6 bg-[#12141f] rounded-2xl border border-[#6366F1] hover:border-[#8B5CF6] transition-all">
         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
           <div className="bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] text-white text-sm font-medium px-3 py-1 rounded-full whitespace-nowrap">
-            Most Popular
+              Most Popular
           </div>
         </div>
 
@@ -215,7 +211,7 @@ export default function PricingTable() {
         </div>
         
         <div className="flex items-baseline gap-1 mb-6">
-          <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
             <span className="text-4xl font-bold text-gray-100">$2.00</span>
             <div className="px-2 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-medium">
               -80%
@@ -235,9 +231,9 @@ export default function PricingTable() {
           <div className="flex items-start gap-3">
             <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
               <span className="font-medium">50</span>
-            </div>
+              </div>
             <span className="text-gray-300 text-sm">Virtual student chat messages</span>
-          </div>
+              </div>
           
           <div className="flex items-start gap-3">
             <div className="w-12 flex-shrink-0 flex items-center justify-center text-[#8B5CF6]">
@@ -257,7 +253,7 @@ export default function PricingTable() {
               </div>
               <span className={`text-sm ${feature.basic ? 'text-gray-300' : 'text-gray-500'}`}>
                 {feature.name}
-              </span>
+                </span>
             </div>
           ))}
         </div>
@@ -276,7 +272,7 @@ export default function PricingTable() {
         <div className="mb-4">
           <h3 className="text-2xl font-bold text-gray-100">Pro</h3>
           <p className="text-gray-400 mt-2">Perfect for power users</p>
-        </div>
+              </div>
         
         <div className="flex items-baseline gap-1 mb-6">
           <div className="flex items-center gap-2">
@@ -317,8 +313,8 @@ export default function PricingTable() {
                   <Check className="w-5 h-5 text-[#8B5CF6]" />
                 ) : (
                   <X className="w-5 h-5 text-gray-500" />
-                )}
-              </div>
+                  )}
+                </div>
               <span className={`text-sm ${feature.pro ? 'text-gray-300' : 'text-gray-500'}`}>
                 {feature.name}
               </span>
@@ -330,7 +326,7 @@ export default function PricingTable() {
           <Link href="/login" className="w-full">
             <Button className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] hover:opacity-90 transition-opacity text-white">
               Get Pro Plan
-            </Button>
+          </Button>
           </Link>
         </div>
       </div>

@@ -18,25 +18,39 @@ import {
   ChevronUp,
   AlertCircle
 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 interface GradingComponentListProps {
   components: GradingComponentWithEntries[];
   onEdit: (component: GradingComponentWithEntries) => void;
-  onDelete: (id: string) => void;
-  gradingSystemId: string;
+  onDelete: (componentId: string) => void;
+  _gradingSystemId: string;
 }
 
 export default function GradingComponentList({
   components,
   onEdit,
   onDelete,
-  gradingSystemId
+  _gradingSystemId
 }: GradingComponentListProps) {
   const [expandedComponents, setExpandedComponents] = useState<Record<string, boolean>>({});
   const [showEntryForm, setShowEntryForm] = useState<Record<string, boolean>>({});
   const [editingEntry, setEditingEntry] = useState<GradeEntry | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [_isSubmitting, _setIsSubmitting] = useState(false);
+  const [newGrade, setNewGrade] = useState({ score: '', maxScore: '' });
+  const [_showAddGradeModal, _setShowAddGradeModal] = useState(false);
+  const { toast } = useToast();
   
+  const handleError = (error: Error | unknown) => {
+    console.error('Error:', error);
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "An unexpected error occurred",
+      variant: "destructive",
+    });
+  };
+
   // Toggle component expansion
   const toggleExpand = (componentId: string) => {
     setExpandedComponents(prev => ({
@@ -81,7 +95,7 @@ export default function GradingComponentList({
       const { data } = await response.json();
       
       // Update the local state with the new entry
-      const updatedComponents = components.map(component => {
+      const _updatedComponents = components.map(component => {
         if (component.id === componentId) {
           return {
             ...component,
@@ -104,9 +118,12 @@ export default function GradingComponentList({
         ...prev,
         [componentId]: true,
       }));
-    } catch (err: any) {
-      console.error('Error creating grade entry:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to create grade entry' });
+    } catch (error) {
+      console.error('Error creating grade entry:', error);
+      setStatusMessage({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Failed to create grade entry' 
+      });
     }
   };
   
@@ -135,7 +152,7 @@ export default function GradingComponentList({
       const { data } = await response.json();
       
       // Update the local state with the updated entry
-      const updatedComponents = components.map(component => {
+      const _updatedComponents = components.map(component => {
         if (component.id === editingEntry?.grading_component_id) {
           return {
             ...component,
@@ -155,9 +172,12 @@ export default function GradingComponentList({
       setEditingEntry(null);
       
       setStatusMessage({ type: 'success', message: 'Grade entry updated successfully!' });
-    } catch (err: any) {
-      console.error('Error updating grade entry:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to update grade entry' });
+    } catch (error) {
+      console.error('Error updating grade entry:', error);
+      setStatusMessage({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Failed to update grade entry' 
+      });
     }
   };
   
@@ -178,7 +198,7 @@ export default function GradingComponentList({
       }
       
       // Update the local state by removing the deleted entry
-      const updatedComponents = components.map(component => {
+      const _updatedComponents = components.map(component => {
         if (component.id === componentId) {
           return {
             ...component,
@@ -189,9 +209,12 @@ export default function GradingComponentList({
       });
       
       setStatusMessage({ type: 'success', message: 'Grade entry deleted successfully!' });
-    } catch (err: any) {
-      console.error('Error deleting grade entry:', err);
-      setStatusMessage({ type: 'error', message: err.message || 'Failed to delete grade entry' });
+    } catch (error) {
+      console.error('Error deleting grade entry:', error);
+      setStatusMessage({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Failed to delete grade entry' 
+      });
     }
   };
   
@@ -202,6 +225,80 @@ export default function GradingComponentList({
       ...prev,
       [entry.grading_component_id]: true,
     }));
+  };
+  
+  const _handleAddGrade = async (componentId: string) => {
+    if (!newGrade.score || !newGrade.maxScore) return;
+    
+    try {
+      _setIsSubmitting(true);
+      const response = await fetch('/api/grade-entries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          component_id: componentId,
+          score: parseFloat(newGrade.score),
+          max_score: parseFloat(newGrade.maxScore),
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to add grade');
+      }
+      
+      const data = await response.json();
+      const _updatedComponents = components.map(component => {
+        if (component.id === componentId) {
+          return {
+            ...component,
+            entries: [...component.entries, data.data],
+          };
+        }
+        return component;
+      });
+      
+      _setShowAddGradeModal(false);
+      setNewGrade({ score: '', maxScore: '' });
+      toast({
+        title: "Success",
+        description: "Grade added successfully!",
+      });
+    } catch (error) {
+      handleError(error);
+    } finally {
+      _setIsSubmitting(false);
+    }
+  };
+  
+  const _handleDeleteGrade = async (componentId: string, gradeId: string) => {
+    try {
+      const response = await fetch(`/api/grade-entries/${gradeId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete grade');
+      }
+      
+      const _updatedComponents = components.map(component => {
+        if (component.id === componentId) {
+          return {
+            ...component,
+            entries: component.entries.filter((entry: GradeEntry) => entry.id !== gradeId),
+          };
+        }
+        return component;
+      });
+      
+      toast({
+        title: "Success",
+        description: "Grade deleted successfully!",
+      });
+    } catch (error) {
+      handleError(error);
+    }
   };
   
   // If there are no components, show a message

@@ -71,9 +71,7 @@ function LoginForm() {
       const clearSession = async () => {
         try {
           if (supabase) {
-            console.log('Clearing session due to refresh token error')
             await supabase.auth.signOut({ scope: 'global' })
-            console.log('Session cleared successfully')
             
             // Clear any local storage or cookies that might be causing issues
             localStorage.clear()

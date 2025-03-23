@@ -26,6 +26,7 @@ interface DraftEditorProps {
   onChange?: (content: string) => void
   onImageUpload?: (imageData: { url: string; name: string; size: number; type: string }) => void
   supabase?: SupabaseClient
+  _draftId?: string
 }
 
 export default function DraftEditor({ 
@@ -33,7 +34,8 @@ export default function DraftEditor({
   readOnly = false, 
   onChange,
   onImageUpload,
-  supabase
+  supabase,
+  _draftId
 }: DraftEditorProps) {
   const [content, setContent] = useState(initialContent)
   const [isUploading, setIsUploading] = useState(false)
@@ -54,37 +56,8 @@ export default function DraftEditor({
     }
   }, [])
 
-  // Handle image paste
-  useEffect(() => {
-    if (readOnly || !editorRef.current || !supabase) return
-
-    const handlePaste = async (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items
-      if (!items) return
-
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') === 0) {
-          e.preventDefault()
-          const blob = items[i].getAsFile()
-          if (blob) {
-            await uploadImage(blob)
-          }
-          break
-        }
-      }
-    }
-
-    // Add paste event listener to the editor
-    const editorElement = editorRef.current
-    editorElement.addEventListener('paste', handlePaste)
-
-    return () => {
-      editorElement.removeEventListener('paste', handlePaste)
-    }
-  }, [readOnly, editorRef.current, supabase])
-
   // Handle image upload
-  const uploadImage = async (file: File) => {
+  const uploadImage = useCallback(async (file: File) => {
     if (!file || !supabase) return
     
     setIsUploading(true)
@@ -95,7 +68,7 @@ export default function DraftEditor({
       const filePath = `${fileName}`
 
       // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
+      const { data: _data, error } = await supabase.storage
         .from('note_images')
         .upload(filePath, file)
 
@@ -148,7 +121,36 @@ export default function DraftEditor({
     } finally {
       setIsUploading(false)
     }
-  }
+  }, [content, editorRef, onChange, onImageUpload, supabase])
+
+  // Handle image paste
+  useEffect(() => {
+    if (readOnly || !editorRef.current || !supabase) return
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') === 0) {
+          e.preventDefault()
+          const blob = items[i].getAsFile()
+          if (blob) {
+            await uploadImage(blob)
+          }
+          break
+        }
+      }
+    }
+
+    // Add paste event listener to the editor
+    const editorElement = editorRef.current
+    editorElement.addEventListener('paste', handlePaste)
+
+    return () => {
+      editorElement.removeEventListener('paste', handlePaste)
+    }
+  }, [readOnly, supabase, uploadImage])
 
   // Handle file input change
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

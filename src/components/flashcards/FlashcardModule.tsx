@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import CreateFlashcardModal from "./CreateFlashcardModal";
@@ -30,9 +30,13 @@ interface Flashcard {
 interface FlashcardModuleProps {
   moduleId: string;
   userId: string;
-  isPremiumUser: boolean;
-  selectedNote?: any;
-  isNoteSpecific?: boolean;
+  _isPremiumUser: boolean;
+  selectedNote?: {
+    id: string;
+    title: string;
+    content: string;
+  } | null;
+  isNoteSpecific: boolean;
   onGenerateAIFlashcards: () => void;
   isGeneratingFlashcards: boolean;
 }
@@ -40,9 +44,9 @@ interface FlashcardModuleProps {
 export default function FlashcardModule({
   moduleId,
   userId,
-  isPremiumUser,
+  _isPremiumUser,
   selectedNote,
-  isNoteSpecific = false,
+  isNoteSpecific,
   onGenerateAIFlashcards,
   isGeneratingFlashcards
 }: FlashcardModuleProps) {
@@ -56,12 +60,7 @@ export default function FlashcardModule({
   const [sort, setSort] = useState<'default' | 'newest' | 'oldest' | 'difficulty'>('default');
   const [isCreateFlashcardModalOpen, setIsCreateFlashcardModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchFlashcards();
-    fetchFlashcardCount();
-  }, [moduleId, filter, sort]);
-
-  const fetchFlashcardCount = async () => {
+  const fetchFlashcardCount = useCallback(async () => {
     if (!moduleId || !userId) return;
     
     try {
@@ -70,7 +69,7 @@ export default function FlashcardModule({
         .select('*', { count: 'exact', head: true })
         .eq('study_session_id', moduleId)
         .eq('user_id', userId)
-        .not('last_reviewed_at', 'is', null); // Count only cards that have been reviewed
+        .not('last_reviewed_at', 'is', null);
         
       if (error) throw error;
       
@@ -78,9 +77,9 @@ export default function FlashcardModule({
     } catch (error) {
       console.error('Error fetching flashcard count:', error);
     }
-  };
+  }, [moduleId, userId, supabase]);
 
-  const fetchFlashcards = async () => {
+  const fetchFlashcards = useCallback(async () => {
     try {
       const response = await fetch(`/api/flashcards?moduleId=${moduleId}&filter=${filter}&sort=${sort}${selectedNote ? `&noteId=${selectedNote.id}` : ''}`);
       if (!response.ok) throw new Error('Failed to fetch flashcards');
@@ -94,7 +93,12 @@ export default function FlashcardModule({
         variant: "destructive",
       });
     }
-  };
+  }, [moduleId, filter, sort, selectedNote, toast]);
+
+  useEffect(() => {
+    fetchFlashcardCount();
+    fetchFlashcards();
+  }, [fetchFlashcardCount, fetchFlashcards]);
 
   const handleFilterChange = (value: 'all' | 'difficult' | 'easy' | 'new' | 'mastered') => {
     setFilter(value);

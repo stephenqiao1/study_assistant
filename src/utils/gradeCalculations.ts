@@ -1,5 +1,5 @@
 import { 
-  GradingSystem, 
+  GradingSystem as _GradingSystem, 
   GradingComponent, 
   GradeEntry, 
   GradingComponentWithEntries,

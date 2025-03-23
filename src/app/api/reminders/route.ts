@@ -15,12 +15,21 @@ export async function GET(request: Request) {
       );
     }
     
+    const { searchParams } = new URL(request.url);
+    const study_session_id = searchParams.get('study_session_id');
+    
     // Get all reminders for the user
-    const { data, error } = await supabase
+    let query = supabase
       .from('reminders')
       .select('*')
-      .eq('user_id', user.id)
-      .order('due_date', { ascending: true });
+      .eq('user_id', user.id);
+
+    // If study_session_id is provided, filter by it
+    if (study_session_id) {
+      query = query.eq('study_session_id', study_session_id);
+    }
+
+    const { data, error } = await query.order('due_date', { ascending: true });
     
     if (error) throw error;
     
@@ -49,10 +58,26 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
+    console.log('Received request body:', body);
+
+    // Validate all required fields
+    const missingFields = [];
+    if (!body.title) missingFields.push('title');
+    if (!body.due_date) missingFields.push('due_date');
+    if (!body.type) missingFields.push('type');
+    if (!body.study_session_id) missingFields.push('study_session_id');
     
-    if (!body.title || !body.due_date || !body.type) {
+    if (missingFields.length > 0) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: `Missing required fields: ${missingFields.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate type value
+    if (!['assignment', 'exam'].includes(body.type)) {
+      return NextResponse.json(
+        { error: 'Invalid type. Must be either "assignment" or "exam"' },
         { status: 400 }
       );
     }
@@ -65,19 +90,23 @@ export async function POST(request: Request) {
           title: body.title,
           due_date: body.due_date,
           type: body.type,
-          user_id: user.id
+          user_id: user.id,
+          study_session_id: body.study_session_id
         }
       ])
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
     
     return NextResponse.json({ data });
   } catch (error) {
     console.error('Error creating reminder:', error);
     return NextResponse.json(
-      { error: 'Failed to create reminder' },
+      { error: error instanceof Error ? error.message : 'Failed to create reminder' },
       { status: 500 }
     );
   }
@@ -124,4 +153,4 @@ export async function DELETE(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
@@ -13,51 +13,73 @@ type Reminder = {
   due_date: string;
   type: 'assignment' | 'exam';
   user_id: string;
+  study_session_id: string;
+  created_at: string;
+  updated_at: string;
 };
 
-export default function ReminderList() {
+interface ReminderListProps {
+  moduleId: string;  // This is actually the study_session_id
+}
+
+export default function ReminderList({ moduleId }: ReminderListProps) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState<Date>();
   const [type, setType] = useState<'assignment' | 'exam'>('assignment');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    fetchReminders();
-  }, []);
-
-  const fetchReminders = async () => {
+  const fetchReminders = useCallback(async () => {
     try {
-      const response = await fetch('/api/reminders');
+      const response = await fetch(`/api/reminders?study_session_id=${moduleId}`);
       const { data } = await response.json();
-      setReminders(data);
+      setReminders(data || []);
     } catch (error) {
       console.error('Error fetching reminders:', error);
     }
-  };
+  }, [moduleId]);
+
+  useEffect(() => {
+    fetchReminders();
+  }, [fetchReminders]);
 
   const addReminder = async () => {
     if (!title || !dueDate) return;
 
     setIsLoading(true);
     try {
+      const requestBody = {
+        title,
+        due_date: dueDate.toISOString(),
+        type,
+        study_session_id: moduleId
+      };
+      
+      console.log('Sending reminder request with body:', requestBody);
+      
       const response = await fetch('/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          due_date: dueDate.toISOString(),
-          type
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) throw new Error('Failed to add reminder');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Server response:', errorData);
+        throw new Error(errorData.error || 'Failed to add reminder');
+      }
+
+      const data = await response.json();
+      console.log('Success response:', data);
 
       setTitle('');
       setDueDate(undefined);
       await fetchReminders();
     } catch (error) {
       console.error('Error adding reminder:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +151,7 @@ export default function ReminderList() {
           disabled={!title || !dueDate || isLoading}
           className="w-full sm:w-auto"
         >
-          Add Reminder
+          {isLoading ? 'Adding...' : 'Add Reminder'}
         </Button>
       </div>
 

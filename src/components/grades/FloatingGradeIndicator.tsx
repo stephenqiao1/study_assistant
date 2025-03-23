@@ -3,19 +3,31 @@
 import { useState, useEffect } from 'react';
 import { GradingSystemWithComponents, GradeStatus } from '@/types/grading';
 import { calculateOverallGrade, getGradeStatus, formatGrade } from '@/utils/gradeCalculations';
-import { ChevronUp, ChevronDown, Target, BarChart2 } from 'lucide-react';
+import { ChevronDown, Target, BarChart2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface FloatingGradeIndicatorProps {
   studySessionId: string;
+  onExpand?: (expanded: boolean) => void;
+  alwaysExpanded?: boolean;
 }
 
-export default function FloatingGradeIndicator({ studySessionId }: FloatingGradeIndicatorProps) {
-  const router = useRouter();
+export default function FloatingGradeIndicator({ studySessionId, onExpand, alwaysExpanded }: FloatingGradeIndicatorProps) {
+  const _router = useRouter();
   const [gradingSystem, setGradingSystem] = useState<GradingSystemWithComponents | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(!alwaysExpanded);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (alwaysExpanded) {
+      setIsMinimized(false);
+    }
+  }, [alwaysExpanded]);
+
+  useEffect(() => {
+    onExpand?.(!isMinimized);
+  }, [isMinimized, onExpand]);
 
   // Fetch the grading system for this study session
   useEffect(() => {
@@ -70,13 +82,13 @@ export default function FloatingGradeIndicator({ studySessionId }: FloatingGrade
 
   return (
     <div 
-      className={`fixed bottom-6 right-6 z-50 rounded-lg shadow-lg transition-all duration-300 ease-in-out ${
+      className={`rounded-lg shadow-lg transition-all duration-300 ease-in-out ${
         isMinimized ? 'w-12 h-12' : 'w-64'
       }`}
     >
       {isMinimized ? (
         <button 
-          onClick={() => setIsMinimized(false)}
+          onClick={() => !alwaysExpanded && setIsMinimized(false)}
           className={`w-full h-full flex items-center justify-center rounded-lg ${statusColor} text-gray-100 hover:opacity-90 transition-colors`}
           title="Show grade information"
         >
@@ -86,13 +98,15 @@ export default function FloatingGradeIndicator({ studySessionId }: FloatingGrade
         <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-lg border border-gray-200 dark:border-gray-800">
           <div className={`${statusColor} px-4 py-2 flex justify-between items-center`}>
             <h3 className="font-semibold text-sm text-gray-100">Current Grade</h3>
-            <button 
-              onClick={() => setIsMinimized(true)}
-              className="text-gray-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-1 transition-colors"
-              aria-label="Minimize"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
+            {!alwaysExpanded && (
+              <button 
+                onClick={() => setIsMinimized(true)}
+                className="text-gray-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-1 transition-colors"
+                aria-label="Minimize"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            )}
           </div>
           
           <div className="p-3">
