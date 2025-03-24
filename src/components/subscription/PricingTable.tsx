@@ -97,60 +97,45 @@ export default function PricingTable() {
       }
 
       try {
-        // Enhanced debugging for user ID
         const userId = _session.user.id;
         
-        // Try a raw query with the exact ID to check formatting
-        const _rawQuery = `user_id=eq.${userId}`;
-        
-        let apiResponse = null;
-        
+        // First try to get the subscription from the API
         try {
           const response = await fetch(`/api/subscription?userId=${userId}`);
-          apiResponse = await response.json();
-        } catch (_apiError) {
-          console.error("Error fetching from API:", _apiError);
+          if (!response.ok) {
+            throw new Error('Failed to fetch subscription from API');
+          }
+          const apiResponse = await response.json();
+          
+          if (apiResponse && apiResponse.subscription) {
+            handleSubscriptionData(apiResponse.subscription);
+            return;
+          }
+        } catch (apiError) {
+          console.error("Error fetching from API:", apiError);
         }
         
-        if (apiResponse && apiResponse.subscription) {
-          handleSubscriptionData(apiResponse.subscription);
+        // If API fails, try direct Supabase query
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching subscription:', error);
+          setSubscription(null);
+        } else if (data) {
+          handleSubscriptionData(data);
         } else {
-          // First try to get just the count to verify data exists
-          const { count: _count, error: _countError } = await supabase
-            .from('subscriptions')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId);
-          
-          // Log the RLS policies by trying another approach
-          const { data: _allUserSubscriptions, error: _listError } = await supabase
-            .from('subscriptions')
-            .select('id, user_id, tier, status')
-            .limit(10);
-          
-          // If no records or error getting count, try to fetch with .maybeSingle() instead of .single()
-          const { data, error: _error } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle()
-          
-          if (_error) {
-            console.error('Error fetching subscription:', _error)
-            setSubscription(null);
-          } else if (data) {
-            // Use the data from direct query
-            handleSubscriptionData(data);
-          } else {
-            // Create a default free subscription
-            setDefaultSubscription();
-          }
+          // Create a default free subscription
+          setDefaultSubscription();
         }
-      } catch (_error) {
-        console.error('Error fetching subscription:', _error)
-        // Create a default free subscription if an error occurs
+      } catch (error) {
+        console.error('Error in subscription fetch:', error);
         setDefaultSubscription();
       } finally {
-        setIsLoadingSubscription(false)
+        setIsLoadingSubscription(false);
       }
     }
     
