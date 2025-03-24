@@ -149,6 +149,7 @@ interface UnifiedModulePageProps {
   isPremiumUser: boolean;
   userId: string;
   onSectionChange?: (section: 'notes' | 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'noteFlashcards' | 'grades' | 'reminders') => void;
+  onEditModeChange?: (isEditing: boolean) => void;
 }
 
 interface StudySession {
@@ -230,7 +231,7 @@ interface Formula {
   study_session_id?: string;
 }
 
-export default function UnifiedModulePage({ module, _allSessions, notes: initialNotes, isPremiumUser, userId, onSectionChange }: UnifiedModulePageProps) {
+export default function UnifiedModulePage({ module, _allSessions, notes: initialNotes, isPremiumUser, userId, onSectionChange, onEditModeChange }: UnifiedModulePageProps) {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = createClient();
@@ -374,7 +375,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   } | null>(null);
   const [isLoadingNoteFlashcards, setIsLoadingNoteFlashcards] = useState(false);
 
-  const [uploadedImages, setUploadedImages] = useState<NoteImageType[]>([]);
+  const [_uploadedImages, setUploadedImages] = useState<NoteImageType[]>([]);
 
   // State for sidebar minimization
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -403,262 +404,207 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     }
   }, [notes, selectedTag, selectedNote]);
 
-  const handleSaveNote = async () => {
-    if (!selectedNote) return;
-    
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from('notes')
-        .update({
-          content: editedContent,
-          updated_at: new Date().toISOString(),
-          images: uploadedImages.length > 0 ? uploadedImages : selectedNote.images || []
-        })
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
-
-      // Update local state
-      setNotes(prev => prev.map(note => 
-        note.id === selectedNote.id 
-          ? { 
-              ...note, 
-              content: editedContent, 
-              updated_at: new Date().toISOString(),
-              images: uploadedImages.length > 0 ? uploadedImages : note.images || []
-            } 
-          : note
-      ));
-      
-      setSelectedNote(prev => prev ? { 
-        ...prev, 
-        content: editedContent, 
-        updated_at: new Date().toISOString(),
-        images: uploadedImages.length > 0 ? uploadedImages : prev.images || []
-      } : null);
-      
-      // Reset uploaded images after saving
-      setUploadedImages([]);
-      setEditMode(false);
-      
-      toast({
-        title: "Note saved successfully",
-        variant: "default"
-      });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred';
-      
-      toast({
-        title: "Error saving note",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  // Add these handler functions after the state declarations, around line 265-270
+  // Handler functions for edit mode that notify parent component
+  const setEditModeWithNotify = (value: boolean) => {
+    setEditMode(value);
+    onEditModeChange?.(value);
   };
 
-  const handleCreateNewNote = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('notes')
-        .insert({
-          study_session_id: module.id,
-          title: `New Note ${notes.length + 1}`,
-          content: '',
-          tags: [],
-          user_id: userId,
-          images: []
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newNote = data as NoteType;
-      setNotes(prev => [...prev, newNote]);
-      setSelectedNote(newNote);
-      setEditedContent(newNote.content);
-      setEditMode(true);
-      
-      toast({
-        title: "New note created",
-        variant: "default"
-      });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred';
-      
-      toast({
-        title: "Error creating note",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSelectNote = (note: NoteType) => {
+  // Handle note selection
+  const handleNoteSelect = (note: NoteType) => {
     setSelectedNote(note);
     setEditedContent(note.content);
-    setEditMode(false);
-    
-    // If a study tool is active, update it to be associated with the newly selected note
-    if (activeSection === 'flashcards') {
-      // Switch to note-specific flashcards
-      handleNoteFlashcardsClick(note);
-    } else if (activeSection === 'noteFlashcards') {
-      // If already in note-specific flashcards view, update to show the new note's flashcards
-      handleNoteFlashcardsClick(note);
-    } else if (activeSection === 'teachback') {
-      // Keep teachback active but update the selected note
-      // The teachback will use the newly selected note automatically
-    } else if (activeSection === 'videos') {
-      // Update video search based on the newly selected note
-      generateSearchFromNote(note);
-    }
-    // For other sections like 'module' or 'formulas', we don't need to change anything
+    setEditModeWithNotify(false);
   };
 
+  // Handle note creation
+  const handleCreateNote = () => {
+    const newNote: NoteType = {
+      id: `temp-${Date.now()}`,
+      title: 'New Note',
+      content: '',
+      tags: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      images: []
+    };
+    setNotes([...notes, newNote]);
+    setSelectedNote(newNote);
+    setEditedContent('');
+    setEditModeWithNotify(true);
+  };
+
+  // Handle note deletion
   const handleDeleteNote = async () => {
     if (!selectedNote) return;
     
-    setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
-
-      // Update local state
+      setIsLoading(true);
+      const response = await fetch(`/api/notes/${selectedNote.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete note');
+      }
+      
       const updatedNotes = notes.filter(note => note.id !== selectedNote.id);
       setNotes(updatedNotes);
-      setSelectedNote(updatedNotes.length > 0 ? updatedNotes[0] : null);
+      
+      if (updatedNotes.length > 0) {
+        setSelectedNote(updatedNotes[0]);
+        setEditedContent(updatedNotes[0].content);
+      } else {
+        setSelectedNote(null);
+        setEditedContent('');
+      }
+      
+      setEditModeWithNotify(false);
       setShowDeleteConfirm(false);
-      
       toast({
-        title: "Note deleted successfully",
-        variant: "default"
+        title: "Success",
+        description: "Note deleted successfully!",
       });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred';
-      
+    } catch (error) {
+      console.error('Error deleting note:', error);
       toast({
-        title: "Error deleting note",
-        description: errorMessage,
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to delete note. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Handle note save
+  const handleSaveNote = async () => {
+    if (!selectedNote || !editedContent.trim()) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/notes/${selectedNote.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: editedContent.trim(),
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update note');
+      }
+      
+      const updatedNote = await response.json();
+      const updatedNotes = notes.map(note => 
+        note.id === selectedNote.id ? updatedNote : note
+      );
+      
+      setNotes(updatedNotes);
+      setSelectedNote(updatedNote);
+      setEditModeWithNotify(false);
+      toast({
+        title: "Success",
+        description: "Note saved successfully!",
+      });
+    } catch (error) {
+      console.error('Error saving note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save note. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle note cancel
+  const handleCancelEdit = () => {
+    if (selectedNote) {
+      setEditedContent(selectedNote.content);
+    }
+    setEditModeWithNotify(false);
+  };
+
+  // Handle tag addition
   const handleAddTag = async () => {
     if (!selectedNote || !tagInput.trim()) return;
     
-    const newTag = tagInput.trim();
-    if (selectedNote.tags.includes(newTag)) {
-      toast({
-        title: "Tag already exists",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      const updatedTags = [...selectedNote.tags, newTag];
-      
-      const { error } = await supabase
-        .from('notes')
-        .update({
-          tags: updatedTags
-        })
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
-
-      // Update local state
-      setNotes(prev => prev.map(note => 
-        note.id === selectedNote.id 
-          ? { ...note, tags: updatedTags } 
-          : note
-      ));
-      
-      setSelectedNote(prev => prev ? { ...prev, tags: updatedTags } : null);
-      setTagInput('');
-      
-      toast({
-        title: "Tag added successfully",
-        variant: "default"
+      setIsLoading(true);
+      const response = await fetch(`/api/notes/${selectedNote.id}/tags`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tag: tagInput.trim(),
+        }),
       });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred';
       
+      if (!response.ok) {
+        throw new Error('Failed to add tag');
+      }
+      
+      const updatedNote = await response.json();
+      const updatedNotes = notes.map(note => 
+        note.id === selectedNote.id ? updatedNote : note
+      );
+      
+      setNotes(updatedNotes);
+      setSelectedNote(updatedNote);
+      setTagInput('');
       toast({
-        title: "Error adding tag",
-        description: errorMessage,
-        variant: "destructive"
+        title: "Success",
+        description: "Tag added successfully!",
+      });
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add tag. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRemoveTag = async (tagToRemove: string) => {
+  // Handle tag deletion
+  const handleDeleteTag = async (tagToDelete: string) => {
     if (!selectedNote) return;
-
-    setIsLoading(true);
+    
     try {
-      const updatedTags = selectedNote.tags.filter(tag => tag !== tagToRemove);
+      setIsLoading(true);
+      const response = await fetch(`/api/notes/${selectedNote.id}/tags/${encodeURIComponent(tagToDelete)}`, {
+        method: 'DELETE',
+      });
       
-      const { error } = await supabase
-        .from('notes')
-        .update({
-          tags: updatedTags
-        })
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
-
-      // Update local state
-      setNotes(prev => prev.map(note => 
-        note.id === selectedNote.id 
-          ? { ...note, tags: updatedTags } 
-          : note
-      ));
-      
-      setSelectedNote(prev => prev ? { ...prev, tags: updatedTags } : null);
-      
-      if (selectedTag === tagToRemove) {
-        setSelectedTag(null);
+      if (!response.ok) {
+        throw new Error('Failed to delete tag');
       }
       
-      toast({
-        title: "Tag removed successfully",
-        variant: "default"
-      });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred';
+      const updatedNote = await response.json();
+      const updatedNotes = notes.map(note => 
+        note.id === selectedNote.id ? updatedNote : note
+      );
       
+      setNotes(updatedNotes);
+      setSelectedNote(updatedNote);
       toast({
-        title: "Error removing tag",
-        description: errorMessage,
-        variant: "destructive"
+        title: "Success",
+        description: "Tag deleted successfully!",
+      });
+    } catch (error) {
+      console.error('Error deleting tag:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete tag. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -2022,7 +1968,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   }, [filterFlashcardsByNoteId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Add a function to fetch and display flashcards for a specific note
-  const handleNoteFlashcardsClick = async (note: NoteType) => {
+  const _handleNoteFlashcardsClick = async (note: NoteType) => {
     
     // First, set loading state and clear previous flashcards
     setIsLoadingNoteFlashcards(true);
@@ -2111,6 +2057,19 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     onSectionChange?.(activeSection);
   }, [activeSection, onSectionChange]);
 
+  // Add these handler functions somewhere in the component, near other state handlers
+
+  // Helper functions for edit mode
+  const handleNoteCardEdit = (e: React.MouseEvent, note: NoteType) => {
+    e.stopPropagation();
+    setSelectedNote(note);
+    setEditMode(true);
+    if (onEditModeChange) {
+      onEditModeChange(true);
+    }
+    setEditedContent(note.content);
+  };
+
   return (
     <div className="flex flex-col min-h-screen" suppressHydrationWarning>
       <Navbar />
@@ -2198,7 +2157,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
             </Button>
             <Button 
               size="sm" 
-              onClick={handleCreateNewNote} 
+              onClick={handleCreateNote} 
               suppressHydrationWarning
               className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
             >
@@ -2234,12 +2193,12 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               filteredNotes.map(note => (
                 <Card 
                   key={note.id} 
-                      className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
-                        selectedNote?.id === note.id 
-                          ? 'border-primary/50 bg-primary/5 shadow-md ring-1 ring-primary/20' 
-                          : 'border-border/50 hover:border-border bg-card/50 backdrop-blur-sm'
-                      }`}
-                  onClick={() => handleSelectNote(note)}
+                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
+                    selectedNote?.id === note.id 
+                      ? 'border-primary/50 bg-primary/5 shadow-md ring-1 ring-primary/20' 
+                      : 'border-border/50 hover:border-border bg-card/50 backdrop-blur-sm'
+                  }`}
+                  onClick={() => handleNoteSelect(note)}
                 >
                   <CardContent className="p-4">
                         <div className="flex flex-col gap-2">
@@ -2317,8 +2276,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedNote(note);
-                                    setEditMode(true);
-                                    setEditedContent(note.content);
+                                    handleNoteCardEdit(e, note);
                                   }}
                                 >
                                   <Edit2 className="h-3 w-3" />
@@ -2402,7 +2360,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               <Button 
                 size="icon"
                 variant="ghost"
-                  onClick={handleCreateNewNote}
+                  onClick={handleCreateNote}
                 title="New Note"
                 className="hover:bg-primary/10 hover:text-primary transition-colors"
               >
@@ -2418,7 +2376,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                       <Button
                         size="icon"
                         variant={selectedNote?.id === note.id ? "default" : "ghost"}
-                        onClick={() => handleSelectNote(note)}
+                        onClick={() => handleNoteSelect(note)}
                         title={note.title}
                         className={`relative transition-all ${
                           selectedNote?.id === note.id 
@@ -2498,12 +2456,12 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                   <div className="flex space-x-2">
                     {editMode ? (
                       <>
-                        <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
+                        <Button variant="outline" onClick={handleCancelEdit}>Cancel</Button>
                         <Button onClick={handleSaveNote}>Save</Button>
                       </>
                     ) : (
                       <>
-                        <Button variant="outline" onClick={() => setEditMode(true)}>Edit</Button>
+                        <Button variant="outline" onClick={() => setEditModeWithNotify(true)}>Edit</Button>
                         <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>Delete</Button>
                       </>
                     )}
@@ -2518,7 +2476,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                         className="h-3 w-3 cursor-pointer" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRemoveTag(tag);
+                          handleDeleteTag(tag);
                         }}
                       />
                     </Badge>

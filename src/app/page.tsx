@@ -153,10 +153,6 @@ export default function Home() {
                 </li>
                 <li className="flex items-start">
                   <CheckCircle2 className="h-5 w-5 text-primary mr-2 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-muted-foreground">YouTube video search & recommendations</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle2 className="h-5 w-5 text-primary mr-2 flex-shrink-0 mt-0.5" />
                   <span className="text-sm text-muted-foreground">Formula extraction & organization</span>
                 </li>
                 <li className="flex items-start">

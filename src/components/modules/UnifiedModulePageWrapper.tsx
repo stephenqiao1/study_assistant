@@ -38,12 +38,16 @@ export default function UnifiedModulePageWrapper({ module, allSessions, notes, i
   const tab = searchParams.get('tab');
   const [_isReminderExpanded, setIsReminderExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<'notes' | 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'noteFlashcards' | 'grades' | 'reminders'>('notes');
+  const [isEditing, setIsEditing] = useState(false);
   
   useEffect(() => {
     if (module?.id) {
       console.log('Module ID for reminders:', module.id);
     }
   }, [module?.id]);
+
+  // Determine if the grade indicator should be shown
+  const shouldShowGradeIndicator = tab !== 'grades' && module && activeSection === 'notes' && !isEditing;
 
   return (
     <div className="relative">
@@ -54,11 +58,12 @@ export default function UnifiedModulePageWrapper({ module, allSessions, notes, i
         isPremiumUser={isPremiumUser}
         userId={userId}
         onSectionChange={setActiveSection}
+        onEditModeChange={setIsEditing}
       />
       
-      {/* Grade indicator at the top - only show on notes page */}
-      {tab !== 'grades' && module && activeSection === 'notes' && (
-        <div className="fixed top-20 right-4 z-50">
+      {/* Grade indicator at the bottom left - only show on notes page and when not editing */}
+      {shouldShowGradeIndicator && (
+        <div className="fixed bottom-4 left-4 z-50">
           <FloatingGradeIndicator 
             studySessionId={module.id} 
             onExpand={() => {}} // Always unminimized
@@ -67,7 +72,7 @@ export default function UnifiedModulePageWrapper({ module, allSessions, notes, i
         </div>
       )}
 
-      {/* Reminder indicator at the bottom */}
+      {/* Reminder indicator at the bottom right */}
       {tab !== 'reminders' && module && (
         <div className="fixed bottom-4 right-4 z-50">
           <FloatingReminderIndicator

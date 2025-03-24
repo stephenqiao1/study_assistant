@@ -58,7 +58,6 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    console.log('Received request body:', body);
 
     // Validate all required fields
     const missingFields = [];

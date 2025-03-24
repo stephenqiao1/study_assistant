@@ -55,14 +55,6 @@ export default function PricingPage() {
                   We accept all major credit cards through our secure payment processor, Stripe.
                 </dd>
               </div>
-              <div>
-                <dt className="text-base font-semibold leading-7 text-text dark:text-white">
-                  How does the YouTube video search feature work?
-                </dt>
-                <dd className="mt-2 text-base leading-7 text-text-light dark:text-gray-300">
-                  Our YouTube video search feature helps you find educational videos related to your study materials. Free users get basic search functionality, Basic plan users enjoy enhanced searching capabilities, and Pro users receive AI-powered recommendations that analyze your notes to find the most relevant videos for your specific learning needs.
-                </dd>
-              </div>
             </dl>
           </div>
         </div>
