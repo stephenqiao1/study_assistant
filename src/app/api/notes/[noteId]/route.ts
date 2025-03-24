@@ -48,7 +48,7 @@ export async function PUT(
       .eq('user_id', user?.id || process.env.NEXT_PUBLIC_DEMO_USER_ID!)
       .select()
       .single();
-      
+
     if (error) {
       console.error('Error updating note:', error);
       return NextResponse.json(
@@ -56,10 +56,67 @@ export async function PUT(
         { status: 500 }
       );
     }
-    
+
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Note not found' },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in PUT note:', error);
+    console.error('Error in PUT /api/notes/[noteId]:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ noteId: string }> }
+) {
+  try {
+    // Create a Supabase client
+    const supabase = await createClient();
+
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    // Check if we're in development mode
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    // If not in development and no user, return unauthorized
+    if (!isDevelopment && (!user || userError)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Get the noteId from params
+    const { noteId } = await context.params;
+    
+    // Delete the note
+    const { error } = await supabase
+      .from('notes')
+      .delete()
+      .eq('id', noteId)
+      .eq('user_id', user?.id || process.env.NEXT_PUBLIC_DEMO_USER_ID!);
+
+    if (error) {
+      console.error('Error deleting note:', error);
+      return NextResponse.json(
+        { error: 'Failed to delete note' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error in DELETE /api/notes/[noteId]:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

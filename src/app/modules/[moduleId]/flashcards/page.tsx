@@ -65,17 +65,8 @@ const remarkMath = remarkMathPlugin as Pluggable
 const prepareLatexContent = (content: string): string => {
   if (!content) return '';
   
-  // Make sure we're working with a string
-  const safeContent = String(content);
-  
-  // Look for existing LaTeX patterns and make sure they're properly formatted
-  return safeContent
-    // Make sure math delimiters have proper spacing
-    .replace(/\$\$/g, '$ $')  // Add space between consecutive $ signs
-    .replace(/\$ \$/g, '$$')  // Then convert back to double $ for block math
-    // Ensure there's space around inline math
-    .replace(/([^\s\\])\$/g, '$1 $')
-    .replace(/\$([^\s\\])/g, '$ $1');
+  // Just return the content as-is, without manipulation
+  return String(content);
 };
 
 // Function to render text with LaTeX
@@ -87,21 +78,13 @@ const renderWithLatex = (content: string) => {
     // Make sure we're working with a string
     const safeContent = String(content);
     
-    // Make sure LaTeX delimiters are properly balanced
-    const processedContent = safeContent
-      // Replace any stray $ characters that might not be LaTeX with escaped ones
-      .replace(/\$/g, '\\$')
-      // Then restore actual LaTeX delimiters
-      .replace(/\\\$\\\$(.*?)\\\$\\\$/g, '$$$$1$$')  // Block math
-      .replace(/\\\$(.*?)\\\$/g, '$1');  // Inline math
-    
     return (
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
         rehypePlugins={[rehypeKatex]}
         className="prose dark:prose-invert max-w-none"
       >
-        {processedContent}
+        {safeContent}
       </ReactMarkdown>
     );
   } catch (error) {

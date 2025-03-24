@@ -57,14 +57,6 @@ export default function Flashcard({
       // Make sure we're working with a string
       const safeContent = String(content);
       
-      // Make sure LaTeX delimiters are properly balanced
-      const processedContent = safeContent
-        // Replace any stray $ characters that might not be LaTeX with escaped ones
-        .replace(/\$/g, '\\$')
-        // Then restore actual LaTeX delimiters
-        .replace(/\\\$\\\$(.*?)\\\$\\\$/g, '$$$$1$$')  // Block math
-        .replace(/\\\$(.*?)\\\$/g, '$1');  // Inline math
-      
       return (
         <ReactMarkdown
           remarkPlugins={[remarkMath]}
@@ -88,7 +80,7 @@ export default function Flashcard({
             pre: ({node: _node, ...props}) => <pre className="!text-black bg-gray-100 p-2 rounded" {...props} />
           }}
         >
-          {processedContent}
+          {safeContent}
         </ReactMarkdown>
       );
     } catch (error) {

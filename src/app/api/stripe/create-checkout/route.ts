@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { SubscriptionTier, SubscriptionInterval } from '@/types/supabase'
-import { SUBSCRIPTION_PRICES, stripe } from '@/utils/stripe'
 import { createClient } from '@/utils/supabase/server'
 import Stripe from 'stripe'
 

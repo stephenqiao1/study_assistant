@@ -96,21 +96,13 @@ const renderWithLatex = (content: string) => {
     // Make sure we're working with a string
     const safeContent = String(content);
     
-    // Make sure LaTeX delimiters are properly balanced
-    const processedContent = safeContent
-      // Replace any stray $ characters that might not be LaTeX with escaped ones
-      .replace(/\$/g, '\\$')
-      // Then restore actual LaTeX delimiters
-      .replace(/\\\$\\\$(.*?)\\\$\\\$/g, '$$$$1$$')  // Block math
-      .replace(/\\\$(.*?)\\\$/g, '$1');  // Inline math
-    
     return (
       <ReactMarkdown
         remarkPlugins={[remarkMath as Pluggable]}
         rehypePlugins={[rehypeKatex]}
         className="prose dark:prose-invert max-w-none"
       >
-        {processedContent}
+        {safeContent}
       </ReactMarkdown>
     );
   } catch (error) {

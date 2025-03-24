@@ -427,7 +427,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       content: '',
       tags: [],
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
       images: []
     };
     setNotes([...notes, newNote]);
@@ -461,7 +461,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         setEditedContent('');
       }
       
-      setEditModeWithNotify(false);
+      // Close the delete confirmation dialog
       setShowDeleteConfirm(false);
       toast({
         title: "Success",
@@ -471,11 +471,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       console.error('Error deleting note:', error);
       toast({
         title: "Error",
-        description: "Failed to delete note. Please try again.",
+        description: "Failed to delete note",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
+      // Ensure the dialog is closed even if there's an error
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -485,31 +487,57 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/notes/${selectedNote.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: editedContent.trim(),
-        }),
-      });
+      
+      // Check if this is a temporary note that needs to be created
+      const isNewNote = selectedNote.id.startsWith('temp-');
+      
+      let response;
+      
+      if (isNewNote) {
+        // Create a new note with a POST request
+        response = await fetch('/api/notes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: selectedNote.title,
+            content: editedContent.trim(),
+            tags: selectedNote.tags,
+            study_session_id: module.id // Add module ID as study_session_id
+          }),
+        });
+      } else {
+        // Update an existing note with a PUT request
+        response = await fetch(`/api/notes/${selectedNote.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: editedContent.trim(),
+          }),
+        });
+      }
       
       if (!response.ok) {
-        throw new Error('Failed to update note');
+        throw new Error(isNewNote ? 'Failed to create note' : 'Failed to update note');
       }
       
       const updatedNote = await response.json();
-      const updatedNotes = notes.map(note => 
-        note.id === selectedNote.id ? updatedNote : note
-      );
+      
+      // Replace temp note with real note in the notes array if it's a new note
+      // Or update the existing note if it's an update
+      const updatedNotes = isNewNote 
+        ? notes.map(note => note.id === selectedNote.id ? updatedNote : note)
+        : notes.map(note => note.id === selectedNote.id ? updatedNote : note);
       
       setNotes(updatedNotes);
       setSelectedNote(updatedNote);
       setEditModeWithNotify(false);
       toast({
         title: "Success",
-        description: "Note saved successfully!",
+        description: isNewNote ? "Note created successfully!" : "Note saved successfully!",
       });
     } catch (error) {
       console.error('Error saving note:', error);
@@ -578,7 +606,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   // Handle tag deletion
   const handleDeleteTag = async (tagToDelete: string) => {
     if (!selectedNote) return;
-    
+
     try {
       setIsLoading(true);
       const response = await fetch(`/api/notes/${selectedNote.id}/tags/${encodeURIComponent(tagToDelete)}`, {
@@ -2106,7 +2134,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               variant="outline"
               onClick={() => handleActivateStudyTool('module')}
               suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
             >
               <BookOpen className="h-3 w-3 mr-1" /> Module
             </Button>
@@ -2115,53 +2143,53 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               variant="outline"
               onClick={() => handleActivateStudyTool('formulas')}
               suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
             >
               <FileText className="h-3 w-3 mr-1" /> Formula
             </Button>
             <Button 
               size="sm"
               variant="outline"
-              onClick={() => handleActivateStudyTool('practice')}
+                  onClick={() => handleActivateStudyTool('practice')}
               suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
-            >
-              <PenLine className="h-3 w-3 mr-1" /> Practice
-            </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              onClick={() => handleActivateStudyTool('grades')}
-              suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
-            >
-              <BarChart className="h-3 w-3 mr-1" /> Grades
-            </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              onClick={handlePdfImportClick}
-              title="Import notes from PDF or image"
-              suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
-            >
-              <FileText className="h-3 w-3 mr-1" /> Import Document
-            </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              onClick={() => handleActivateStudyTool('reminders')}
-              suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
-            >
-              <Bell className="h-3 w-3 mr-1" /> Reminders
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <PenLine className="h-3 w-3 mr-1" /> Practice
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleActivateStudyTool('grades')}
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <BarChart className="h-3 w-3 mr-1" /> Grades
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePdfImportClick}
+                  title="Import notes from PDF or image"
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
+                  <FileText className="h-3 w-3 mr-1" /> Import Document
             </Button>
             <Button 
               size="sm" 
-              onClick={handleCreateNote} 
+              variant="outline"
+              onClick={() => handleActivateStudyTool('reminders')}
               suppressHydrationWarning
-              className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
             >
+              <Bell className="h-3 w-3 mr-1" /> Reminders
+            </Button>
+                <Button 
+                  size="sm"
+              onClick={handleCreateNote} 
+                  suppressHydrationWarning
+                  className="px-2 py-1 h-8 text-xs hover:bg-accent/10 transition-colors"
+                >
               <Plus className="h-3 w-3 mr-1" /> New
             </Button>
           </div>
@@ -2194,11 +2222,11 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               filteredNotes.map(note => (
                 <Card 
                   key={note.id} 
-                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
-                    selectedNote?.id === note.id 
-                      ? 'border-primary/50 bg-primary/5 shadow-md ring-1 ring-primary/20' 
-                      : 'border-border/50 hover:border-border bg-card/50 backdrop-blur-sm'
-                  }`}
+                      className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
+                        selectedNote?.id === note.id 
+                          ? 'border-primary/50 bg-primary/5 shadow-md ring-1 ring-primary/20' 
+                          : 'border-border/50 hover:border-border bg-card/50 backdrop-blur-sm'
+                      }`}
                   onClick={() => handleNoteSelect(note)}
                 >
                   <CardContent className="p-4">
