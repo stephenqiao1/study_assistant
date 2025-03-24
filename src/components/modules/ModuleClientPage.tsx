@@ -475,7 +475,7 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                         {selectedNote.content.split('\n').map((paragraph, idx) => (
                           paragraph.trim() === '' ? 
                             <br key={idx} /> : 
-                            <p key={idx}>{paragraph}</p>
+                            <p key={idx} className="text-foreground">{paragraph}</p>
                         ))}
                       </div>
                     ) : (
@@ -486,7 +486,7 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                           placeholder="Start typing your note here..."
                           value={selectedNote?.content || ''}
                           onChange={(e) => setSelectedNote(prev => prev ? { ...prev, content: e.target.value } : null)}
-                          className="w-full h-[calc(100vh-400px)] p-3 border rounded-md bg-background/50 text-text focus:border-primary resize-none"
+                          className="w-full h-[calc(100vh-400px)] p-3 border rounded-md bg-background/50 text-foreground placeholder:text-muted-foreground focus:border-primary resize-none"
                         />
                         
                         <div className="absolute bottom-4 right-4 flex gap-2">

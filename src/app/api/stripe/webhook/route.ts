@@ -47,8 +47,6 @@ export async function POST(req: Request) {
     )
   }
 
-  console.log(`Webhook received: ${event.type}`)
-
   try {
     switch (event.type) {
       // When checkout completes successfully
@@ -107,7 +105,7 @@ export async function POST(req: Request) {
         const interval = item.price.recurring?.interval as SubscriptionInterval || 'month'
         
         // Update the subscription in the database
-        const { error: updateError } = await supabase
+        const { error: _updateError } = await supabase
           .from('subscriptions')
           .upsert({
             user_id: userId,
@@ -122,8 +120,8 @@ export async function POST(req: Request) {
             usage_limits: getUsageLimits(tier)
           })
         
-        if (updateError) {
-          console.error('Error updating subscription:', updateError)
+        if (_updateError) {
+          console.error('Error updating subscription:', _updateError)
         } else {
           console.log(`Successfully updated subscription for user ${userId} to ${tier} tier`)
         }
@@ -175,7 +173,7 @@ export async function POST(req: Request) {
         const interval = item.price.recurring?.interval as SubscriptionInterval || 'month'
         
         // Update the subscription in the database
-        const { error: updateError } = await supabase
+        const { error: _updateError } = await supabase
           .from('subscriptions')
           .update({
             stripe_subscription_id: subscription.id,
@@ -188,8 +186,8 @@ export async function POST(req: Request) {
           })
           .eq('user_id', userId)
         
-        if (updateError) {
-          console.error('Error updating subscription:', updateError)
+        if (_updateError) {
+          console.error('Error updating subscription:', _updateError)
         } else {
           console.log(`Successfully updated subscription for user ${userId}`)
         }
@@ -219,7 +217,7 @@ export async function POST(req: Request) {
         const userId = userSubscription.user_id
         
         // Update the subscription to free tier
-        const { error: updateError } = await supabase
+        const { error: _updateError } = await supabase
           .from('subscriptions')
           .update({
             tier: 'free',
@@ -228,8 +226,8 @@ export async function POST(req: Request) {
           })
           .eq('user_id', userId)
         
-        if (updateError) {
-          console.error('Error downgrading subscription to free tier:', updateError)
+        if (_updateError) {
+          console.error('Error downgrading subscription to free tier:', _updateError)
         } else {
           console.log(`Successfully downgraded subscription for user ${userId} to free tier`)
         }

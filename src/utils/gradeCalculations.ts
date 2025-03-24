@@ -137,14 +137,13 @@ export function calculateCompletedWeight(
 }
 
 /**
- * Calculate the remaining weight of components without entries
- * @param components The grading components with entries
- * @returns The total weight of components without entries
+ * Calculate the remaining weight available for new components
+ * @param components The grading components
+ * @returns The remaining weight available (100% - total weight of all components)
  */
 export function calculateRemainingWeight(
   components: GradingComponentWithEntries[]
 ): number {
-  return components
-    .filter(component => component.entries.length === 0)
-    .reduce((sum, component) => sum + component.weight, 0);
+  const totalWeight = components.reduce((sum, component) => sum + component.weight, 0);
+  return Math.max(0, 100 - totalWeight);
 } 

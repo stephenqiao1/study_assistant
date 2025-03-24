@@ -6,6 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { CalendarIcon, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 type Reminder = {
   id: string;
@@ -28,6 +30,21 @@ export default function ReminderList({ moduleId }: ReminderListProps) {
   const [dueDate, setDueDate] = useState<Date>();
   const [type, setType] = useState<'assignment' | 'exam'>('assignment');
   const [isLoading, setIsLoading] = useState(false);
+
+  const { data: _data, error: _error, isLoading: _queryLoading } = useQuery({
+    queryKey: ['reminders', moduleId],
+    queryFn: async () => {
+      const { data, error } = await createClientComponentClient()
+        .from('reminders')
+        .select('*')
+        .eq('module_id', moduleId)
+        .order('due_date', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!moduleId
+  });
 
   const fetchReminders = useCallback(async () => {
     try {
@@ -54,8 +71,7 @@ export default function ReminderList({ moduleId }: ReminderListProps) {
         type,
         study_session_id: moduleId
       };
-      
-      console.log('Sending reminder request with body:', requestBody);
+
       
       const response = await fetch('/api/reminders', {
         method: 'POST',
@@ -69,8 +85,7 @@ export default function ReminderList({ moduleId }: ReminderListProps) {
         throw new Error(errorData.error || 'Failed to add reminder');
       }
 
-      const data = await response.json();
-      console.log('Success response:', data);
+      const _data = await response.json();
 
       setTitle('');
       setDueDate(undefined);

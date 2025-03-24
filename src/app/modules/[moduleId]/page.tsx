@@ -87,7 +87,7 @@ export default async function ModuleDetailPage({ params }: PageProps) {
     <Suspense fallback={<div>Loading...</div>}>
       <UnifiedModulePageWrapper
         module={moduleData}
-        allSessions={allSessions || []}
+        _allSessions={allSessions || []}
         notes={notes || []}
         isPremiumUser={isPremiumUser}
         userId={user.id}

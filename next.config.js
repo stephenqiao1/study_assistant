@@ -9,7 +9,10 @@ const nextConfig = {
   },
   // Add image domains configuration
   images: {
-    domains: ['i.ytimg.com'],
+    domains: [
+      'i.ytimg.com',
+      'ryhlgdsvyfysrxlzzhiv.supabase.co'
+    ],
   }
 }
 

@@ -1447,7 +1447,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
       
       {/* Add Question Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="w-[95vw] max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground">Add New Practice Question</DialogTitle>
             <DialogDescription className="text-muted-foreground">
@@ -1656,7 +1656,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
       
       {/* Edit Question Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="w-[95vw] max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground">Edit Practice Question</DialogTitle>
             <DialogDescription className="text-muted-foreground">
@@ -1866,7 +1866,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
       
       {/* Variant Generation Dialog */}
       <Dialog open={isVariantDialogOpen} onOpenChange={setIsVariantDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground">Generate Question Variants</DialogTitle>
             <DialogDescription className="text-muted-foreground">

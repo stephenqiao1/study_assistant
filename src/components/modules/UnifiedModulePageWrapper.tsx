@@ -1,13 +1,14 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import UnifiedModulePage from './UnifiedModulePage';
+import { useToast } from '@/components/ui/use-toast';
 import FloatingReminderIndicator from '@/components/reminders/FloatingReminderIndicator';
-import FloatingGradeIndicator from '@/components/grades/FloatingGradeIndicator';
-import { Module, StudySession } from '@/types/study';
+import { Module as _Module, StudySession as _StudySession } from '@/types/study';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
 
-interface NoteType {
+interface _NoteType {
   id: string;
   title: string;
   content: string;
@@ -26,54 +27,56 @@ interface NoteImageType {
 }
 
 interface UnifiedModulePageWrapperProps {
-  module: Module;
-  allSessions: StudySession[];
-  notes: NoteType[];
+  module: {
+    id: string;
+    module_title: string;
+    started_at: string;
+    details: {
+      title: string;
+      content: string;
+      description?: string;
+      available_tools?: string[];
+    };
+  };
+  _allSessions: _StudySession[];
+  notes: _NoteType[];
   isPremiumUser: boolean;
   userId: string;
 }
 
-export default function UnifiedModulePageWrapper({ module, allSessions, notes, isPremiumUser, userId }: UnifiedModulePageWrapperProps) {
+export default function UnifiedModulePageWrapper({ 
+  module, 
+  _allSessions, 
+  notes, 
+  isPremiumUser, 
+  userId 
+}: UnifiedModulePageWrapperProps) {
+  const _router = useRouter();
+  const { toast: _toast } = useToast();
+  const [_activeSection, setActiveSection] = useState('overview');
+  const [_isEditing, setIsEditing] = useState(false);
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
   const [_isReminderExpanded, setIsReminderExpanded] = useState(false);
-  const [activeSection, setActiveSection] = useState<'notes' | 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'noteFlashcards' | 'grades' | 'reminders'>('notes');
-  const [isEditing, setIsEditing] = useState(false);
-  
-  useEffect(() => {
-    if (module?.id) {
-      console.log('Module ID for reminders:', module.id);
-    }
-  }, [module?.id]);
 
-  // Determine if the grade indicator should be shown
-  const shouldShowGradeIndicator = tab !== 'grades' && module && activeSection === 'notes' && !isEditing;
+  const handleActivateStudyTool = (toolType: string, _noteId?: string) => {
+    setActiveSection(toolType);
+    setIsEditing(false);
+  };
 
   return (
     <div className="relative">
       <UnifiedModulePage
         module={module}
-        _allSessions={allSessions}
+        _allSessions={_allSessions}
         notes={notes}
         isPremiumUser={isPremiumUser}
         userId={userId}
-        onSectionChange={setActiveSection}
-        onEditModeChange={setIsEditing}
+        onSectionChange={handleActivateStudyTool}
       />
       
-      {/* Grade indicator at the bottom left - only show on notes page and when not editing */}
-      {shouldShowGradeIndicator && (
-        <div className="fixed bottom-4 left-4 z-50">
-          <FloatingGradeIndicator 
-            studySessionId={module.id} 
-            onExpand={() => {}} // Always unminimized
-            alwaysExpanded={true}
-          />
-        </div>
-      )}
-
       {/* Reminder indicator at the bottom right */}
-      {tab !== 'reminders' && module && (
+      {tab !== 'reminders' && module.id && (
         <div className="fixed bottom-4 right-4 z-50">
           <FloatingReminderIndicator
             moduleId={module.id}

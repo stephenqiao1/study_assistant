@@ -5,8 +5,9 @@ import { useState } from 'react';
 interface GradingComponentFormProps {
   initialName?: string;
   initialWeight?: number;
+  initialMaxScore?: number;
   availableWeight: number;
-  onSubmit: (name: string, weight: number) => void;
+  onSubmit: (name: string, weight: number, maxScore: number) => void;
   onCancel: () => void;
   isUpdate?: boolean;
 }
@@ -14,6 +15,7 @@ interface GradingComponentFormProps {
 export default function GradingComponentForm({
   initialName = '',
   initialWeight = 10,
+  initialMaxScore = 100,
   availableWeight,
   onSubmit,
   onCancel,
@@ -21,9 +23,11 @@ export default function GradingComponentForm({
 }: GradingComponentFormProps) {
   const [name, setName] = useState(initialName);
   const [weight, setWeight] = useState(initialWeight);
+  const [maxScore, setMaxScore] = useState(initialMaxScore);
   const [errors, setErrors] = useState<{
     name?: string;
     weight?: string;
+    maxScore?: string;
   }>({});
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -33,6 +37,7 @@ export default function GradingComponentForm({
     const newErrors: {
       name?: string;
       weight?: string;
+      maxScore?: string;
     } = {};
     
     if (!name.trim()) {
@@ -46,13 +51,17 @@ export default function GradingComponentForm({
     } else if (weight > 100) {
       newErrors.weight = 'Weight cannot exceed 100%';
     }
+
+    if (maxScore <= 0) {
+      newErrors.maxScore = 'Maximum score must be greater than 0';
+    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
     
-    onSubmit(name, weight);
+    onSubmit(name, weight, maxScore);
   };
   
   return (
@@ -97,8 +106,26 @@ export default function GradingComponentForm({
           }
         </p>
       </div>
+
+      <div>
+        <label htmlFor="maxScore" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Maximum Score
+        </label>
+        <input
+          type="number"
+          id="maxScore"
+          value={maxScore}
+          onChange={(e) => setMaxScore(Number(e.target.value))}
+          min="1"
+          className="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+        />
+        {errors.maxScore && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.maxScore}</p>}
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          The maximum possible score for this component (e.g., 100 for percentage-based grades)
+        </p>
+      </div>
       
-      <div className="flex justify-end space-x-2">
+      <div className="flex justify-end space-x-3">
         <button
           type="button"
           onClick={onCancel}

@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Providers } from "@/components/providers/Providers";
+import Providers from "./providers";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Academiq",
-  description: "Your AI-powered learning companion",
+  title: "Study Assistant",
+  description: "Your AI-powered study companion",
+  icons: {
+    icon: [
+      { url: '/logo.png', sizes: '32x32' },
+      { url: '/logo.png', sizes: '64x64' }
+    ],
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({
@@ -135,7 +143,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+          </Providers>
         </ThemeProvider>
         <Analytics />
       </body>

@@ -416,6 +416,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     setSelectedNote(note);
     setEditedContent(note.content);
     setEditModeWithNotify(false);
+    setActiveSection('notes'); // Add this line to switch to notes section
   };
 
   // Handle note creation
@@ -1596,7 +1597,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       } else {
         toast({
           title: "No Formulas Found",
-          description: `No mathematical formulas were detected in ${sourceDescription}. Try notes with LaTeX formulas or mathematical content.`,
+          description: `No mathematical formulas were detected in ${sourceDescription}. Try adding equations using LaTeX syntax ($...$).`,
           variant: "default"
         });
       }
@@ -3001,7 +3002,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               ) : (
                 <div className="flex flex-col items-center justify-center py-10">
                   <div className="text-center py-10">
-                    <p className="text-gray-500">No formulas found</p>
+                    <p className="text-gray-500 mb-4">No formulas found. Add formulas manually or generate them from your notes.</p>
                     <div className="mt-4 flex gap-2 justify-center">
                       <Button 
                         variant="outline" 

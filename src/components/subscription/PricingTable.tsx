@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { UserSubscription } from '@/utils/subscription'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Database } from '@/types/supabase'
+import { useQuery } from '@tanstack/react-query'
 
 interface PricingFeature {
   name: string
@@ -77,11 +78,19 @@ export default function PricingTable() {
   const { session: _session } = useAuth()
   const supabase = createClientComponentClient<Database>()
 
+  const { data: _rawQuery } = useQuery({
+    queryKey: ['subscription-count'],
+    queryFn: async () => {
+      const response = await fetch('/api/subscription/count');
+      if (!response.ok) throw new Error('Failed to fetch subscription count');
+      return response.json();
+    }
+  });
+
   // Fetch user's subscription when component mounts or session changes
   useEffect(() => {
     async function fetchSubscription() {
       if (!_session?.user) {
-        console.log("No user session found");
         setSubscription(null)
         setIsLoadingSubscription(false)
         return
@@ -90,83 +99,54 @@ export default function PricingTable() {
       try {
         // Enhanced debugging for user ID
         const userId = _session.user.id;
-        console.log("==========================================");
-        console.log("SUBSCRIPTION DEBUG:");
-        console.log(`User ID: ${userId}`);
-        console.log(`User ID Type: ${typeof userId}`);
-        console.log(`User ID Length: ${userId.length}`);
-        
-        // Log additional user info if available
-        if (_session.user.email) {
-          console.log(`User Email: ${_session.user.email}`);
-        }
         
         // Try a raw query with the exact ID to check formatting
-        const rawQuery = `user_id=eq.${userId}`;
-        console.log(`Raw query string: ${rawQuery}`);
+        const _rawQuery = `user_id=eq.${userId}`;
         
-        // Try a server-side API route to fetch subscription data (bypassing RLS)
-        console.log("Attempting to fetch subscription via server API...");
         let apiResponse = null;
         
         try {
           const response = await fetch(`/api/subscription?userId=${userId}`);
           apiResponse = await response.json();
-          console.log("Server API response:", apiResponse);
-        } catch (apiError) {
-          console.error("Error fetching from API:", apiError);
+        } catch (_apiError) {
+          console.error("Error fetching from API:", _apiError);
         }
         
         if (apiResponse && apiResponse.subscription) {
-          console.log("Successfully fetched subscription from API");
           handleSubscriptionData(apiResponse.subscription);
         } else {
-          console.log("API failed or returned no data, falling back to direct query...");
-          
           // First try to get just the count to verify data exists
-          const { count, error: countError } = await supabase
+          const { count: _count, error: _countError } = await supabase
             .from('subscriptions')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', userId);
-            
-          console.log(`Count result: ${count}`, "Count error:", countError);
           
           // Log the RLS policies by trying another approach
-          console.log("Attempting direct subscription query...");
-          const { data: allUserSubscriptions, error: listError } = await supabase
+          const { data: _allUserSubscriptions, error: _listError } = await supabase
             .from('subscriptions')
             .select('id, user_id, tier, status')
             .limit(10);
-            
-          console.log("All accessible subscriptions:", allUserSubscriptions);
-          console.log("List error:", listError);
           
           // If no records or error getting count, try to fetch with .maybeSingle() instead of .single()
-          const { data, error } = await supabase
+          const { data, error: _error } = await supabase
             .from('subscriptions')
             .select('*')
             .eq('user_id', userId)
-            .maybeSingle();
-
-          console.log("Subscription fetch result:", data);
-          console.log("Subscription fetch error:", error);
+            .maybeSingle()
           
-          if (error) {
-            console.error('Error fetching subscription:', error)
+          if (_error) {
+            console.error('Error fetching subscription:', _error)
             setSubscription(null);
           } else if (data) {
             // Use the data from direct query
             handleSubscriptionData(data);
           } else {
             // Create a default free subscription
-            console.log("No subscription found via direct query, using default free tier");
             setDefaultSubscription();
           }
         }
-        
-        console.log("==========================================");
-      } catch (error) {
-        console.error('Error fetching subscription:', error)
+      } catch (_error) {
+        console.error('Error fetching subscription:', _error)
         // Create a default free subscription if an error occurs
         setDefaultSubscription();
       } finally {
@@ -372,8 +352,8 @@ export default function PricingTable() {
         </span>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-        {/* Free Plan */}
+    <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      {/* Free Plan */}
         <div className={`relative p-6 bg-card rounded-2xl border ${subscription?.tier === 'free' ? 'border-green-500 ring-1 ring-green-500' : 'border-border hover:border-primary/50'} transition-all`}>
           {subscription?.tier === 'free' && (
             <div className="absolute -top-3 right-3">
@@ -382,68 +362,68 @@ export default function PricingTable() {
               </div>
             </div>
           )}
-          <div className="mb-4">
+        <div className="mb-4">
             <h3 className="text-2xl font-bold text-card-foreground">Free</h3>
             <p className="text-muted-foreground mt-2">Perfect for trying out our features</p>
-          </div>
-          
-          <div className="flex items-baseline gap-1 mb-6">
+        </div>
+        
+        <div className="flex items-baseline gap-1 mb-6">
             <span className="text-4xl font-bold text-card-foreground">$0</span>
             <span className="text-muted-foreground">/{_billingInterval}</span>
-          </div>
+        </div>
 
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium">10</span>
+              <span className="font-medium">10</span>
               </div>
               <span className="text-card-foreground text-sm">Teach-back sessions per month</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
+          </div>
+          
+          <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium">10</span>
+              <span className="font-medium">10</span>
               </div>
               <span className="text-card-foreground text-sm">Virtual student chat messages</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
+          </div>
+          
+          <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium">Basic</span>
+              <span className="font-medium">Basic</span>
               </div>
               <span className="text-card-foreground text-sm">YouTube video search</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <X className="w-5 h-5 text-muted-foreground" />
               </div>
               <span className="text-muted-foreground text-sm">Auto-generate flashcards</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <X className="w-5 h-5 text-muted-foreground" />
               </div>
               <span className="text-muted-foreground text-sm">Formula sheet extraction</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <Check className="w-5 h-5 text-primary" />
               </div>
               <span className="text-card-foreground text-sm">Spaced repetition system</span>
-            </div>
+      </div>
 
-            <div className="flex items-start gap-3">
-              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <Check className="w-5 h-5 text-primary" />
               </div>
               <span className="text-card-foreground text-sm">Voice recording & transcription</span>
-            </div>
+      </div>
 
-            <div className="flex items-start gap-3">
-              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+          <div className="flex items-start gap-3">
+            <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <X className="w-5 h-5 text-muted-foreground" />
               </div>
               <span className="text-muted-foreground text-sm">Priority support</span>
@@ -452,17 +432,17 @@ export default function PricingTable() {
 
           <div className="mt-8">
             {renderPlanButton('free')}
-          </div>
         </div>
+      </div>
 
-        {/* Basic Plan */}
+      {/* Basic Plan */}
         <div className={`relative p-6 bg-card rounded-2xl border ${subscription?.tier === 'basic' ? 'border-green-500 ring-1 ring-green-500' : subscription?.tier === 'free' ? 'border-primary hover:border-primary/80' : 'border-border hover:border-primary/50'} transition-all`}>
           {subscription?.tier !== 'basic' && (
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
               <div className="bg-gradient-to-r from-primary to-accent text-primary-foreground text-sm font-medium px-3 py-1 rounded-full whitespace-nowrap">
-                Most Popular
-              </div>
-            </div>
+              Most Popular
+          </div>
+        </div>
           )}
           {subscription?.tier === 'basic' && (
             <div className="absolute -top-3 right-3">
@@ -472,67 +452,67 @@ export default function PricingTable() {
             </div>
           )}
 
-          <div className="mb-4">
+        <div className="mb-4">
             <h3 className="text-2xl font-bold text-card-foreground">Basic</h3>
             <p className="text-muted-foreground mt-2">Perfect for regular learners</p>
-          </div>
-          
-          <div className="flex items-baseline gap-1 mb-6">
-            <div className="flex items-center gap-2">
+        </div>
+        
+        <div className="flex items-baseline gap-1 mb-6">
+              <div className="flex items-center gap-2">
               <span className="text-4xl font-bold text-card-foreground">
                 ${_billingInterval === 'month' ? '2.00' : '19.99'}
               </span>
-              <div className="px-2 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-medium">
-                -80%
-              </div>
+            <div className="px-2 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-medium">
+              -80%
             </div>
+          </div>
             <span className="text-muted-foreground">/{_billingInterval}</span>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium">50</span>
-              </div>
-              <span className="text-card-foreground text-sm">Teach-back sessions per month</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium">50</span>
-              </div>
-              <span className="text-card-foreground text-sm">Virtual student chat messages</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium text-sm">Enhanced</span>
-              </div>
-              <span className="text-card-foreground text-sm">YouTube video search</span>
-            </div>
-            
-            {features.slice(3).map((feature, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <div className="w-12 flex-shrink-0 flex items-center justify-center">
-                  {feature.basic ? (
-                    <Check className="w-5 h-5 text-primary" />
-                  ) : (
-                    <X className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
-                <span className={`text-sm ${feature.basic ? 'text-card-foreground' : 'text-muted-foreground'}`}>
-                  {feature.name}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8">
-            {renderPlanButton('basic')}
-          </div>
         </div>
 
-        {/* Pro Plan */}
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+              <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
+              <span className="font-medium">50</span>
+              </div>
+              <span className="text-card-foreground text-sm">Teach-back sessions per month</span>
+          </div>
+          
+          <div className="flex items-start gap-3">
+              <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
+              <span className="font-medium">50</span>
+              </div>
+              <span className="text-card-foreground text-sm">Virtual student chat messages</span>
+              </div>
+          
+          <div className="flex items-start gap-3">
+              <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
+              <span className="font-medium text-sm">Enhanced</span>
+              </div>
+              <span className="text-card-foreground text-sm">YouTube video search</span>
+          </div>
+          
+          {features.slice(3).map((_feature, index) => (
+            <div key={index} className="flex items-start gap-3">
+              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+                {_feature.basic ? (
+                    <Check className="w-5 h-5 text-primary" />
+                ) : (
+                    <X className="w-5 h-5 text-muted-foreground" />
+                )}
+              </div>
+                <span className={`text-sm ${_feature.basic ? 'text-card-foreground' : 'text-muted-foreground'}`}>
+                {_feature.name}
+                </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8">
+            {renderPlanButton('basic')}
+          </div>
+      </div>
+
+      {/* Pro Plan */}
         <div className={`relative p-6 bg-card rounded-2xl border ${subscription?.tier === 'pro' ? 'border-green-500 ring-1 ring-green-500' : 'border-border hover:border-primary/50'} transition-all`}>
           {subscription?.tier === 'pro' && (
             <div className="absolute -top-3 right-3">
@@ -544,59 +524,59 @@ export default function PricingTable() {
           <div className="mb-4">
             <h3 className="text-2xl font-bold text-card-foreground">Pro</h3>
             <p className="text-muted-foreground mt-2">Perfect for power users</p>
-          </div>
-          
-          <div className="flex items-baseline gap-1 mb-6">
-            <div className="flex items-center gap-2">
+              </div>
+        
+        <div className="flex items-baseline gap-1 mb-6">
+          <div className="flex items-center gap-2">
               <span className="text-4xl font-bold text-card-foreground">
                 ${_billingInterval === 'month' ? '4.00' : '39.99'}
               </span>
-              <div className="px-2 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-medium">
-                -80%
-              </div>
+            <div className="px-2 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-medium">
+              -80%
             </div>
-            <span className="text-muted-foreground">/{_billingInterval}</span>
           </div>
+            <span className="text-muted-foreground">/{_billingInterval}</span>
+        </div>
 
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium text-sm">Unlimited</span>
+              <span className="font-medium text-sm">Unlimited</span>
               </div>
               <span className="text-card-foreground text-sm">Teach-back sessions per month</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
+          </div>
+          
+          <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium text-sm">Unlimited</span>
+              <span className="font-medium text-sm">Unlimited</span>
               </div>
               <span className="text-card-foreground text-sm">Virtual student chat messages</span>
-            </div>
-            
-            <div className="flex items-start gap-3">
+          </div>
+          
+          <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
-                <span className="font-medium text-sm">AI</span>
+              <span className="font-medium text-sm">AI</span>
               </div>
               <span className="text-card-foreground text-sm">YouTube video search</span>
-            </div>
-            
-            {features.slice(3).map((feature, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <div className="w-12 flex-shrink-0 flex items-center justify-center">
-                  {feature.pro ? (
+          </div>
+          
+          {features.slice(3).map((_feature, index) => (
+            <div key={index} className="flex items-start gap-3">
+              <div className="w-12 flex-shrink-0 flex items-center justify-center">
+                {_feature.pro ? (
                     <Check className="w-5 h-5 text-primary" />
-                  ) : (
+                ) : (
                     <X className="w-5 h-5 text-muted-foreground" />
                   )}
                 </div>
-                <span className={`text-sm ${feature.pro ? 'text-card-foreground' : 'text-muted-foreground'}`}>
-                  {feature.name}
-                </span>
-              </div>
-            ))}
-          </div>
+                <span className={`text-sm ${_feature.pro ? 'text-card-foreground' : 'text-muted-foreground'}`}>
+                {_feature.name}
+              </span>
+            </div>
+          ))}
+        </div>
 
-          <div className="mt-8">
+        <div className="mt-8">
             {renderPlanButton('pro')}
           </div>
         </div>

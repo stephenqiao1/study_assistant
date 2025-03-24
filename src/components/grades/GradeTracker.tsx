@@ -134,9 +134,6 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
       const data = await response.json();
       setGradingSystem(data.data);
       setStatusMessage({ type: 'success', message: 'Grading system created successfully! Now add your grading components.' });
-      
-      // Refresh the page to update the UI
-      router.refresh();
     } catch (error) {
       handleError(error);
     }
@@ -269,9 +266,6 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
       // Reset the state
       setGradingSystem(null);
       setStatusMessage({ type: 'success', message: 'Grading system deleted successfully.' });
-      
-      // Refresh the page to update the UI
-      router.refresh();
     } catch (error) {
       handleError(error);
     }
@@ -486,6 +480,7 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
               availableWeight={100 - (remainingWeight + (editingComponent?.weight || 0))}
               initialName={''}
               initialWeight={10}
+              initialMaxScore={100}
               isUpdate={false}
             />
           </div>
