@@ -11,12 +11,12 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 export const SUBSCRIPTION_PRICES = {
   basic: {
-    month: process.env.STRIPE_BASIC_MONTHLY_PRICE_ID,
-    year: process.env.STRIPE_BASIC_YEARLY_PRICE_ID
+    month: process.env.STRIPE_BASIC_MONTHLY_PRICE_ID || 'price_1Oq8W1G4fZDrV0u1xQkClOW0',
+    year: process.env.STRIPE_BASIC_YEARLY_PRICE_ID || 'price_1Oq8VzG4fZDrV0u1DXy0QpzL'
   },
   pro: {
-    month: process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
-    year: process.env.STRIPE_PRO_YEARLY_PRICE_ID
+    month: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || 'price_1Oq8W5G4fZDrV0u1nQBe1qfI',
+    year: process.env.STRIPE_PRO_YEARLY_PRICE_ID || 'price_1Oq8W3G4fZDrV0u1paTc9cMH'
   }
 } as const
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { SubscriptionTier, SubscriptionInterval } from '@/types/supabase'
+import { SUBSCRIPTION_PRICES } from '@/utils/stripe'
 import { createClient } from '@/utils/supabase/server'
 import Stripe from 'stripe'
 
@@ -77,13 +78,29 @@ export async function POST(request: Request) {
         })
     }
 
+    // Get the price ID from our predefined configuration
+    const tierKey = tier as 'basic' | 'pro'; // Force the correct type
+    const intervalKey = interval as 'month' | 'year'; // Force the correct type
+    
+    const priceId = SUBSCRIPTION_PRICES[tierKey][intervalKey]
+    
+    if (!priceId) {
+      console.error(`Missing price ID for tier ${tier} and interval ${interval}`)
+      return NextResponse.json(
+        { error: `Configuration error: Price not found for ${tier} ${interval} plan` },
+        { status: 500 }
+      )
+    }
+    
+    console.log(`Creating checkout session with price: ${priceId} for ${tier} ${interval}`)
+    
     // Create checkout session
     const session = await stripeInstance.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [
         {
-          price: process.env[`STRIPE_${tier.toUpperCase()}_${interval.toUpperCase()}_PRICE_ID`],
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -94,7 +111,12 @@ export async function POST(request: Request) {
         user_id: user.id,
         tier,
         interval
-      }
+      },
+      discounts: [
+        {
+          coupon: 'Rb1UQ59X', // 80% off coupon
+        }
+      ],
     })
 
     return NextResponse.json({ sessionId: session.id })
