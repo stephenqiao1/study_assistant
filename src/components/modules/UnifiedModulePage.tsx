@@ -3,37 +3,25 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Layers as _Layers,
   ScrollText,
   Brain,
   Edit2,
-  Save,
   X,
   Trash2,
-  Tag,
   FileUp as _FileUp,
   Loader2,
   BookOpen,
   Plus,
-  Shuffle,
   Filter as _Filter,
   BarChart,
   SortAsc as _SortAsc,
-  ChevronLeft,
-  ChevronRight,
-  Keyboard,
   Sparkles,
   FileText,
   Crown as _Crown,
-  Pencil,
   Trash,
-  Search,
-  CircleSlash,
-  ExternalLink,
-  Bookmark,
   Video,
   PenLine,
   Upload,
@@ -47,9 +35,8 @@ import {
   ArrowRight as _ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription as _CardDescription, CardHeader, CardTitle, CardFooter as _CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription as _CardDescription, CardFooter as _CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import DraftEditor from "@/components/teach/DraftEditor";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -66,8 +53,6 @@ import PdfUploadModal from '@/components/modules/PdfUploadModal';
 import Navbar from '@/components/layout/Navbar';
 import 'katex/dist/katex.min.css';
 import { renderToString } from 'katex';
-import TextEditor from '@/components/teach/TextEditor';
-import AudioRecorder from '@/components/teach/AudioRecorder';
 import Flashcard from '@/components/flashcards/Flashcard';
 import {
   Dialog,
@@ -78,49 +63,38 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import FormulaStyles from '@/components/modules/FormulaStyles';
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cn as _cn } from "@/lib/utils";
 import PracticeQuestions from './PracticeQuestions';
-import MathPreview from '@/components/formulas/MathPreview';
 import GradeTracker from '@/components/grades/GradeTracker';
-import FlashcardModule from "@/components/flashcards/FlashcardModule";
 import ReminderList from '@/components/reminders/ReminderList';
+import FlashcardsSection from '@/components/flashcards/FlashcardsSection';
+import { TeachbackSection } from '@/components/teachback/TeachbackSection'
+import { FormulasSection } from '@/components/formulas/FormulasSection'
+import { VideosSection } from '@/components/videos/VideosSection'
+import { NotesSection } from '@/components/notes/NotesSection'
+import { Label } from "@/components/ui/label";
+import { StudySession as ImportedStudySession } from '@/types/study';
 
 interface Module {
   id: string;
+  user_id?: string;  // Make user_id optional
   module_title: string;
   started_at: string;
+  ended_at?: string;
   details: {
-    title: string;
-    content: string;
     description?: string;
-    available_tools?: string[];
+    content?: string;
+    [key: string]: unknown;
   };
 }
 
@@ -144,22 +118,12 @@ interface NoteImageType {
 
 interface UnifiedModulePageProps {
   module: Module;
-  _allSessions: StudySession[];
+  _allSessions: ImportedStudySession[];
   notes: NoteType[];
   isPremiumUser: boolean;
   userId: string;
-  onSectionChange?: (section: 'notes' | 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'noteFlashcards' | 'grades' | 'reminders') => void;
+  onSectionChange?: (section: string) => void;
   onEditModeChange?: (isEditing: boolean) => void;
-}
-
-interface StudySession {
-  id: string;
-  created_at: string;
-  user_id: string;
-  module_id: string;
-  duration?: number;
-  status?: string;
-  metadata?: Record<string, unknown>;
 }
 
 interface _PdfUploadModalProps {
@@ -184,19 +148,23 @@ interface Flashcard {
   id: string;
   question: string;
   answer: string;
-  created_at?: string;
-  updated_at?: string;
-  difficulty?: number;
-  last_reviewed?: string;
-  last_reviewed_at?: string;
-  review_count?: number;
-  repetitions?: number;
+  source_note_id: string;
+  status: 'new' | 'learning' | 'known';
   last_recall_rating?: 'easy' | 'good' | 'hard' | 'forgot';
+  next_review_at?: string;
+  created_at: string;
+  last_reviewed_at?: string;
+  repetitions?: number;
+  last_reviewed?: string;
+  difficulty?: number;
+  updated_at?: string;
   module_id?: string;
   user_id?: string;
   tags?: string[];
   metadata?: Record<string, unknown>;
   due_date?: string;
+  ease_factor?: number;
+  review_interval?: number;
 }
 
 // Add interfaces for videos and formulas
@@ -231,33 +199,58 @@ interface Formula {
   study_session_id?: string;
 }
 
-export default function UnifiedModulePage({ module, _allSessions, notes: initialNotes, isPremiumUser, userId, onSectionChange, onEditModeChange }: UnifiedModulePageProps) {
+// Add interface for note flashcards
+interface NoteFlashcard {
+  id: string;
+  question: string;
+  answer: string;
+  source_note_id: string;
+  status: 'new' | 'learning' | 'known';
+  created_at?: string;
+  updated_at?: string;
+  difficulty?: number;
+  last_reviewed?: string;
+  last_reviewed_at?: string;
+  review_count?: number;
+  repetitions?: number;
+  last_recall_rating?: 'easy' | 'good' | 'hard' | 'forgot';
+  module_id?: string;
+  user_id?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  due_date?: string;
+  next_review_at?: string;
+  ease_factor?: number;
+  review_interval?: number;
+}
+
+type _NoteFlashcards = {
+  id: string;
+  note_id: string;
+  flashcards: NoteFlashcard[];
+};
+
+export default function UnifiedModulePage({ 
+  module: initialModule,
+  _allSessions,
+  notes: initialNotes,
+  isPremiumUser,
+  userId,
+  onSectionChange,
+  onEditModeChange
+}: UnifiedModulePageProps) {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = createClient();
   
-  // Fix for hydration mismatch errors caused by fdprocessedid attributes
-  useEffect(() => {
-    // This suppresses the hydration warning for fdprocessedid attributes
-    const originalConsoleError = console.error;
-    console.error = (...args) => {
-      if (
-        typeof args[0] === 'string' && 
-        (args[0].includes('Hydration failed because the initial UI does not match what was rendered on the server') ||
-         args[0].includes('There was an error while hydrating') ||
-         args[0].includes('Hydration completed but contains mismatches') ||
-         args[0].includes('A tree hydrated but some attributes') ||
-         args[0].includes('fdprocessedid'))
-      ) {
-        return;
-      }
-      originalConsoleError(...args);
-    };
-
-    return () => {
-      console.error = originalConsoleError;
-    };
-  }, []);
+  // State for module editing
+  const [studySession, setStudySession] = useState<Module | null>(initialModule);
+  const moduleId = studySession?.id;
+  const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
+  const [moduleFormData, setModuleFormData] = useState({
+    title: initialModule.module_title || '',
+    description: initialModule.details?.description || ''
+  });
   
   // State variables
   const [notes, setNotes] = useState<NoteType[]>(initialNotes || []);
@@ -284,7 +277,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   const [isLoadingFlashcards, setIsLoadingFlashcards] = useState(false);
   // Add state variables for usage counts
   const [teachbackCount, setTeachbackCount] = useState(0);
-  const [flashcardCount, setFlashcardCount] = useState(0);
+  const [_flashcardCount, setFlashcardCount] = useState(0);
   // Add constants for usage limits based on account type
   const teachbackLimit = isPremiumUser ? 50 : 10;
   // Add state for creating flashcards
@@ -311,32 +304,27 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     difficultCount: 0,
     averageRecall: 0
   });
-  const [showFlashcardStats, setShowFlashcardStats] = useState(false);
-  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [_showFlashcardStats, _setShowFlashcardStats] = useState(false);
+  const [_showKeyboardShortcuts, _setShowKeyboardShortcuts] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   
   // Add state for AI flashcard generation
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
   const [_generatedFlashcardsCount, _setGeneratedFlashcardsCount] = useState(0);
   const [_showGeneratedSuccess, _setShowGeneratedSuccess] = useState(false);
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   
   // Add state for video finder functionality
   const [videoSearchQuery, setVideoSearchQuery] = useState('');
   const [videos, setVideos] = useState<Video[]>([]);
   const [isSearchingVideos, setIsSearchingVideos] = useState(false);
   const [savedVideos, setSavedVideos] = useState<Video[]>([]);
-  
-  // Add state for module editing
-  const [isEditingModule, setIsEditingModule] = useState(false);
-  const [editedModuleContent, setEditedModuleContent] = useState('');
-  const [isUpdatingModule, setIsUpdatingModule] = useState(false);
 
   // Add state for formulas functionality
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [isLoadingFormulas, setIsLoadingFormulas] = useState(false);
   const [formulaCategories, setFormulaCategories] = useState<string[]>([]);
   const [formulasByCategory, setFormulasByCategory] = useState<Record<string, Formula[]>>({});
-  const [activeFormulaTab, setActiveFormulaTab] = useState<'categorized' | 'all'>('all');
+  const [_activeFormulaTab, _setActiveFormulaTab] = useState<'categorized' | 'all'>('all');
 
   // Add state for manual formula creation
   const [isAddFormulaModalOpen, setIsAddFormulaModalOpen] = useState(false);
@@ -373,7 +361,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     noteTitle: string;
     flashcards: Flashcard[];
   } | null>(null);
-  const [isLoadingNoteFlashcards, setIsLoadingNoteFlashcards] = useState(false);
+  const [_isLoadingNoteFlashcards, _setIsLoadingNoteFlashcards] = useState(false);
 
   const [_uploadedImages, setUploadedImages] = useState<NoteImageType[]>([]);
 
@@ -427,13 +415,17 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       content: '',
       tags: [],
       created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       images: []
     };
     setNotes([...notes, newNote]);
     setSelectedNote(newNote);
     setEditedContent('');
     setEditModeWithNotify(true);
+    setActiveSection('notes'); // Switch to notes section
+    if (onSectionChange) {
+      onSectionChange('notes');
+    }
   };
 
   // Handle note deletion
@@ -453,6 +445,9 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       const updatedNotes = notes.filter(note => note.id !== selectedNote.id);
       setNotes(updatedNotes);
       
+      // Close the delete confirmation dialog
+      setIsDeleteDialogOpen(false);
+      
       if (updatedNotes.length > 0) {
         setSelectedNote(updatedNotes[0]);
         setEditedContent(updatedNotes[0].content);
@@ -461,8 +456,9 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         setEditedContent('');
       }
       
-      // Close the delete confirmation dialog
-      setShowDeleteConfirm(false);
+      // Switch back to notes section
+      setActiveSection('notes');
+      
       toast({
         title: "Success",
         description: "Note deleted successfully!",
@@ -477,7 +473,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     } finally {
       setIsLoading(false);
       // Ensure the dialog is closed even if there's an error
-      setShowDeleteConfirm(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -646,6 +642,15 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Update handleActivateStudyTool to accept an optional noteId parameter
   const handleActivateStudyTool = (tool: 'teachback' | 'flashcards' | 'module' | 'formulas' | 'videos' | 'practice' | 'notes' | 'grades' | 'noteFlashcards' | 'reminders', noteId?: string) => {
+    if (!studySession) {
+      toast({
+        title: "Error",
+        description: "No active study session found",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // The 'notes' tool type can be handled just like 'module', as it refers to returning to the notes view
     if (tool === 'notes') {
       // If a noteId is provided, set it as the selected note
@@ -657,6 +662,17 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       }
       // Set the active section to 'notes' to show the notes view
       setActiveSection('notes');
+      return;
+    }
+
+    // Handle module editing
+    if (tool === 'module') {
+      // Initialize form data with current module details
+      setModuleFormData({
+        title: studySession.module_title || '',
+        description: studySession.details?.description || ''
+      });
+      setIsModuleDialogOpen(true);
       return;
     }
     
@@ -760,7 +776,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Enhanced function to fetch flashcards with filtering and sorting
   const fetchFlashcards = async () => {
-    if (!module?.id || !userId) return;
+    if (!studySession?.id || !userId) return;
     
     setIsLoadingFlashcards(true);
     try {
@@ -773,7 +789,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
             title
           )
         `)
-        .eq('study_session_id', module.id)
+        .eq('study_session_id', studySession.id)
         .eq('user_id', userId);
       
       // Filter by note if a noteId is specified
@@ -971,13 +987,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   
   // New function to fetch teachback count
   const fetchTeachbackCount = async () => {
-    if (!module?.id || !userId) return;
+    if (!studySession?.id || !userId) return;
     
     try {
       const { count, error } = await supabase
         .from('teach_backs')
         .select('*', { count: 'exact', head: true })
-        .eq('study_session_id', module.id)
+        .eq('study_session_id', studySession.id)
         .eq('user_id', userId);
         
       if (error) throw error;
@@ -990,13 +1006,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // New function to fetch flashcard count
   const fetchFlashcardCount = async () => {
-    if (!module?.id || !userId) return;
+    if (!studySession?.id || !userId) return;
     
     try {
       const { count, error } = await supabase
         .from('flashcards')
         .select('*', { count: 'exact', head: true })
-        .eq('study_session_id', module.id)
+        .eq('study_session_id', studySession.id)
         .eq('user_id', userId)
         .not('last_reviewed_at', 'is', null); // Count only cards that have been reviewed
         
@@ -1010,7 +1026,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   
   // New function to create a flashcard
   const handleCreateFlashcard = async () => {
-    if (!newFlashcardQuestion.trim() || !newFlashcardAnswer.trim()) {
+    if (!newFlashcardQuestion.trim() || !newFlashcardAnswer.trim() || !studySession) {
       toast({
         title: "Missing information",
         description: "Please provide both a question and an answer for your flashcard.",
@@ -1026,8 +1042,8 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         .from('flashcards')
         .insert({
           user_id: userId,
-          study_session_id: module.id,
-          module_title: module.module_title,
+          study_session_id: studySession.id,
+          module_title: studySession.module_title,
           source_note_id: selectedNote?.id,
           question: newFlashcardQuestion,
           answer: newFlashcardAnswer,
@@ -1077,13 +1093,13 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
 
   // New function to restart the flashcard deck
-  const restartDeck = () => {
+  const _restartDeck = () => {
     setCurrentFlashcardIndex(0);
     setShowEndOfDeckDialog(false);
   };
 
   // New function to shuffle the flashcard deck
-  const shuffleDeck = () => {
+  const _shuffleDeck = () => {
     const shuffled = [...flashcards].sort(() => Math.random() - 0.5);
     setFlashcards(shuffled);
     setCurrentFlashcardIndex(0);
@@ -1154,7 +1170,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   }, [activeSection, currentFlashcardIndex, flashcards, showEndOfDeckDialog]);
 
   // Function to handle filter change with premium check
-  const handleFilterChange = (value: 'all' | 'difficult' | 'easy' | 'new' | 'mastered') => {
+  const _handleFilterChange = (value: 'all' | 'difficult' | 'easy' | 'new' | 'mastered') => {
     // For premium-only filters, show upgrade dialog
     if ((value === 'mastered') && !isPremiumUser) {
       setShowUpgradeDialog(true);
@@ -1167,7 +1183,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
 
   // Function to handle sort change with premium check
-  const handleSortChange = (value: 'default' | 'newest' | 'oldest' | 'difficulty') => {
+  const _handleSortChange = (value: 'default' | 'newest' | 'oldest' | 'difficulty') => {
     // For premium-only sorts, show upgrade dialog
     if ((value === 'difficulty') && !isPremiumUser) {
       setShowUpgradeDialog(true);
@@ -1237,11 +1253,64 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
   
   // Add function to prompt user to upgrade if they're not premium
-  const handleAIFlashcardsClick = () => {
-    if (!canAccessAIFlashcards()) {
-      setShowUpgradeDialog(true);
-    } else {
-      generateAIFlashcards();
+  const handleAIFlashcardsClick = async () => {
+    if (!selectedNote || !studySession) {
+      toast({
+        title: "Error",
+        description: "Please select a note first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const requestBody = {
+      moduleId: studySession.id,
+      moduleTitle: studySession.module_title,
+      content: selectedNote.content,
+      noteId: selectedNote.id
+    };
+
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/flashcards/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('API error response:', error);
+        throw new Error(error.error || 'Failed to generate flashcards');
+      }
+
+      const data = await response.json();
+
+      // Add the new flashcards to the existing ones
+      setFlashcards(prev => {
+        return [...prev, ...data.flashcards];
+      });
+      
+      // Show success message
+      toast({
+        title: "Success",
+        description: `Generated ${data.flashcards.length} new flashcards`,
+      });
+
+      // Switch to flashcards view
+      handleActivateStudyTool('flashcards');
+    } catch (err) {
+      console.error('Error in handleAIFlashcardsClick:', err);
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to generate flashcards",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -1251,7 +1320,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
   
   // Add function to generate AI flashcards
-  const generateAIFlashcards = async () => {
+  const _generateAIFlashcards = async () => {
     if (!canAccessAIFlashcards()) {
       setShowUpgradeDialog(true);
       return;
@@ -1265,13 +1334,22 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       });
       return;
     }
+
+    if (!studySession) {
+      toast({
+        title: "Error",
+        description: "No study session found.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsGeneratingFlashcards(true);
     
     try {
       const requestBody = {
-        moduleId: module.id,
-        moduleTitle: module.module_title,
+        moduleId: studySession.id,
+        moduleTitle: studySession.module_title,
         content: selectedNote.content,
         noteId: selectedNote.id
       };
@@ -1309,27 +1387,33 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
 
   // Add function to handle module content update
-  const handleUpdateModuleContent = async () => {
-    if (!module || !module.id) return;
+  const _handleUpdateModuleContent = async () => {
+    if (!studySession || !studySession.id) return;
     
-    setIsUpdatingModule(true);
+    _setIsUpdatingModule(true);
     try {
       const { error } = await supabase
         .from('study_sessions')
         .update({
           details: {
-            ...module.details,
-            content: editedModuleContent
+            ...studySession.details,
+            content: _editedModuleContent
           }
         })
-        .eq('id', module.id);
+        .eq('id', studySession.id);
 
       if (error) throw error;
 
-      // Update local module object
-      module.details.content = editedModuleContent;
+      // Update local state
+      setStudySession(prev => prev ? {
+        ...prev,
+        details: {
+          ...prev.details,
+          content: _editedModuleContent
+        }
+      } : null);
       
-      setIsEditingModule(false);
+      _setIsEditingModule(false);
       
       toast({
         title: "Module description updated",
@@ -1346,7 +1430,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         variant: "destructive"
       });
     } finally {
-      setIsUpdatingModule(false);
+      _setIsUpdatingModule(false);
     }
   };
 
@@ -1479,14 +1563,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Add fetchFormulas function to load formulas data
   const fetchFormulas = async () => {
-    if (!module?.id || !userId) return;
+    if (!studySession?.id || !userId) return;
     
     setIsLoadingFormulas(true);
     try {
       const { data, error } = await supabase
         .from('formulas')
         .select('*')
-        .eq('study_session_id', module.id)
+        .eq('study_session_id', studySession.id)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -1537,7 +1621,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Add function to generate formulas
   const handleGenerateFormulas = async (analyzeAllNotes = false) => {
-    if (!hasFormulaAccess()) {
+    if (!hasFormulaAccess() || !studySession) {
       setShowUpgradeDialog(true);
       return;
     }
@@ -1594,7 +1678,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          study_session_id: module.id, 
+          study_session_id: studySession.id, 
           moduleContent: contentToAnalyze 
         }),
       });
@@ -1643,11 +1727,16 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Add function to get notes content for formula generation
   const _getModuleNotes = async () => {
+    if (!studySession?.id) {
+      console.error('No study session found');
+      return [];
+    }
+
     try {
       const { data, error } = await supabase
         .from('notes')
         .select('content')
-        .eq('study_session_id', module.id);
+        .eq('study_session_id', studySession.id);
       
       if (error) {
         console.error('Error fetching module notes:', error);
@@ -1663,7 +1752,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Handle adding a new formula
   const handleAddFormula = async () => {
-    if (!newFormula.formula || !newFormula.latex) {
+    if (!newFormula.formula || !newFormula.latex || !studySession) {
       toast({
         title: "Missing information",
         description: "Please provide both the formula and LaTeX representation.",
@@ -1700,7 +1789,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         const { error } = await supabase
           .from('formulas')
           .insert({
-            study_session_id: module.id,
+            study_session_id: studySession.id,
             formula: newFormula.formula,
             latex: newFormula.latex,
             description: newFormula.description || null,
@@ -1885,9 +1974,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
   
   const handleSaveVideo = async (video: Partial<Video> & { id: string; title: string }) => {
-    if (!userId) return;
-    
-    const supabase = createClient();
+    if (!userId || !studySession?.id) return;
     
     try {
       // Check if this video is already saved
@@ -1895,7 +1982,8 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         .from('saved_videos')
         .select('*')
         .eq('video_id', video.id)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('study_session_id', studySession.id);
         
       if (checkError) throw checkError;
       
@@ -1929,14 +2017,15 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
           .insert({
             video_id: video.id,
             title: video.title,
-            description: video.description,
-            thumbnail: video.thumbnail,
-            channel: video.channel,
-            published_at: video.publishedAt,
-            video_url: video.videoUrl,
-            study_session_id: module.id,
+            description: video.description || '',
+            thumbnail: video.thumbnail || '',
+            channel: video.channel || video.channelTitle || '',
+            published_at: video.publishedAt || video.published_at || null,
+            video_url: video.videoUrl || video.video_url || '',
+            study_session_id: studySession.id,
             user_id: userId,
-            note_id: selectedNote?.id || null
+            note_id: selectedNote?.id || null,
+            module_title: studySession.module_title
           })
           .select()
           .single();
@@ -1967,15 +2056,14 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
   };
   
   const fetchSavedVideos = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !studySession?.id) return;
     
     try {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from('saved_videos')
         .select('*')
         .eq('user_id', userId)
-        .eq('study_session_id', module.id);
+        .eq('study_session_id', studySession.id);
         
       if (error) throw error;
       
@@ -1983,7 +2071,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     } catch (error) {
       console.error('Error fetching saved videos:', error);
     }
-  }, [userId, module.id]);
+  }, [userId, studySession?.id, supabase]); // Added supabase to dependencies
 
   useEffect(() => {
     fetchSavedVideos();
@@ -1998,9 +2086,17 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
 
   // Add a function to fetch and display flashcards for a specific note
   const _handleNoteFlashcardsClick = async (note: NoteType) => {
+    if (!studySession?.id) {
+      toast({
+        title: "Error",
+        description: "No study session found. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // First, set loading state and clear previous flashcards
-    setIsLoadingNoteFlashcards(true);
+    _setIsLoadingNoteFlashcards(true);
     
     // Reset the current flashcard index when switching to a new note's flashcards
     setCurrentFlashcardIndex(0);
@@ -2025,7 +2121,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
             title
           )
         `)
-        .eq('study_session_id', module.id)
+        .eq('study_session_id', studySession.id)
         .eq('user_id', userId)
         .eq('source_note_id', note.id);
       
@@ -2041,11 +2137,35 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
         return;
       }
 
+      // Convert the data to Flashcard type
+      const typedFlashcards: Flashcard[] = (data || []).map(card => ({
+        id: card.id,
+        question: card.question,
+        answer: card.answer,
+        source_note_id: card.source_note_id || note.id,
+        status: card.status || 'new',
+        last_recall_rating: card.last_recall_rating,
+        next_review_at: card.next_review_at,
+        created_at: card.created_at,
+        last_reviewed_at: card.last_reviewed_at,
+        repetitions: card.repetitions,
+        last_reviewed: card.last_reviewed,
+        difficulty: card.difficulty,
+        updated_at: card.updated_at,
+        module_id: card.module_id,
+        user_id: card.user_id,
+        tags: card.tags,
+        metadata: card.metadata,
+        due_date: card.due_date,
+        ease_factor: card.ease_factor,
+        review_interval: card.review_interval
+      }));
+
       // Update state with fetched flashcards
       setActiveNoteFlashcards({
         noteId: note.id,
         noteTitle: note.title,
-        flashcards: data || []
+        flashcards: typedFlashcards
       });
     } catch (error) {
       console.error('Error in handleNoteFlashcardsClick:', error);
@@ -2057,7 +2177,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       setActiveNoteFlashcards(null);
       setActiveSection('notes');
     } finally {
-      setIsLoadingNoteFlashcards(false);
+      _setIsLoadingNoteFlashcards(false);
     }
   };
 
@@ -2099,6 +2219,57 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
     setEditedContent(note.content);
   };
 
+  // Add the handler for updating module details
+  const handleUpdateModule = async () => {
+    if (!moduleId) return;
+
+    try {
+      const supabase = createClient();
+      
+      const { error } = await supabase
+        .from('study_sessions')
+        .update({
+          module_title: moduleFormData.title,
+          details: {
+            ...studySession?.details,
+            description: moduleFormData.description
+          }
+        })
+        .eq('id', moduleId);
+
+      if (error) throw error;
+
+      // Update local state
+      setStudySession(prev => prev ? {
+        ...prev,
+        module_title: moduleFormData.title,
+        details: {
+          ...prev.details,
+          description: moduleFormData.description
+        }
+      } : null);
+
+      toast({
+        title: "Success",
+        description: "Module details updated successfully",
+      });
+
+      setIsModuleDialogOpen(false);
+    } catch (error) {
+      console.error('Error updating module:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update module details",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Add these state variables
+  const [_isUpdatingModule, _setIsUpdatingModule] = useState(false);
+  const [_isEditingModule, _setIsEditingModule] = useState(false);
+  const [_editedModuleContent, _setEditedModuleContent] = useState('');
+
   return (
     <div className="flex flex-col min-h-screen" suppressHydrationWarning>
       <Navbar />
@@ -2124,7 +2295,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
             <>
               <div className="mb-4">
                 <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                  {module.details?.title || module.module_title || 'Untitled Module'}
+                  {studySession?.module_title || 'Untitled Module'}
                 </h2>
           </div>
           
@@ -2476,1004 +2647,86 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
           suppressHydrationWarning
         >
           {selectedNote && activeSection === 'notes' ? (
-            <>
-              <div className="p-4 border-b">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">{editMode ? "Edit Note" : selectedNote?.title || "Note"}</h2>
-                  </div>
-                  <div className="flex space-x-2">
-                    {editMode ? (
-                      <>
-                        <Button variant="outline" onClick={handleCancelEdit}>Cancel</Button>
-                        <Button onClick={handleSaveNote}>Save</Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button variant="outline" onClick={() => setEditModeWithNotify(true)}>Edit</Button>
-                        <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>Delete</Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="mt-2 flex space-x-2">
-                  {selectedNote.tags && selectedNote.tags.map(tag => (
-                    <Badge key={tag} className="flex items-center space-x-1">
-                      <span>{tag}</span>
-                      <X 
-                        className="h-3 w-3 cursor-pointer" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteTag(tag);
-                        }}
-                      />
-                    </Badge>
-                  ))}
-                  <div className="flex space-x-1">
-                    <Input
-                      className="h-6 w-24 text-xs"
-                      placeholder="Add tag..."
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          handleAddTag();
-                        }
-                      }}
-                      suppressHydrationWarning
-                    />
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={handleAddTag}
-                      suppressHydrationWarning
-                    >
-                      <Tag className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-4 flex-1">
-                {editMode ? (
-                  <DraftEditor
-                    initialContent={editedContent}
-                    onChange={setEditedContent}
-                    onImageUpload={handleImageUpload}
+            <NotesSection
+              selectedNote={selectedNote}
+              editMode={editMode}
+              tagInput={tagInput}
+              editedContent={editedContent}
+              setTagInput={setTagInput}
+              setEditModeWithNotify={setEditModeWithNotify}
+              setShowDeleteConfirm={setShowDeleteConfirm}
+              handleCancelEdit={handleCancelEdit}
+              handleSaveNote={handleSaveNote}
+              handleDeleteTag={handleDeleteTag}
+              handleAddTag={handleAddTag}
+              setEditedContent={setEditedContent}
+              handleImageUpload={handleImageUpload}
                     supabase={supabase}
                   />
-                ) : (
-                  <div className="markdown-preview-wrapper">
-                    <MathPreview content={selectedNote.content || ''} />
-                  </div>
-                )}
-              </div>
-            </>
           ) : activeSection === 'teachback' ? (
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold">Teach Back</h1>
-                  <div className="flex flex-col">
-                    <Badge 
-                      variant={teachbackCount >= teachbackLimit ? "destructive" : 
-                             teachbackCount >= teachbackLimit * 0.8 ? "outline" : "secondary"}
-                      className="text-sm dark:bg-slate-700 dark:text-white"
-                    >
-                      {teachbackCount} / {teachbackLimit} submissions
-                    </Badge>
-                    {!isPremiumUser && teachbackCount >= teachbackLimit * 0.7 && (
-                      <span className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                        Upgrade for more submissions
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setActiveSection('notes')}
-                >
-                  <X className="h-4 w-4 mr-1" /> Close
-                </Button>
-              </div>
-              
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold mb-2">Explain this concept in your own words</h2>
-                  {selectedNote && (
-                    <Card className="mb-4">
-                      <CardHeader>
-                        <CardTitle>{selectedNote.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div dangerouslySetInnerHTML={{ __html: renderLatex(selectedNote.content || '') }} />
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-                
-                <div>
-                  <h3 className="text-md font-medium mb-2">Your explanation:</h3>
-                  <TextEditor 
-                    value={teachbackText}
-                    onChange={setTeachbackText}
-                    disabled={isGrading}
-                  />
-                </div>
-                
-                <div>
-                  <h3 className="text-md font-medium mb-2">Or record your explanation:</h3>
-                  <AudioRecorder 
-                    onTranscriptionComplete={(text) => setTeachbackText(text)}
-                    disabled={isGrading}
-                  />
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button
-                    onClick={gradeTeachback}
-                    disabled={isGrading || !teachbackText.trim()}
-                  >
-                    {isGrading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Grading...
-                      </>
-                    ) : (
-                      <>Submit</>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <TeachbackSection
+              selectedNote={selectedNote}
+              teachbackCount={teachbackCount}
+              teachbackLimit={teachbackLimit}
+              isPremiumUser={isPremiumUser}
+              setActiveSection={setActiveSection}
+              teachbackText={teachbackText}
+              setTeachbackText={setTeachbackText}
+              isGrading={isGrading}
+              gradeTeachback={gradeTeachback}
+              renderLatex={renderLatex}
+            />
           ) : activeSection === 'flashcards' ? (
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold">Flashcards</h1>
-                    {filterFlashcardsByNoteId && (
-                      <span className="text-sm text-gray-600 dark:text-gray-300">
-                        from note: {notes.find(n => n.id === filterFlashcardsByNoteId)?.title || 'Selected Note'}
-                      </span>
-                    )}
-                    <div className="flex flex-col">
-                      <Badge 
-                        variant="secondary"
-                        className="text-sm dark:bg-slate-700 dark:text-white"
-                      >
-                        {flashcardCount} Reviews
-                      </Badge>
-                    </div>
-                  </div>
-                  {filterFlashcardsByNoteId && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs self-start"
-                      onClick={() => {
-                        setFilterFlashcardsByNoteId(null);
-                        fetchFlashcards();
-                      }}
-                    >
-                      <X className="h-3 w-3 mr-1" /> Clear note filter
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="flex space-x-2">
-                  <HoverCard open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
-                    <HoverCardTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={() => setShowKeyboardShortcuts(!showKeyboardShortcuts)}>
-                        <Keyboard className="h-4 w-4" />
-                      </Button>
-                    </HoverCardTrigger>
-                    <HoverCardContent align="end" className="w-80">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-medium">Keyboard Shortcuts</h4>
-                          {!isPremiumUser && (
-                            <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-amber-900 dark:text-amber-300">
-                              Basic Shortcuts
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>Space</div><div>Flip card</div>
-                            <div>→</div><div>Next card</div>
-                            <div>←</div><div>Previous card</div>
-                            <div>1</div><div>Rate as Forgot</div>
-                            <div>2</div><div>Rate as Hard</div>
-                            <div>3</div><div>Rate as Good</div>
-                            <div>4</div><div>Rate as Easy</div>
-                          </div>
-                        </div>
-                        {!isPremiumUser && (
-                          <div className="text-xs mt-2 pt-2 border-t text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Sparkles className="h-3 w-3 text-amber-500" />
-                              <span>Premium users get advanced shortcuts and custom key bindings</span>
-                            </div>
-                            <Button 
-                              variant="link" 
-                              className="h-auto p-0 text-xs text-amber-600 font-medium mt-1"
-                              onClick={() => {
-                                setShowKeyboardShortcuts(false);
-                                setShowUpgradeDialog(true);
-                              }}
-                            >
-                              Upgrade Now
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => setShowFlashcardStats(!showFlashcardStats)}
-                  >
-                    <BarChart className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      if (selectedNote && selectedNote.id === activeNoteFlashcards?.noteId) {
-                        handleAIFlashcardsClick();
-                      }
-                    }}
-                    disabled={isGeneratingFlashcards || !selectedNote}
-                  >
-                    {isGeneratingFlashcards ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-1" /> Generate AI Cards
-                      </>
-                    )}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleCreateFlashcardClick}
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Create Card
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setActiveSection('notes')}
-                  >
-                    <X className="h-4 w-4 mr-1" /> Close
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Flashcard content continues... */}
-              {isLoadingFlashcards ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                  <p className="text-lg font-medium">Loading flashcards...</p>
-                </div>
-              ) : flashcards.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className="flex space-x-2">
-                      <Select value={flashcardFilterType} onValueChange={(value) => handleFilterChange(value as 'all' | 'difficult' | 'easy' | 'new' | 'mastered')}>
-                        <SelectTrigger className="w-[130px]">
-                          <SelectValue placeholder="Filter cards" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Cards</SelectItem>
-                          <SelectItem value="difficult">Difficult</SelectItem>
-                          <SelectItem value="easy">Easy</SelectItem>
-                          <SelectItem value="new">New</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      <Select value={flashcardSortType} onValueChange={(value) => handleSortChange(value as 'default' | 'newest' | 'oldest' | 'difficulty')}>
-                        <SelectTrigger className="w-[130px]">
-                          <SelectValue placeholder="Sort cards" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Default</SelectItem>
-                          <SelectItem value="newest">Newest First</SelectItem>
-                          <SelectItem value="oldest">Oldest First</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" onClick={shuffleDeck}>
-                        <Shuffle className="h-4 w-4 mr-1" /> Shuffle
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={restartDeck}>
-                        <ChevronLeft className="h-4 w-4 mr-1" /> Restart
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="h-[450px] flex flex-col items-center justify-center">
-                    {flashcards.length > currentFlashcardIndex ? (
-                      <>
-                        <Flashcard 
-                          question={flashcards[currentFlashcardIndex].question}
-                          answer={flashcards[currentFlashcardIndex].answer}
-                          onRecallRating={handleRecallRating}
-                          currentIndex={currentFlashcardIndex}
-                          totalCards={flashcards.length}
-                          dueDate={flashcards[currentFlashcardIndex].due_date}
-                        />
-                        
-                        <div className="flex justify-center space-x-4 mt-6">
-                          <Button 
-                            variant="outline" 
-                            onClick={() => setCurrentFlashcardIndex(prev => (prev - 1 + flashcards.length) % flashcards.length)}
-                          >
-                            <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => setCurrentFlashcardIndex(prev => (prev + 1) % flashcards.length)}
-                          >
-                            Next <ChevronRight className="h-4 w-4 ml-1" />
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-center">
-                        <p className="text-lg font-medium mb-4">No flashcards match your filter</p>
-                        <Button variant="outline" onClick={() => handleFilterChange('all')}>Show All Cards</Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <div className="text-center py-10">
-                    <p className="text-xl font-medium mb-2">No flashcards yet</p>
-                    <p className="text-gray-500 mb-6">Create flashcards to test your knowledge</p>
-                    <div className="flex flex-col gap-3 items-center">
-                      <Button 
-                        onClick={() => setIsCreateFlashcardModalOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" /> Create Manually
-                      </Button>
-                      
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          if (selectedNote && selectedNote.id === activeNoteFlashcards?.noteId) {
-                            handleAIFlashcardsClick();
-                          }
-                        }}
-                        disabled={isGeneratingFlashcards || !selectedNote}
-                      >
-                        {isGeneratingFlashcards ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-4 w-4 mr-1" />
-                        )}
-                        Generate from Note
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <FlashcardsSection
+              flashcards={flashcards}
+              selectedNote={selectedNote}
+              filterFlashcardsByNoteId={filterFlashcardsByNoteId}
+              setFilterFlashcardsByNoteId={setFilterFlashcardsByNoteId}
+              fetchFlashcards={fetchFlashcards}
+              isLoadingFlashcards={isLoadingFlashcards}
+              isGeneratingFlashcards={isGeneratingFlashcards}
+              handleAIFlashcardsClick={handleAIFlashcardsClick}
+              handleCreateFlashcardClick={handleCreateFlashcardClick}
+              setActiveSection={setActiveSection}
+              isPremiumUser={isPremiumUser}
+              setShowUpgradeDialog={setShowUpgradeDialog}
+              setIsCreateFlashcardModalOpen={setIsCreateFlashcardModalOpen}
+              activeNoteFlashcards={activeNoteFlashcards}
+            />
           ) : activeSection === 'formulas' ? (
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold">Formula Sheet</h1>
-                </div>
-                <div className="flex space-x-2">
-                  <Button 
-                    variant="outline"
-                    onClick={() => setIsAddFormulaModalOpen(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Add Formula
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleGenerateFormulas()}
-                    disabled={isLoadingFormulas}
-                  >
-                    {isLoadingFormulas ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-1" />
-                    )}
-                    Generate Formulas
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setActiveSection('notes')}
-                  >
-                    <X className="h-4 w-4 mr-1" /> Close
-                  </Button>
-                </div>
-              </div>
-              
-              {isLoadingFormulas ? (
-                <div className="flex flex-col items-center justify-center py-10">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                  <p className="text-lg font-medium">Generating formulas...</p>
-                  <p className="text-sm text-muted-foreground">Finding relevant formulas for your study materials</p>
-                </div>
-              ) : formulas.length > 0 ? (
-                <div className="space-y-4">
-                  <Tabs defaultValue={activeFormulaTab} onValueChange={(value) => setActiveFormulaTab(value as 'categorized' | 'all')}>
-                    <TabsList>
-                      <TabsTrigger value="all">All Formulas</TabsTrigger>
-                      <TabsTrigger value="categorized">By Category</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="all" className="space-y-4 mt-4">
-                      {formulas.map((formula, index) => (
-                        <Card key={formula.id || index} className="overflow-hidden">
-                          <CardContent className="p-4">
-                            <div className="flex justify-between">
-                              <div className="formula-display w-full">
-                                <div className="mb-2" dangerouslySetInnerHTML={{
-                                  __html: renderLatex(formula.is_block ? `$$${formula.latex}$$` : `$${formula.latex}$`)
-                                }} />
-                                {formula.description && (
-                                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{formula.description}</p>
-                                )}
-                              </div>
-                              <div className="flex flex-col space-y-2 ml-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => {
-                                    setEditingFormula(formula);
-                                    setNewFormula({
-                                      formula: formula.formula || '',
-                                      latex: formula.latex || '',
-                                      description: formula.description || '',
-                                      category: formula.category || 'General',
-                                      is_block: formula.is_block || false
-                                    });
-                                    setIsAddFormulaModalOpen(true);
-                                  }}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => handleDeleteFormula(formula.id)}
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                            {formula.category && (
-                              <Badge variant="outline" className="mt-2">
-                                {formula.category}
-                              </Badge>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </TabsContent>
-                    
-                    <TabsContent value="categorized" className="space-y-6 mt-4">
-                      {formulaCategories.length > 0 ? (
-                        <Accordion type="single" collapsible className="w-full">
-                          {formulaCategories.map((category) => (
-                            <AccordionItem key={category} value={category}>
-                              <AccordionTrigger className="font-medium text-lg">
-                                {category} ({formulasByCategory[category]?.length || 0})
-                              </AccordionTrigger>
-                              <AccordionContent className="space-y-4">
-                                {formulasByCategory[category]?.map((formula, index) => (
-                                  <Card key={formula.id || index} className="overflow-hidden">
-                                    <CardContent className="p-4">
-                                      <div className="flex justify-between">
-                                        <div className="formula-display w-full">
-                                          <div className="mb-2" dangerouslySetInnerHTML={{
-                                            __html: renderLatex(formula.is_block ? `$$${formula.latex}$$` : `$${formula.latex}$`)
-                                          }} />
-                                          {formula.description && (
-                                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{formula.description}</p>
-                                          )}
-                                        </div>
-                                        <div className="flex flex-col space-y-2 ml-2">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={() => {
-                                              setEditingFormula(formula);
-                                              setNewFormula({
-                                                formula: formula.formula || '',
-                                                latex: formula.latex || '',
-                                                description: formula.description || '',
-                                                category: formula.category || 'General',
-                                                is_block: formula.is_block || false
-                                              });
-                                              setIsAddFormulaModalOpen(true);
-                                            }}
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0"
-                                            onClick={() => handleDeleteFormula(formula.id)}
-                                          >
-                                            <Trash className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                ))}
-                              </AccordionContent>
-                            </AccordionItem>
-                          ))}
-                        </Accordion>
-                      ) : (
-                        <p className="text-center py-10 text-gray-500">No categories found</p>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10">
-                  <div className="text-center py-10">
-                    <p className="text-gray-500 mb-4">No formulas found. Add formulas manually or generate them from your notes.</p>
-                    <div className="mt-4 flex gap-2 justify-center">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setIsAddFormulaModalOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" /> Add Manually
-                      </Button>
-                      <Button 
-                        onClick={() => handleGenerateFormulas()}
-                        disabled={isLoadingFormulas}
-                      >
-                        {isLoadingFormulas ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-4 w-4 mr-1" />
-                        )}
-                        Generate Formulas
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <FormulasSection
+              formulas={formulas}
+              isLoadingFormulas={isLoadingFormulas}
+              setActiveSection={setActiveSection}
+              handleGenerateFormulas={handleGenerateFormulas}
+              handleDeleteFormula={handleDeleteFormula}
+              setIsAddFormulaModalOpen={setIsAddFormulaModalOpen}
+              setEditingFormula={setEditingFormula}
+              setNewFormula={setNewFormula}
+              renderLatex={renderLatex}
+            />
           ) : activeSection === 'videos' ? (
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold">Educational Videos</h1>
-                </div>
-                <div className="flex space-x-2">
-                  {selectedNote && (
-                    <Button 
-                      onClick={() => generateSearchFromNote(selectedNote)}
-                      disabled={isSearchingVideos}
-                      variant="outline"
-                    >
-                      <Sparkles className="h-4 w-4 mr-1" /> Find Videos for This Note
-                    </Button>
-                  )}
-                  <Button 
-                    variant="outline"
-                    onClick={() => setActiveSection('notes')}
-                  >
-                    <X className="h-4 w-4 mr-1" /> Close
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <div className="flex space-x-2">
-                  <Input
-                    placeholder="Search for educational videos..."
-                    value={videoSearchQuery}
-                    onChange={(e) => setVideoSearchQuery(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSearchVideos();
-                      }
-                    }}
-                    className="flex-1"
-                  />
-                  <Button onClick={handleSearchVideos} disabled={isSearchingVideos}>
-                    {isSearchingVideos ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="h-4 w-4" />
-                    )}
-                    <span className="ml-2">Search</span>
-                  </Button>
-                </div>
-              </div>
-              
-              {isSearchingVideos ? (
-                <div className="flex flex-col items-center justify-center py-10">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                  <p className="text-lg font-medium">Searching for educational videos...</p>
-                  <p className="text-sm text-muted-foreground">Finding the most relevant content for your studies</p>
-                </div>
-              ) : videos.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {videos.map((video) => (
-                    <Card key={video.id} className="overflow-hidden">
-                      <div className="aspect-video relative">
-                        <Image 
-                          src={video.thumbnail} 
-                          alt={video.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, 50vw"
-                          className="object-cover"
-                          priority={false}
-                        />
-                      </div>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between">
-                          <h3 className="font-bold line-clamp-2">{video.title}</h3>
-                          <div className="flex">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleSaveVideo(video)}
-                            >
-                              <Bookmark 
-                                className={`h-4 w-4 ${video.bookmarked ? 'fill-current' : ''}`}
-                              />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              asChild
-                            >
-                              <a href={video.videoUrl} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                          {video.description}
-                        </p>
-                        <div className="mt-2 flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">
-                            {video.channelTitle}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {video.publishedAt ? new Date(video.publishedAt).toLocaleDateString() : 'Unknown date'}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : videoSearchQuery ? (
-                <div className="flex flex-col items-center justify-center py-10">
-                  <CircleSlash className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium">No videos found</p>
-                  <p className="text-sm text-muted-foreground">Try searching for different terms</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10">
-                  <Search className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium">Search for educational videos</p>
-                  <p className="text-sm text-muted-foreground">Find videos related to your study materials</p>
-                </div>
-              )}
-              
-              {savedVideos.length > 0 && (
-                <div className="mt-8">
-                  <h2 className="text-xl font-bold mb-4">Saved Videos</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {savedVideos.map((video) => (
-                      <Card key={video.id} className="overflow-hidden">
-                        <div className="aspect-video relative">
-                          <Image 
-                            src={video.thumbnail} 
-                            alt={video.title}
-                            fill
-                            sizes="(max-width: 768px) 100vw, 50vw"
-                            className="object-cover"
-                            priority={false}
-                          />
-                        </div>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between">
-                            <h3 className="font-bold line-clamp-2">{video.title}</h3>
-                            <div className="flex">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => handleSaveVideo({
-                                  id: video.video_id || video.id || '',
-                                  title: video.title,
-                                  bookmarked: true
-                                })}
-                              >
-                                <Bookmark className="h-4 w-4 fill-current" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                asChild
-                              >
-                                <a href={video.video_url} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              </Button>
-                            </div>
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                            {video.description}
-                          </p>
-                          <div className="mt-2 flex justify-between items-center">
-                            <span className="text-xs text-muted-foreground">
-                              {video.channelTitle}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {video.published_at ? new Date(video.published_at).toLocaleDateString() : 'Unknown date'}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : activeSection === 'module' ? (
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h1 className="text-2xl font-bold">Module Description</h1>
-                <div className="flex space-x-2">
-                  {!isEditingModule && (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setEditedModuleContent(module.details?.content || '');
-                        setIsEditingModule(true);
-                      }}
-                    >
-                      <Edit2 className="h-4 w-4 mr-1" /> Edit
-                    </Button>
-                  )}
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      if (isEditingModule) {
-                        setIsEditingModule(false);
-                      } else {
-                        setActiveSection('notes');
-                      }
-                    }}
-                  >
-                    <X className="h-4 w-4 mr-1" /> {isEditingModule ? 'Cancel' : 'Close'}
-                  </Button>
-                </div>
-              </div>
-              
-              {isEditingModule ? (
-                <div className="space-y-4">
-                  <DraftEditor
-                    initialContent={editedModuleContent}
-                    onChange={setEditedModuleContent}
-                    supabase={supabase}
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={handleUpdateModuleContent}
-                      disabled={isUpdatingModule}
-                    >
-                      {isUpdatingModule ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Save Description
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="prose dark:prose-invert max-w-none">
-                  {module.details && module.details.content ? (
-                    <div dangerouslySetInnerHTML={{ __html: module.details.content }} />
-                  ) : (
-                    <p className="text-gray-500 dark:text-gray-400">This module has no description yet. Click Edit to add one.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : activeSection === 'noteFlashcards' ? (
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold">Flashcards for "{activeNoteFlashcards?.noteTitle}"</h1>
-                </div>
-                <div className="flex space-x-2">
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      if (selectedNote && selectedNote.id === activeNoteFlashcards?.noteId) {
-                        handleAIFlashcardsClick();
-                      }
-                    }}
-                    disabled={isGeneratingFlashcards || !selectedNote}
-                  >
-                    {isGeneratingFlashcards ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-1" /> Generate AI Cards
-                      </>
-                    )}
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setActiveSection('notes')}
-                  >
-                    <X className="h-4 w-4 mr-1" /> Close
-                  </Button>
-                </div>
-              </div>
-              
-              {isLoadingNoteFlashcards ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-                  <p className="text-lg font-medium">Loading flashcards...</p>
-                </div>
-              ) : activeNoteFlashcards && activeNoteFlashcards.flashcards && activeNoteFlashcards.flashcards.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className="flex space-x-2">
-                      <Select value={flashcardFilterType} onValueChange={(value) => handleFilterChange(value as 'all' | 'difficult' | 'easy' | 'new' | 'mastered')}>
-                        <SelectTrigger className="w-[130px]">
-                          <SelectValue placeholder="Filter cards" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Cards</SelectItem>
-                          <SelectItem value="difficult">Difficult</SelectItem>
-                          <SelectItem value="easy">Easy</SelectItem>
-                          <SelectItem value="new">New</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      <Select value={flashcardSortType} onValueChange={(value) => handleSortChange(value as 'default' | 'newest' | 'oldest' | 'difficulty')}>
-                        <SelectTrigger className="w-[130px]">
-                          <SelectValue placeholder="Sort cards" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Default</SelectItem>
-                          <SelectItem value="newest">Newest First</SelectItem>
-                          <SelectItem value="oldest">Oldest First</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" onClick={shuffleDeck}>
-                        <Shuffle className="h-4 w-4 mr-1" /> Shuffle
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={restartDeck}>
-                        <ChevronLeft className="h-4 w-4 mr-1" /> Restart
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="h-[450px] flex flex-col items-center justify-center">
-                    {activeNoteFlashcards && activeNoteFlashcards.flashcards && activeNoteFlashcards.flashcards.length > currentFlashcardIndex ? (
-                      <>
-                        <Flashcard 
-                          question={activeNoteFlashcards.flashcards[currentFlashcardIndex].question}
-                          answer={activeNoteFlashcards.flashcards[currentFlashcardIndex].answer}
-                          onRecallRating={handleRecallRating}
-                          currentIndex={currentFlashcardIndex}
-                          totalCards={activeNoteFlashcards.flashcards.length}
-                          dueDate={activeNoteFlashcards.flashcards[currentFlashcardIndex].due_date}
-                        />
-                        
-                        <div className="flex justify-center space-x-4 mt-6">
-                          <Button 
-                            variant="outline" 
-                            onClick={() => {
-                              if (activeNoteFlashcards && activeNoteFlashcards.flashcards) {
-                                setCurrentFlashcardIndex(prev => 
-                                  (prev - 1 + activeNoteFlashcards.flashcards.length) % activeNoteFlashcards.flashcards.length
-                                );
-                              }
-                            }}
-                          >
-                            <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => {
-                              if (activeNoteFlashcards && activeNoteFlashcards.flashcards) {
-                                setCurrentFlashcardIndex(prev => 
-                                  (prev + 1) % activeNoteFlashcards.flashcards.length
-                                );
-                              }
-                            }}
-                          >
-                            Next <ChevronRight className="h-4 w-4 ml-1" />
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-center">
-                        <p className="text-lg font-medium mb-4">No flashcards match your filter</p>
-                        <Button variant="outline" onClick={() => handleFilterChange('all')}>Show All Cards</Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <div className="text-center py-10">
-                    <p className="text-xl font-medium mb-2">No flashcards yet</p>
-                    <p className="text-gray-500 mb-6">Create flashcards to test your knowledge</p>
-                    <div className="flex flex-col gap-3 items-center">
-                      <Button 
-                        onClick={() => setIsCreateFlashcardModalOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" /> Create Manually
-                      </Button>
-                      
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          if (selectedNote && activeNoteFlashcards) {
-                            handleAIFlashcardsClick();
-                          }
-                        }}
-                        disabled={isGeneratingFlashcards || !selectedNote || !activeNoteFlashcards}
-                      >
-                        {isGeneratingFlashcards ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-4 w-4 mr-1" />
-                        )}
-                        Generate from Note
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : activeSection === 'practice' ? (
+            <VideosSection
+              videos={videos}
+              savedVideos={savedVideos}
+              selectedNote={selectedNote}
+              isSearchingVideos={isSearchingVideos}
+              videoSearchQuery={videoSearchQuery}
+              setVideoSearchQuery={setVideoSearchQuery}
+              setActiveSection={setActiveSection}
+              handleSearchVideos={handleSearchVideos}
+              generateSearchFromNote={generateSearchFromNote}
+              handleSaveVideo={handleSaveVideo}
+            />
+          ) : activeSection === 'practice' && studySession ? (
             <PracticeQuestions 
-              moduleId={module.id}
+              moduleId={studySession.id}
               userId={userId}
               isPremiumUser={isPremiumUser}
               selectedNoteId={selectedNote?.id}
               onNavigateToSection={handleActivateStudyTool}
             />
-          ) : activeSection === 'grades' ? (
+          ) : activeSection === 'grades' && studySession ? (
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
@@ -3490,11 +2743,11 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
               </div>
               
               <GradeTracker 
-                studySessionId={module.id}
+                studySessionId={studySession.id}
                 _userId={userId}
               />
             </div>
-          ) : activeSection === 'reminders' ? (
+          ) : activeSection === 'reminders' && studySession ? (
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
@@ -3510,7 +2763,7 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
                 </div>
               </div>
               
-              <ReminderList moduleId={module.id} />
+              <ReminderList moduleId={studySession.id} />
             </div>
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -3521,11 +2774,11 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
       </div>
       
       {/* Upload PDF Modal */}
-      {isPdfModalOpen && (
+      {isPdfModalOpen && studySession && (
       <PdfUploadModal
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
-        studySessionId={module.id}
+          studySessionId={studySession.id}
         onNotesCreated={handleNotesCreated}
       />
       )}
@@ -3847,17 +3100,47 @@ export default function UnifiedModulePage({ module, _allSessions, notes: initial
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {activeSection === 'flashcards' && (
-        <FlashcardModule
-          moduleId={module.id}
-          userId={userId}
-          _isPremiumUser={isPremiumUser}
-          selectedNote={selectedNote}
-          isNoteSpecific={false}
-          onGenerateAIFlashcards={generateAIFlashcards}
-          isGeneratingFlashcards={isGeneratingFlashcards}
-        />
-      )}
+
+      {/* Module Edit Dialog */}
+      <Dialog open={isModuleDialogOpen} onOpenChange={setIsModuleDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Study Module</DialogTitle>
+            <DialogDescription>
+              Update your study module's title and description.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="module-title">Title</Label>
+              <Input
+                id="module-title"
+                value={moduleFormData.title}
+                onChange={(e) => setModuleFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Enter module title"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="module-description">Description</Label>
+              <Textarea
+                id="module-description"
+                value={moduleFormData.description}
+                onChange={(e) => setModuleFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter module description"
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModuleDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateModule}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

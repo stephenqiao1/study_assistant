@@ -92,8 +92,6 @@ export async function POST(request: Request) {
       )
     }
     
-    console.log(`Creating checkout session with price: ${priceId} for ${tier} ${interval}`)
-    
     // Create checkout session
     const session = await stripeInstance.checkout.sessions.create({
       customer: customerId,

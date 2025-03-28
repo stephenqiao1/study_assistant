@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/client'
+import { createServiceRoleClient } from '@/utils/supabase/service-role'
 import { SubscriptionTier } from '@/types/supabase'
 
 /**
@@ -35,21 +36,34 @@ export const isPremiumUser = async (userId: string): Promise<boolean> => {
 export const hasSubscriptionTier = async (userId: string, tier: SubscriptionTier): Promise<boolean> => {
   if (!userId) return false
   
-  const supabase = createClient()
+  const supabase = createServiceRoleClient()
   
   try {
     const { data: subscription, error } = await supabase
       .from('subscriptions')
-      .select('tier')
+      .select('tier, status')
       .eq('user_id', userId)
+      .eq('status', 'active')
       .single()
       
     if (error) {
       console.error('Error checking subscription status:', error)
       return false
     }
+
+    // For basic tier, allow both 'basic' and 'pro' tiers
+    if (tier === 'basic') {
+      const hasAccess = subscription?.tier === 'basic' || subscription?.tier === 'pro'
+      return hasAccess
+    }
     
-    return subscription?.tier === tier
+    // For pro tier, only allow 'pro' tier
+    if (tier === 'pro') {
+      const hasAccess = subscription?.tier === 'pro'
+      return hasAccess
+    }
+    
+    return false
   } catch (error) {
     console.error('Error checking subscription tier:', error)
     return false

@@ -361,49 +361,49 @@ export default function PricingTable() {
           <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
               <span className="font-medium">10</span>
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">Teach-back sessions per month</span>
           </div>
           
           <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
               <span className="font-medium">10</span>
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">Virtual student chat messages</span>
           </div>
           
           <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
               <span className="font-medium">Basic</span>
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">YouTube video search</span>
           </div>
           
           <div className="flex items-start gap-3">
             <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <X className="w-5 h-5 text-muted-foreground" />
-              </div>
+            </div>
               <span className="text-muted-foreground text-sm">Auto-generate flashcards</span>
           </div>
           
           <div className="flex items-start gap-3">
             <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <X className="w-5 h-5 text-muted-foreground" />
-              </div>
+            </div>
               <span className="text-muted-foreground text-sm">Formula sheet extraction</span>
           </div>
           
           <div className="flex items-start gap-3">
             <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <Check className="w-5 h-5 text-primary" />
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">Spaced repetition system</span>
       </div>
 
           <div className="flex items-start gap-3">
             <div className="w-12 flex-shrink-0 flex items-center justify-center">
                 <Check className="w-5 h-5 text-primary" />
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">Voice recording & transcription</span>
       </div>
 
@@ -412,10 +412,10 @@ export default function PricingTable() {
                 <X className="w-5 h-5 text-muted-foreground" />
               </div>
               <span className="text-muted-foreground text-sm">Priority support</span>
-            </div>
           </div>
+        </div>
 
-          <div className="mt-8">
+        <div className="mt-8">
             {renderPlanButton('free')}
         </div>
       </div>
@@ -458,7 +458,7 @@ export default function PricingTable() {
           <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
               <span className="font-medium">50</span>
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">Teach-back sessions per month</span>
           </div>
           
@@ -472,7 +472,7 @@ export default function PricingTable() {
           <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
               <span className="font-medium text-sm">Enhanced</span>
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">YouTube video search</span>
           </div>
           
@@ -494,7 +494,7 @@ export default function PricingTable() {
 
         <div className="mt-8">
             {renderPlanButton('basic')}
-          </div>
+        </div>
       </div>
 
       {/* Pro Plan */}
@@ -506,7 +506,7 @@ export default function PricingTable() {
               </div>
             </div>
           )}
-          <div className="mb-4">
+        <div className="mb-4">
             <h3 className="text-2xl font-bold text-card-foreground">Pro</h3>
             <p className="text-muted-foreground mt-2">Perfect for power users</p>
               </div>
@@ -527,21 +527,21 @@ export default function PricingTable() {
           <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
               <span className="font-medium text-sm">Unlimited</span>
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">Teach-back sessions per month</span>
           </div>
           
           <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
               <span className="font-medium text-sm">Unlimited</span>
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">Virtual student chat messages</span>
           </div>
           
           <div className="flex items-start gap-3">
               <div className="w-12 flex-shrink-0 flex items-center justify-center text-primary">
               <span className="font-medium text-sm">AI</span>
-              </div>
+            </div>
               <span className="text-card-foreground text-sm">YouTube video search</span>
           </div>
           

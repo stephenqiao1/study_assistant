@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     
     const body: NewGradeEntry = await request.json();
     
-    if (!body.grading_component_id || !body.name || body.score === undefined || body.max_score === undefined) {
+    if (!body.component_id || !body.name || body.score === undefined || body.max_score === undefined) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     const { data: component, error: componentError } = await supabase
       .from('grading_components')
       .select('*, grading_system:grading_system_id(user_id)')
-      .eq('id', body.grading_component_id)
+      .eq('id', body.component_id)
       .single();
     
     if (componentError || !component) {
@@ -119,13 +119,15 @@ export async function POST(request: Request) {
     
     const { data, error } = await supabase
       .from('grade_entries')
-      .insert({
-        grading_component_id: body.grading_component_id,
-        name: body.name,
-        score: body.score,
-        max_score: body.max_score,
-        date: body.date || new Date().toISOString().split('T')[0]
-      })
+      .insert([
+        {
+          component_id: body.component_id,
+          name: body.name,
+          score: body.score,
+          max_score: body.max_score,
+          date: body.date || new Date().toISOString()
+        }
+      ])
       .select()
       .single();
     

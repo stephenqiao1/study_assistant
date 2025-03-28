@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { hasSubscriptionTier } from '@/utils/subscription-helpers'
 
 interface NoteInput {
   title: string
@@ -8,129 +9,103 @@ interface NoteInput {
 }
 
 export async function POST(request: NextRequest) {
-  // Get the current user using the modern createClient approach
-  const supabase = await createClient()
-  
-  // Get the current user using getUser
-  const { data, error: _userError } = await supabase.auth.getUser()
-  const user = data.user
-  
-  // Determine user ID
-  let userId: string;
-  
-  if (user?.id) {
-    // Always prefer the actual user ID from Supabase when available
-    userId = user.id;
-  } else if (process.env.NODE_ENV === 'development') {
-    // Last resort fallback for development only when no session exists
-    // Check for a stored user ID in environment variables
-    const devUserId = process.env.NEXT_PUBLIC_DEV_USER_ID;
-    
-    if (devUserId && devUserId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
-      // Use the developer's actual Supabase user ID stored in env
-      userId = devUserId;
-    } else {
-      // Final fallback - use a valid UUID format
-      userId = '00000000-0000-4000-a000-000000000001';
-    }
-  } else {
-    // In production, no session means unauthorized
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
-  
   try {
-    // Parse request body
-    const body = await request.json()
-    const { studySessionId, notes } = body as { studySessionId: string, notes: NoteInput[] }
+    const supabase = await createClient()
     
-    if (!studySessionId || !notes || !Array.isArray(notes) || notes.length === 0) {
+    // Get the authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
     
-    // Check if study session exists and belongs to the current user
-    let _studySession = null;
-      
-    // In development mode, bypass the database check if using fallback auth
-    if (process.env.NODE_ENV === 'development' && 
-        (!user?.id || userId !== user?.id)) {
-      // Create a mock study session
-      _studySession = { 
-        id: studySessionId,
-        user_id: userId,
-        name: "Development Session"
-      };
-    } else {
-      // Do the actual database check
-      const { data: dbStudySession, error: sessionError } = await supabase
-        .from('study_sessions')
-        .select('*')
-        .eq('id', studySessionId)
-        .eq('user_id', userId)
-        .single();
-        
-      if (sessionError || !dbStudySession) {
-        return NextResponse.json(
-          { error: 'Study session not found or not authorized' },
-          { status: 404 }
-        )
-      }
-      
-      _studySession = dbStudySession;
+    // Get request body
+    const { studySessionId, notes } = await request.json()
+    
+    if (!studySessionId || !notes || !Array.isArray(notes)) {
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      )
+    }
+
+    // Type check the notes array
+    const typedNotes = notes as NoteInput[];
+    
+    // Verify study session exists and belongs to user
+    const { data: studySession, error: studySessionError } = await supabase
+      .from('study_sessions')
+      .select('id, user_id')
+      .eq('id', studySessionId)
+      .eq('user_id', user.id)
+      .single()
+    
+    if (studySessionError || !studySession) {
+      return NextResponse.json(
+        { error: 'Study session not found or not authorized' },
+        { status: 404 }
+      )
     }
     
-    // Create all notes in the database
-    const notesWithMetadata = notes.map(note => {
-      // Extract only the fields we need for the database
-      // to avoid "column not found" errors
-      const { title, content, tags } = note;
-      
-      return {
-        title,
-        content,
-        tags: tags || [],
-        study_session_id: studySessionId,
-        user_id: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-    });
+    // Check if user has basic or pro subscription
+    const hasPremiumAccess = await hasSubscriptionTier(user.id, 'basic') || 
+                            await hasSubscriptionTier(user.id, 'pro')
     
-    // Always insert to database, even in development mode
-    const result = await supabase
-      .from('notes')
-      .insert(notesWithMetadata)
-      .select();
-    
-    const createdNotes = result.data;
-    const insertError = result.error;
-    
-    if (insertError) {
-      console.error('Error creating notes:', insertError)
+    if (!hasPremiumAccess) {
       return NextResponse.json(
         { 
-          error: 'Failed to create notes', 
-          details: insertError.message,
-          code: insertError.code,
-          hint: insertError.hint || null
+          error: 'Premium feature', 
+          message: 'Document import is only available for Basic and Pro tier subscribers.' 
         },
+        { status: 403 }
+      )
+    }
+    
+    // Prepare notes for insertion
+    const notesToInsert = typedNotes.map(note => ({
+      study_session_id: studySessionId,
+      user_id: user.id,
+      title: note.title,
+      content: note.content,
+      tags: note.tags || [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }))
+    
+    // Insert notes in a single transaction
+    const { data: createdNotes, error: insertError } = await supabase
+      .from('notes')
+      .insert(notesToInsert)
+      .select()
+    
+    if (insertError) {
+      console.error('❌ Debug - Insert Error:', {
+        error: insertError,
+        errorMessage: insertError.message,
+        errorCode: insertError.code,
+        details: insertError.details
+      })
+      return NextResponse.json(
+        { error: 'Failed to create notes' },
         { status: 500 }
       )
     }
     
     return NextResponse.json({ 
-      message: `Successfully created ${notes.length} notes`,
+      success: true,
       notes: createdNotes
     })
   } catch (error) {
-    console.error('Note creation error:', error)
+    console.error('❌ Debug - Unexpected Error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : null
+    })
     return NextResponse.json(
-      { error: 'Failed to process request' },
+      { error: 'Failed to create notes' },
       { status: 500 }
     )
   }

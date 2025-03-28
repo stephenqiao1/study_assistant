@@ -2,6 +2,7 @@ export interface GradingSystem {
   id: string;
   user_id: string;
   study_session_id: string;
+  name: string;
   target_grade: number;
   created_at: string;
   updated_at: string;
@@ -18,7 +19,7 @@ export interface GradingComponent {
 
 export interface GradeEntry {
   id: string;
-  grading_component_id: string;
+  component_id: string;
   name: string;
   score: number;
   max_score: number;
@@ -27,9 +28,15 @@ export interface GradeEntry {
   updated_at: string;
 }
 
-export interface GradingComponentWithEntries extends GradingComponent {
+export interface GradingComponentWithEntries {
+  id: string;
+  grading_system_id: string;
+  name: string;
+  weight: number;
+  max_score: number;
+  created_at: string;
+  updated_at: string;
   entries: GradeEntry[];
-  currentScore?: number; // Calculated score for this component
 }
 
 export interface GradingSystemWithComponents extends GradingSystem {
@@ -66,7 +73,7 @@ export interface NewGradingComponent {
 }
 
 export interface NewGradeEntry {
-  grading_component_id: string;
+  component_id: string;
   name: string;
   score: number;
   max_score: number;

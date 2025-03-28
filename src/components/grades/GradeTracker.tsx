@@ -26,6 +26,13 @@ import {
   Settings
 } from 'lucide-react';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -69,6 +76,7 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
 
   const handleError = useCallback((error: Error | unknown) => {
     console.error('Error:', error);
+    setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     toast({
       title: "Error",
       description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -78,11 +86,19 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
 
   // Fetch the grading system for this study session
   const fetchGradingSystem = useCallback(async () => {
+    if (!studySessionId) return;
+    
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch(`/api/grading-systems?study_session_id=${studySessionId}`);
+      const response = await fetch(`/api/grading-systems?study_session_id=${studySessionId}`, {
+        // Add cache headers to prevent duplicate calls
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch grading system');
@@ -102,11 +118,10 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
     }
   }, [studySessionId, handleError]);
 
+  // Call fetchGradingSystem only once when component mounts
   useEffect(() => {
-    if (studySessionId) {
-      fetchGradingSystem();
-    }
-  }, [studySessionId, fetchGradingSystem]);
+    fetchGradingSystem();
+  }); // Empty dependency array means it only runs once on mount
 
   // Calculate the overall grade
   const gradeInfo = gradingSystem ? calculateOverallGrade(gradingSystem) : null;
@@ -203,16 +218,20 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
   };
 
   // Handle updating a grading component
-  const _handleUpdateComponent = async (componentId: string, updates: Partial<GradingComponent>) => {
-    if (!gradingSystem) return;
+  const handleUpdateComponent = async (name: string, weight: number, maxScore: number = 100) => {
+    if (!gradingSystem || !editingComponent) return;
     
     try {
-      const response = await fetch(`/api/grading-components/${componentId}`, {
+      const response = await fetch(`/api/grading-components/${editingComponent.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({
+          name,
+          weight,
+          max_score: maxScore,
+        }),
       });
       
       if (!response.ok) {
@@ -220,6 +239,9 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
       }
       
       await fetchGradingSystem();
+      setShowAddComponentModal(false);
+      setEditingComponent(null);
+      setStatusMessage({ type: 'success', message: 'Component updated successfully!' });
     } catch (error) {
       handleError(error);
     }
@@ -230,7 +252,7 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
     if (!gradingSystem) return;
     
     try {
-      const response = await fetch(`/api/grading-components/${componentId}`, {
+      const response = await fetch(`/api/grading-components?id=${componentId}`, {
         method: 'DELETE',
       });
       
@@ -468,23 +490,52 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
           )}
         </div>
         
-        {/* Component form - always rendered but visibility toggled */}
-        {showAddComponentModal && (
-          <div className="mb-6 border p-4 rounded-md bg-gray-50 dark:bg-gray-700/30 dark:border-gray-700">
-            <h3 className="text-lg font-semibold mb-2 dark:text-white">
-              Add Grading Component
-            </h3>
-            <GradingComponentForm 
-              onSubmit={handleAddComponent}
-              onCancel={() => setShowAddComponentModal(false)}
-              availableWeight={100 - (remainingWeight + (editingComponent?.weight || 0))}
-              initialName={''}
-              initialWeight={10}
-              initialMaxScore={100}
-              isUpdate={false}
-            />
-          </div>
-        )}
+        {/* Component form dialog */}
+        <Dialog 
+          open={showAddComponentModal} 
+          onOpenChange={(open) => {
+            setShowAddComponentModal(open);
+            if (!open) setEditingComponent(null);
+          }}
+        >
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingComponent ? 'Edit Grading Component' : 'Add Grading Component'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingComponent 
+                  ? 'Edit the details of your grading component' 
+                  : 'Add a new component to your grading system'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              {remainingWeight > 0 || editingComponent ? (
+                <GradingComponentForm 
+                  onSubmit={editingComponent ? handleUpdateComponent : handleAddComponent}
+                  onCancel={() => {
+                    setShowAddComponentModal(false);
+                    setEditingComponent(null);
+                  }}
+                  availableWeight={editingComponent ? 100 - (remainingWeight + editingComponent.weight) : remainingWeight}
+                  initialName={editingComponent?.name || ''}
+                  initialWeight={editingComponent?.weight || 10}
+                  initialMaxScore={editingComponent?.max_score || 100}
+                  isUpdate={!!editingComponent}
+                />
+              ) : (
+                <div className="text-center p-4">
+                  <AlertCircle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+                  <p className="text-lg font-medium mb-2">Cannot Add More Components</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    You have already allocated 100% of the grade weight. 
+                    To add a new component, please adjust the weights of existing components first.
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
         
         {/* Component list */}
         <GradingComponentList
@@ -494,9 +545,9 @@ export default function GradeTracker({ studySessionId, _userId }: GradeTrackerPr
             setShowAddComponentModal(true);
           }}
           onDelete={handleDeleteComponent}
-          _gradingSystemId={studySessionId}
+          _gradingSystemId={gradingSystem.id}
         />
       </div>
     </div>
   );
-} 
+}

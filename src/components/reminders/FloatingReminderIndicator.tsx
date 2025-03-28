@@ -24,7 +24,9 @@ export default function FloatingReminderIndicator({ moduleId, onExpand }: Floati
 
   const fetchReminders = useCallback(async () => {
     try {
-      const response = await fetch(`/api/reminders?study_session_id=${moduleId}`);
+      const response = await fetch(`/api/reminders?study_session_id=${moduleId}`, {
+        credentials: 'include'
+      });
       const { data } = await response.json();
       setReminders(data || []);
     } catch (error) {

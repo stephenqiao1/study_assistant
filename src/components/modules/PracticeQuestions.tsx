@@ -14,6 +14,7 @@ import { Loader2, Plus, Edit, Trash2, BookOpen, LayoutGrid, List, ChevronUp, Che
 import { createClient } from '@/utils/supabase/client'
 import { PracticeQuestion } from '@/services/practiceQuestionService'
 import { useToast } from '@/components/ui/use-toast'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface PracticeQuestionsProps {
   moduleId: string;
@@ -94,6 +95,11 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
   const [numVariantsToGenerate, setNumVariantsToGenerate] = useState(1)
   const [_generatedVariants, setGeneratedVariants] = useState<PracticeQuestion[]>([])
   const [showVariantsFor, setShowVariantsFor] = useState<string | null>(null)
+  
+  // Add new state variables for delete confirmation
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [practiceToDelete, setPracticeToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Load study session and questions
   useEffect(() => {
@@ -249,23 +255,44 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
   }
   
   // Delete a practice question
-  const handleDeleteQuestion = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this question?')) return
+  const handleDeleteClick = (practiceId: string) => {
+    setPracticeToDelete(practiceId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!practiceToDelete) return;
     
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/practice-questions?id=${id}`, {
-        method: 'DELETE'
-      })
+      const response = await fetch(`/api/practice-questions?id=${practiceToDelete}`, {
+        method: 'DELETE',
+      });
       
       if (!response.ok) {
-        throw new Error('Failed to delete practice question')
+        throw new Error('Failed to delete practice problem');
       }
       
-      setQuestions(prev => prev.filter(q => q.id !== id))
+      // Update the local state by removing the deleted question
+      setQuestions(prev => prev.filter(q => q.id !== practiceToDelete));
+      
+      toast({
+        title: "Success",
+        description: "Practice problem deleted successfully",
+      });
     } catch (error) {
-      console.error('Error deleting practice question:', error)
+      console.error('Error deleting practice problem:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete practice problem",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+      setPracticeToDelete(null);
     }
-  }
+  };
   
   // Handle user answer image upload
   const handleUserAnswerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -864,7 +891,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
                   currentQuestion.difficulty === 'easy' ? 'secondary' :
                   currentQuestion.difficulty === 'medium' ? 'default' : 'destructive'
                 } 
-                className="dark:text-gray-900 font-medium"
+                className="font-medium dark:bg-opacity-90 dark:text-white"
               >
                 {currentQuestion.difficulty}
               </Badge>
@@ -1184,7 +1211,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
                           question.difficulty === 'easy' ? 'secondary' :
                           question.difficulty === 'medium' ? 'default' : 'destructive'
                         } 
-                        className="dark:text-gray-900 font-medium"
+                        className="font-medium dark:bg-opacity-90 dark:text-white"
                       >
                         {question.difficulty}
                       </Badge>
@@ -1237,7 +1264,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent card expansion when clicking delete
-                          handleDeleteQuestion(question.id);
+                          handleDeleteClick(question.id);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -1277,7 +1304,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
                               variant.difficulty === 'easy' ? 'secondary' :
                               variant.difficulty === 'medium' ? 'default' : 'destructive'
                             } 
-                            className="dark:text-gray-900 font-medium"
+                            className="font-medium dark:bg-opacity-90 dark:text-white"
                           >
                             {variant.difficulty}
                           </Badge>
@@ -1301,7 +1328,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
                             size="icon"
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent card expansion when clicking delete
-                              handleDeleteQuestion(variant.id);
+                              handleDeleteClick(variant.id);
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1345,7 +1372,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
                         question.difficulty === 'easy' ? 'secondary' :
                         question.difficulty === 'medium' ? 'default' : 'destructive'
                       } 
-                      className="dark:text-gray-900 font-medium"
+                      className="font-medium dark:bg-opacity-90 dark:text-white"
                     >
                       {question.difficulty}
                     </Badge>
@@ -1431,7 +1458,7 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteQuestion(question.id);
+                          handleDeleteClick(question.id);
                         }}
                       >
                         <Trash2 className="h-4 w-4 mr-1" /> Delete
@@ -1924,6 +1951,35 @@ export default function PracticeQuestions({ moduleId, userId: _userId, isPremium
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Practice Problem</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this practice problem? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

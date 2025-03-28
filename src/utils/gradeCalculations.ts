@@ -1,12 +1,23 @@
 import { 
-  GradingSystem as _GradingSystem, 
-  GradingComponent, 
   GradeEntry, 
   GradingComponentWithEntries,
   GradingSystemWithComponents,
   GradeCalculationResult,
   GradeStatus
 } from '@/types/grading';
+
+type _GradingComponent = {
+  id: string;
+  name: string;
+  weight: number;
+};
+
+type _ComponentScore = {
+  id: string;
+  name: string;
+  weight: number;
+  score: number;
+};
 
 /**
  * Calculate the current score for a single grading component
@@ -15,7 +26,7 @@ import {
  * @returns The current score as a percentage (0-100)
  */
 export function calculateComponentScore(
-  component: GradingComponent, 
+  component: GradingComponentWithEntries,
   entries: GradeEntry[]
 ): number {
   if (entries.length === 0) return 0;
@@ -46,27 +57,23 @@ export function calculateOverallGrade(
   gradingSystem: GradingSystemWithComponents
 ): GradeCalculationResult {
   const componentScores = gradingSystem.components.map(component => {
-    const currentScore = component.currentScore ?? 
-      calculateComponentScore(component, component.entries);
-    
-    const weightedScore = calculateWeightedScore(currentScore, component.weight);
+    const score = calculateComponentScore(component, component.entries);
+    const weightedScore = calculateWeightedScore(score, component.weight);
     
     return {
       componentId: component.id,
       componentName: component.name,
       weight: component.weight,
-      currentScore,
+      currentScore: score,
       weightedScore
     };
   });
   
-  // Calculate the sum of all weighted scores
   const currentGrade = componentScores.reduce(
     (sum, component) => sum + component.weightedScore, 
     0
   );
   
-  // Calculate how much more is needed to reach the target
   const remainingNeeded = Math.max(0, gradingSystem.target_grade - currentGrade);
   
   return {
@@ -146,4 +153,30 @@ export function calculateRemainingWeight(
 ): number {
   const totalWeight = components.reduce((sum, component) => sum + component.weight, 0);
   return Math.max(0, 100 - totalWeight);
+}
+
+export function calculateTotalScore(
+  gradingSystem: GradingSystemWithComponents
+): GradeCalculationResult {
+  const componentScores = gradingSystem.components.map(component => {
+    const currentScore = calculateComponentScore(component, component.entries);
+    const weightedScore = calculateWeightedScore(currentScore, component.weight);
+    return {
+      componentId: component.id,
+      componentName: component.name,
+      weight: component.weight,
+      currentScore,
+      weightedScore
+    };
+  });
+
+  const currentGrade = componentScores.reduce((sum, score) => sum + score.weightedScore, 0);
+
+  return {
+    currentGrade,
+    targetGrade: gradingSystem.target_grade,
+    remainingNeeded: Math.max(0, gradingSystem.target_grade - currentGrade),
+    isOnTrack: currentGrade >= gradingSystem.target_grade,
+    componentScores
+  };
 } 

@@ -566,12 +566,13 @@ export default function ModuleClientPage({ module, allSessions, notes, _isPremiu
                   </p>
                 </CardContent>
                 <CardFooter className="p-5 pt-0">
-                  <Link href={`/modules/${module.id}/flashcards?title=${encodeURIComponent(module.module_title)}`}>
-                    <Button className="w-full">
-                      Open Flashcards
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
+                  {/* Remove or comment out the flashcards link */}
+                  {/* <Link href={`/modules/${module.id}/flashcards?title=${encodeURIComponent(module.module_title)}`}> */}
+                  <Button className="w-full">
+                    Open Flashcards
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                  {/* </Link> */}
                 </CardFooter>
               </Card>
 

@@ -119,13 +119,6 @@ export async function POST(req: Request) {
             // Set appropriate usage limits based on tier
             usage_limits: getUsageLimits(tier)
           })
-        
-        if (_updateError) {
-          console.error('Error updating subscription:', _updateError)
-        } else {
-          console.log(`Successfully updated subscription for user ${userId} to ${tier} tier`)
-        }
-        
         break
       }
       
@@ -186,12 +179,6 @@ export async function POST(req: Request) {
           })
           .eq('user_id', userId)
         
-        if (_updateError) {
-          console.error('Error updating subscription:', _updateError)
-        } else {
-          console.log(`Successfully updated subscription for user ${userId}`)
-        }
-        
         break
       }
       
@@ -225,13 +212,7 @@ export async function POST(req: Request) {
             usage_limits: getUsageLimits('free')
           })
           .eq('user_id', userId)
-        
-        if (_updateError) {
-          console.error('Error downgrading subscription to free tier:', _updateError)
-        } else {
-          console.log(`Successfully downgraded subscription for user ${userId} to free tier`)
-        }
-        
+  
         break
       }
     }

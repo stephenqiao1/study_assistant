@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { CalendarIcon, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 
 type Reminder = {
   id: string;
@@ -30,14 +30,16 @@ export default function ReminderList({ moduleId }: ReminderListProps) {
   const [dueDate, setDueDate] = useState<Date>();
   const [type, setType] = useState<'assignment' | 'exam'>('assignment');
   const [isLoading, setIsLoading] = useState(false);
+  
+  const supabase = useMemo(() => createClient(), []);
 
   const { data: _data, error: _error, isLoading: _queryLoading } = useQuery({
     queryKey: ['reminders', moduleId],
     queryFn: async () => {
-      const { data, error } = await createClientComponentClient()
+      const { data, error } = await supabase
         .from('reminders')
         .select('*')
-        .eq('module_id', moduleId)
+        .eq('study_session_id', moduleId)
         .order('due_date', { ascending: true });
       
       if (error) throw error;
@@ -46,50 +48,63 @@ export default function ReminderList({ moduleId }: ReminderListProps) {
     enabled: !!moduleId
   });
 
-  const fetchReminders = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/reminders?study_session_id=${moduleId}`);
-      const { data } = await response.json();
-      setReminders(data || []);
-    } catch (error) {
-      console.error('Error fetching reminders:', error);
-    }
-  }, [moduleId]);
-
+  // Fetch reminders when component mounts
   useEffect(() => {
+    const fetchReminders = async () => {
+      try {
+        const { data: _data, error } = await supabase
+          .from('reminders')
+          .select('*')
+          .eq('study_session_id', moduleId)
+          .order('due_date', { ascending: true });
+        
+        if (error) throw error;
+        
+        setReminders(_data || []);
+      } catch (error) {
+        console.error('Error fetching reminders:', error);
+      }
+    };
+    
     fetchReminders();
-  }, [fetchReminders]);
+  }, [moduleId, supabase]);
 
   const addReminder = async () => {
     if (!title || !dueDate) return;
 
     setIsLoading(true);
     try {
-      const requestBody = {
-        title,
-        due_date: dueDate.toISOString(),
-        type,
-        study_session_id: moduleId
-      };
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-      
-      const response = await fetch('/api/reminders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
+      const { data: _data, error } = await supabase
+        .from('reminders')
+        .insert([
+          {
+            title,
+            due_date: dueDate.toISOString(),
+            type,
+            study_session_id: moduleId,
+            user_id: user.id
+          }
+        ])
+        .select()
+        .single();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Server response:', errorData);
-        throw new Error(errorData.error || 'Failed to add reminder');
-      }
-
-      const _data = await response.json();
+      if (error) throw error;
 
       setTitle('');
       setDueDate(undefined);
-      await fetchReminders();
+      
+      // Fetch updated reminders
+      const { data: _reminders, error: _fetchError } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('study_session_id', moduleId)
+        .order('due_date', { ascending: true });
+      
+      if (_fetchError) throw _fetchError;
+      setReminders(_reminders || []);
     } catch (error) {
       console.error('Error adding reminder:', error);
       if (error instanceof Error) {
@@ -102,13 +117,22 @@ export default function ReminderList({ moduleId }: ReminderListProps) {
 
   const deleteReminder = async (id: string) => {
     try {
-      const response = await fetch(`/api/reminders?id=${id}`, {
-        method: 'DELETE'
-      });
+      const { error } = await supabase
+        .from('reminders')
+        .delete()
+        .eq('id', id);
 
-      if (!response.ok) throw new Error('Failed to delete reminder');
+      if (error) throw error;
 
-      await fetchReminders();
+      // Fetch updated reminders
+      const { data: _reminders, error: _fetchError } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('study_session_id', moduleId)
+        .order('due_date', { ascending: true });
+      
+      if (_fetchError) throw _fetchError;
+      setReminders(_reminders || []);
     } catch (error) {
       console.error('Error deleting reminder:', error);
     }

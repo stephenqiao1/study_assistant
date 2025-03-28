@@ -1,24 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  GradingComponentWithEntries,
-  GradeEntry
-} from '@/types/grading';
-import { 
-  calculateComponentScore, 
-  formatGrade 
-} from '@/utils/gradeCalculations';
-import GradeEntryForm from './GradeEntryForm';
-import { 
-  Edit, 
-  Trash2, 
-  PlusCircle, 
-  ChevronDown, 
-  ChevronUp,
-  AlertCircle
-} from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { GradeEntry, GradingComponentWithEntries } from '@/types/grading';
+import { formatGrade } from '@/utils/gradeCalculations';
+import GradeEntryForm from './GradeEntryForm';
+import { AlertCircle } from 'lucide-react';
 
 interface GradingComponentListProps {
   components: GradingComponentWithEntries[];
@@ -37,9 +25,7 @@ export default function GradingComponentList({
   const [showEntryForm, setShowEntryForm] = useState<Record<string, boolean>>({});
   const [editingEntry, setEditingEntry] = useState<GradeEntry | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [_isSubmitting, _setIsSubmitting] = useState(false);
   const [newGrade, setNewGrade] = useState({ score: '', maxScore: '' });
-  const [_showAddGradeModal, _setShowAddGradeModal] = useState(false);
   const { toast } = useToast();
   
   const handleError = (error: Error | unknown) => {
@@ -92,14 +78,14 @@ export default function GradingComponentList({
         throw new Error(errorData.error || 'Failed to create grade entry');
       }
       
-      const { data } = await response.json();
+      const { data: _data } = await response.json();
       
       // Update the local state with the new entry
       const _updatedComponents = components.map(component => {
         if (component.id === componentId) {
           return {
             ...component,
-            entries: [...component.entries, data],
+            entries: [...component.entries, _data],
           };
         }
         return component;
@@ -149,16 +135,16 @@ export default function GradingComponentList({
         throw new Error(errorData.error || 'Failed to update grade entry');
       }
       
-      const { data } = await response.json();
+      const { data: _data } = await response.json();
       
       // Update the local state with the updated entry
       const _updatedComponents = components.map(component => {
-        if (component.id === editingEntry?.grading_component_id) {
+        if (component.id === editingEntry?.component_id) {
           return {
             ...component,
-            entries: component.entries.map(entry => 
-              entry.id === entryId ? data : entry
-            ),
+            entries: component.entries.map(entry =>
+              entry.id === editingEntry.id ? editingEntry : entry
+            )
           };
         }
         return component;
@@ -167,7 +153,7 @@ export default function GradingComponentList({
       // Close the entry form and reset editing entry
       setShowEntryForm(prev => ({
         ...prev,
-        [editingEntry?.grading_component_id || '']: false,
+        [editingEntry?.component_id || '']: false,
       }));
       setEditingEntry(null);
       
@@ -223,7 +209,7 @@ export default function GradingComponentList({
     setEditingEntry(entry);
     setShowEntryForm(prev => ({
       ...prev,
-      [entry.grading_component_id]: true,
+      [entry.component_id]: true,
     }));
   };
   
@@ -231,7 +217,6 @@ export default function GradingComponentList({
     if (!newGrade.score || !newGrade.maxScore) return;
     
     try {
-      _setIsSubmitting(true);
       const response = await fetch('/api/grade-entries', {
         method: 'POST',
         headers: {
@@ -248,18 +233,17 @@ export default function GradingComponentList({
         throw new Error('Failed to add grade');
       }
       
-      const data = await response.json();
+      const { data: _data } = await response.json();
       const _updatedComponents = components.map(component => {
         if (component.id === componentId) {
           return {
             ...component,
-            entries: [...component.entries, data.data],
+            entries: [...component.entries, _data.data],
           };
         }
         return component;
       });
       
-      _setShowAddGradeModal(false);
       setNewGrade({ score: '', maxScore: '' });
       toast({
         title: "Success",
@@ -267,8 +251,6 @@ export default function GradingComponentList({
       });
     } catch (error) {
       handleError(error);
-    } finally {
-      _setIsSubmitting(false);
     }
   };
   
@@ -299,6 +281,20 @@ export default function GradingComponentList({
     } catch (error) {
       handleError(error);
     }
+  };
+  
+  const calculateComponentScore = (component: GradingComponentWithEntries, entries: GradeEntry[]): number => {
+    if (!entries.length) return 0;
+    
+    // Calculate total score without weights
+    const totalScore = entries.reduce((sum, entry) => {
+      const score = entry.score || 0;
+      const maxScore = entry.max_score || 1;
+      return sum + (score / maxScore) * 100;
+    }, 0);
+    
+    // Return average score
+    return totalScore / entries.length;
   };
   
   // If there are no components, show a message
@@ -479,7 +475,7 @@ export default function GradingComponentList({
                   onClick={() => toggleEntryForm(component.id)}
                   className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-gray-800"
                 >
-                  <PlusCircle className="w-5 h-5 mr-2" />
+                  <Plus className="w-5 h-5 mr-2" />
                   {showForm ? 'Cancel' : 'Add Grade Entry'}
                 </button>
               </div>

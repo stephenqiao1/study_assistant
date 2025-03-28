@@ -40,7 +40,16 @@ export async function GET(request: Request) {
     
     if (error) throw error;
     
-    return NextResponse.json({ data });
+    // Add cache control headers to prevent multiple fetches
+    return NextResponse.json(
+      { data },
+      { 
+        headers: {
+          'Cache-Control': 'private, max-age=60', // Cache for 60 seconds
+          'Vary': 'Cookie' // Vary based on user session
+        }
+      }
+    );
   } catch (error) {
     console.error('Error fetching grading systems:', error);
     return NextResponse.json(

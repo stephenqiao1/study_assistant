@@ -36,7 +36,13 @@ export default function FloatingGradeIndicator({ studySessionId, onExpand, alway
         setIsLoading(true);
         setError(null);
         
-        const response = await fetch(`/api/grading-systems?study_session_id=${studySessionId}`);
+        const response = await fetch(`/api/grading-systems?study_session_id=${studySessionId}`, {
+          // Add cache headers to prevent duplicate calls
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         
         if (!response.ok) {
           throw new Error('Failed to fetch grading system');
@@ -137,4 +143,19 @@ export default function FloatingGradeIndicator({ studySessionId, onExpand, alway
       )}
     </div>
   );
-} 
+}
+
+function _getStatusColor(status: string | null): string {
+  switch (status) {
+    case 'excellent':
+      return 'text-green-600 dark:text-green-400';
+    case 'good':
+      return 'text-blue-600 dark:text-blue-400';
+    case 'warning':
+      return 'text-yellow-600 dark:text-yellow-400';
+    case 'danger':
+      return 'text-red-600 dark:text-red-400';
+    default:
+      return 'text-gray-700 dark:text-gray-300';
+  }
+}
